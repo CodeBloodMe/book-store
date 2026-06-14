@@ -36,10 +36,10 @@ export default function Footer() {
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
 
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2 md:col-span-3 lg:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
               <span className="text-2xl">📚</span>
               <span className="font-extrabold text-lg gradient-text">BookSphere</span>
@@ -71,17 +71,52 @@ export default function Footer() {
               </ul>
             </div>
           ))}
+
+          {/* About Me Column */}
+          <div className="col-span-2 md:col-span-1 flex flex-col">
+            <h4 className="text-xs font-bold uppercase tracking-widest mb-4"
+              style={{ color: 'var(--text-muted)' }}>
+              About Developer
+            </h4>
+            <div className="mb-2">
+              <span className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                KRISH KAUSHIK
+              </span>
+            </div>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              I hope this project help you find best books
+            </p>
+            <div className="flex gap-4 items-center">
+              <a
+                href="https://www.linkedin.com/in/krishkaushik5178/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold hover:text-white transition-colors flex items-center gap-1 group"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                LinkedIn <span className="group-hover:translate-x-1 transition-transform">→</span>
+              </a>
+              <a
+                href="https://github.com/CodeBloodMe"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold hover:text-white transition-colors flex items-center gap-1 group"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                GitHub <span className="group-hover:translate-x-1 transition-transform">→</span>
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Bottom bar */}
         <div
-          className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs"
+          className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-center text-center gap-3 text-xs"
           style={{
             borderTop: '1px solid var(--border-subtle)',
             color: 'var(--text-muted)',
           }}
         >
-          <p>© {new Date().getFullYear()} BookSphere. All rights reserved.</p>
           <p>Ratings aggregated from Goodreads, Amazon &amp; field experts.</p>
         </div>
       </div>
