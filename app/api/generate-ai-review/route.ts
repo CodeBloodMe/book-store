@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 async function fetchHackerNewsComments(query: string): Promise<string[]> {
   try {
     const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=comment&hitsPerPage=20`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'BookSphere/1.0' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
     if (!res.ok) return [];
     const data = await res.json();
     return data.hits
@@ -24,7 +24,7 @@ async function fetchHackerNewsComments(query: string): Promise<string[]> {
 async function fetchOpenLibraryData(query: string): Promise<string> {
   try {
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'BookSphere/1.0' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
     if (!res.ok) return '';
     const data = await res.json();
     const book = data.docs?.[0];

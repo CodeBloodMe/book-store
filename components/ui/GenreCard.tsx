@@ -5,6 +5,7 @@
 
 import Link from 'next/link';
 import type { Genre } from '@/types/database';
+import { getGenreIcon } from './GenreIcon';
 
 interface GenreCardProps {
   genre: Genre;
@@ -42,19 +43,7 @@ export default function GenreCard({ genre }: GenreCardProps) {
           }}
         />
 
-        {/* Big Background Number (e.g. book count) */}
-        <span 
-          className="absolute -right-2 -bottom-2 pointer-events-none"
-          style={{
-            fontFamily: 'var(--font-bebas)',
-            fontSize: '7rem',
-            lineHeight: '0.85',
-            color: 'rgba(0, 0, 0, 0.08)',
-            letterSpacing: '-0.02em'
-          }}
-        >
-          {genre.book_count}
-        </span>
+        {/* Big Background Number (removed book count) */}
 
         {/* Status Badge */}
         <div 
@@ -76,7 +65,7 @@ export default function GenreCard({ genre }: GenreCardProps) {
 
         {/* Avatar / Icon */}
         <div 
-          className="relative z-10 flex items-center justify-center flex-shrink-0"
+          className="relative z-10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:rotate-6"
           style={{
             width: '64px',
             height: '64px',
@@ -84,15 +73,10 @@ export default function GenreCard({ genre }: GenreCardProps) {
             borderTop: '5px solid #0a0a0a',
             borderRight: '5px solid #0a0a0a',
             marginLeft: '20px',
-            fontFamily: 'var(--font-bebas)',
-            fontSize: '2rem',
             color: accentColor,
           }}
         >
-          <span className="text-3xl" role="img" aria-hidden="true" style={{ filter: 'grayscale(100%) brightness(200%) sepia(100%) hue-rotate(10deg) saturate(500%) drop-shadow(0 0 0 white)' }}>
-            {/* The filter tries to colorize standard emojis, but we just show the icon directly */}
-            {genre.icon}
-          </span>
+          {getGenreIcon(genre.slug, "w-8 h-8")}
         </div>
       </div>
 
@@ -149,37 +133,10 @@ export default function GenreCard({ genre }: GenreCardProps) {
       <div 
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: '1fr',
           borderTop: '3px solid #0a0a0a'
         }}
       >
-        <div style={{ padding: '12px 10px', borderRight: '3px solid #0a0a0a', textAlign: 'center' }}>
-          <span 
-            style={{
-              fontFamily: 'var(--font-bebas)',
-              fontSize: '1.8rem',
-              lineHeight: '1',
-              color: '#0a0a0a',
-              display: 'block'
-            }}
-          >
-            {genre.book_count}
-          </span>
-          <span 
-            style={{
-              fontSize: '0.48rem',
-              fontWeight: 700,
-              letterSpacing: '0.15em',
-              color: '#a8a49a',
-              textTransform: 'uppercase',
-              display: 'block',
-              marginTop: '2px'
-            }}
-          >
-            BOOKS
-          </span>
-        </div>
-        
         <div style={{ padding: '12px 10px', textAlign: 'center' }}>
           <span 
             style={{
@@ -190,7 +147,7 @@ export default function GenreCard({ genre }: GenreCardProps) {
               display: 'block'
             }}
           >
-            {genre.is_fiction ? 'FICTION' : 'NON-FIC'}
+            {genre.is_fiction ? 'FICTION' : 'NON-FICTION'}
           </span>
           <span 
             style={{

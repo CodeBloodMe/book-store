@@ -9,6 +9,8 @@ import { getAllGenres } from '@/lib/queries';
 import SearchBar from './SearchBar';
 import type { Genre } from '@/types/database';
 import MobileMenu from './MobileMenu';
+import { getGenreIcon } from './GenreIcon';
+import { BookOpen, Sparkles } from 'lucide-react';
 
 export default async function Navbar() {
   let genres: Genre[] = [];
@@ -37,20 +39,18 @@ export default async function Navbar() {
       style={{ borderBottomColor: 'var(--border-default)' }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-24 gap-4">
 
           {/* ── Logo ─────────────────────────────────────────── */}
           <Link
             href="/"
-            className="flex items-center gap-2 flex-shrink-0"
-            aria-label="BookSphere Home"
+            className="flex items-center flex-shrink-0 z-10"
+            aria-label="ChapterOne Home"
           >
-            <span 
-              className="font-extrabold text-2xl tracking-tight"
-              style={{ fontFamily: 'var(--font-serif)', color: 'var(--indigo-600)' }}
-            >
-              BookSphere
-            </span>
+            <div className="h-20 w-20 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:scale-105" style={{ boxShadow: '3px 3px 0 #0a0a0a' }}>
+              <img src="/logo.png" alt="ChapterOne Logo" className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
+            </div>
+            <span className="sr-only">ChapterOne</span>
           </Link>
 
           {/* ── Desktop Nav ───────────────────────────────────── */}
@@ -89,19 +89,17 @@ export default async function Navbar() {
                         hover:text-white transition-colors"
                       style={{ color: 'var(--text-secondary)' }}
                     >
-                      <span>{g.icon}</span>
+                      <span className="opacity-60">{getGenreIcon(g.slug, "w-4 h-4")}</span>
                       <span className="font-medium">{g.name}</span>
-                      <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {g.book_count}
-                      </span>
                     </Link>
                   ))}
                 </div>
               </div>
             ))}
 
-            <Link href="/fiction" className="btn-ghost text-sm px-3 py-2">
-              🎭 Fiction Finder
+            <Link href="/fiction" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+              <BookOpen size={16} />
+              Fiction Finder
             </Link>
             <Link
               href="/recommend"
@@ -113,7 +111,7 @@ export default async function Navbar() {
                 boxShadow: '3px 3px 0 #0a0a0a',
               }}
             >
-              ✨ AI Finder
+              <Sparkles size={16} /> AI Finder
             </Link>
           </nav>
 
@@ -122,7 +120,7 @@ export default async function Navbar() {
             <div className="hidden md:block">
               <SearchBar />
             </div>
-            
+
             {/* Mobile hamburger — client component for toggle */}
             <MobileMenu groups={sortedGroups} />
           </div>

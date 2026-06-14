@@ -25,20 +25,20 @@ const bebas = Bebas_Neue({
 
 export const metadata: Metadata = {
   title: {
-    default: 'BookSphere — Expert Book Recommendations',
-    template: '%s | BookSphere',
+    default: 'ChapterOne — Expert Book Recommendations',
+    template: '%s | ChapterOne',
   },
   description:
     'Discover the best books in any genre — curated by field experts, ' +
     'ranked by real reviews. From Data Science to Fantasy, find exactly what to read next.',
   keywords: ['book recommendations', 'best books', 'reading list', 'data science books', 'fiction books'],
-  authors: [{ name: 'BookSphere' }],
+  authors: [{ name: 'ChapterOne' }],
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://booksphere.app',
-    siteName: 'BookSphere',
-    title: 'BookSphere — Expert Book Recommendations',
+    url: 'https://chapterone.app',
+    siteName: 'ChapterOne',
+    title: 'ChapterOne — Expert Book Recommendations',
     description: 'Discover the best books in any genre, curated by experts.',
   },
 };

@@ -17,7 +17,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const { q } = await searchParams;
   return {
     title: q ? `Search: "${q}"` : 'Search Books',
-    description: q ? `BookSphere search results for "${q}".` : 'Search across 150+ expert-curated books.',
+    description: q ? `ChapterOne search results for "${q}".` : 'Search across 150+ expert-curated books.',
   };
 }
 

@@ -1,5 +1,5 @@
 // ============================================================
-// BookSphere — Server-Side Supabase Client
+// ChapterOne — Server-Side Supabase Client
 // Used exclusively in Server Components and lib/queries.ts.
 // Do NOT import this in Client Components ('use client').
 // For client-side use, import from utils/supabase.ts instead.

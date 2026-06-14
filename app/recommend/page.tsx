@@ -175,7 +175,7 @@ export default function RecommendPage() {
       >
         <div className="max-w-3xl mx-auto text-center">
           <Link href="/" className="text-xs font-bold uppercase tracking-widest mb-4 inline-block" style={{ color: '#888' }}>
-            ← Back to BookSphere
+            ← Back to ChapterOne
           </Link>
           <h1
             className="font-black leading-tight mb-4"

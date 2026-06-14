@@ -27,7 +27,7 @@ async function run() {
       const url = `https://openlibrary.org/search.json?q=${query}&limit=40&fields=key,title,author_name,cover_i,first_publish_year,number_of_pages_median,ratings_average,ratings_count,subject,isbn`;
       
       console.log(`  🔍 Fetching: ${genre.name}...`);
-      const res = await fetch(url, { headers: { 'User-Agent': 'BookSphere/1.0 (educational project)' } });
+      const res = await fetch(url, { headers: { 'User-Agent': 'ChapterOne/1.0 (educational project)' } });
       
       if (!res.ok) {
         console.log(`  ⚠️  HTTP ${res.status} for: ${genre.name}`);

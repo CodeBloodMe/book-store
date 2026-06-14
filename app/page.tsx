@@ -8,9 +8,10 @@ import BookCard from '@/components/ui/BookCard';
 import GenreCard from '@/components/ui/GenreCard';
 import RecommendWizard from '@/components/features/RecommendWizard';
 import type { Genre } from '@/types/database';
+import { Sparkles, Search, GraduationCap, BookOpen, Sprout } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'BookSphere — Find Your Perfect Book with AI',
+  title: 'ChapterOne — Find Your Perfect Book with AI',
   description:
     'Tell us what you want and our AI finds the perfect book for you instantly. 1,200+ curated books across every genre.',
 };
@@ -39,9 +40,9 @@ export default async function HomePage() {
       <section className="py-16 px-4" style={{ background: '#f5f5f0' }}>
         <div className="max-w-4xl mx-auto">
           {/* Heading */}
-          <div className="mb-10 text-center">
+          <div className="mb-10 text-center flex flex-col items-center">
             <div
-              className="inline-block text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-5"
+              className="inline-block text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-4"
               style={{
                 background: '#f5e642',
                 color: '#0a0a0a',
@@ -49,19 +50,24 @@ export default async function HomePage() {
                 boxShadow: '3px 3px 0 #0a0a0a',
               }}
             >
-              ✨ AI-Powered Book Finder
+              <span className="flex items-center justify-center gap-1.5">
+                <Sparkles size={14} /> AI-Powered Book Finder
+              </span>
             </div>
             <h1
-              className="font-black leading-tight mb-4"
+              className="font-black leading-none mb-2"
               style={{
-                fontFamily: 'var(--font-bebas)',
-                fontSize: 'clamp(44px, 7vw, 80px)',
-                letterSpacing: '0.02em',
+                fontFamily: 'var(--font-serif)',
+                fontSize: 'clamp(36px, 10vw, 100px)',
+                letterSpacing: '-0.02em',
                 color: '#0a0a0a',
               }}
             >
-              Find Your Perfect Book
+              ChapterOne
             </h1>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 uppercase tracking-wide" style={{ color: '#0a0a0a' }}>
+              Find Your Perfect Book
+            </h2>
             <p className="text-base max-w-lg mx-auto" style={{ color: '#555' }}>
               Tell us what you want. Our AI instantly matches you with the best books from our 1,200+ curated collection.
             </p>
@@ -88,7 +94,7 @@ export default async function HomePage() {
                 boxShadow: '4px 4px 0 rgba(0,0,0,0.2)',
               }}
             >
-              🔍 Type exactly what you want →
+              <Search size={16} /> Type exactly what you want →
             </Link>
           </div>
         </div>
@@ -173,11 +179,14 @@ export default async function HomePage() {
                   boxShadow: '4px 4px 0 #0a0a0a',
                 }}
               >
-                {cat === 'Learning' && '🎓 '}
-                {cat === 'Fiction' && '🎭 '}
-                {cat === 'Personal Growth' && '🌱 '} {cat}
+                <span className="inline-flex items-center gap-2">
+                  {cat === 'Learning' && <GraduationCap size={16} />}
+                  {cat === 'Fiction' && <BookOpen size={16} />}
+                  {cat === 'Personal Growth' && <Sprout size={16} />} 
+                  {cat}
+                </span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {grouped[cat].slice(0, 5).map((genre) => (
                   <GenreCard key={genre.id} genre={genre} />
                 ))}
@@ -191,7 +200,7 @@ export default async function HomePage() {
                     >
                       + {grouped[cat].length - 5} more {cat} genres
                     </summary>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
                       {grouped[cat].slice(5).map((genre) => (
                         <GenreCard key={genre.id} genre={genre} />
                       ))}
@@ -239,7 +248,7 @@ export default async function HomePage() {
               boxShadow: '5px 5px 0 rgba(245,230,66,0.3)',
             }}
           >
-            ✨ Start AI Book Search
+            <Sparkles size={18} /> Start AI Book Search
           </Link>
         </div>
       </section>

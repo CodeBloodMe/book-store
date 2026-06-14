@@ -13,12 +13,15 @@ interface SearchBarProps {
   initialValue?: string;
   /** If true, renders a larger hero-style search bar */
   hero?: boolean;
+  /** If true, takes up 100% width */
+  fullWidth?: boolean;
 }
 
 export default function SearchBar({
   placeholder = 'Search books, authors, topics…',
   initialValue = '',
   hero = false,
+  fullWidth = false,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialValue);
   const router = useRouter();
@@ -38,7 +41,7 @@ export default function SearchBar({
       onSubmit={handleSubmit}
       role="search"
       className="relative flex items-center"
-      style={{ width: hero ? '100%' : '260px' }}
+      style={{ width: fullWidth ? '100%' : (hero ? '100%' : '260px') }}
     >
       {/* Search Icon */}
       <span

@@ -40,9 +40,11 @@ export default function Footer() {
 
           {/* Brand */}
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">📚</span>
-              <span className="font-extrabold text-lg gradient-text">BookSphere</span>
+            <Link href="/" className="flex items-center mb-6 inline-block">
+              <div className="h-28 w-28 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:-translate-y-1" style={{ boxShadow: '4px 4px 0 #0a0a0a' }}>
+                <img src="/logo.png" alt="ChapterOne Logo" className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
+              </div>
+              <span className="sr-only">ChapterOne</span>
             </Link>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               Expert-curated book recommendations for every interest, every level.

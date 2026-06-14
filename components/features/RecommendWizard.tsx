@@ -10,86 +10,95 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { 
+  Wrench, Telescope, Theater, Sprout, Brain, Sunset,
+  Terminal, BarChart, Globe, Bot, Lock, BadgeDollarSign,
+  Megaphone, Users, Atom, Dna, BrainCircuit, Scroll,
+  Landmark, TrendingUp, Sigma, Microscope, Rocket,
+  Wand, Search, Heart, Ghost, Castle, BookOpen,
+  Palette, Sparkles, Clock, Smile, Cloud, Star, Zap
+} from 'lucide-react';
+
 // ── Data ─────────────────────────────────────────────────────
 
 const GOALS = [
-  { value: 'Learn a skill',      emoji: '🛠️',  label: 'Learn a Skill' },
-  { value: 'Explore a topic',    emoji: '🔭',  label: 'Explore a Topic' },
-  { value: 'Be entertained',     emoji: '🎭',  label: 'Be Entertained' },
-  { value: 'Grow as a person',   emoji: '🌱',  label: 'Personal Growth' },
-  { value: 'Be challenged',      emoji: '🧠',  label: 'Be Challenged' },
-  { value: 'Relax and escape',   emoji: '🌅',  label: 'Relax & Escape' },
+  { value: 'Learn a skill',      icon: <Wrench size={18} />,  label: 'Learn a Skill' },
+  { value: 'Explore a topic',    icon: <Telescope size={18} />,  label: 'Explore a Topic' },
+  { value: 'Be entertained',     icon: <Theater size={18} />,  label: 'Be Entertained' },
+  { value: 'Grow as a person',   icon: <Sprout size={18} />,  label: 'Personal Growth' },
+  { value: 'Be challenged',      icon: <Brain size={18} />,  label: 'Be Challenged' },
+  { value: 'Relax and escape',   icon: <Sunset size={18} />,  label: 'Relax & Escape' },
 ];
 
-const AREAS: Record<string, { value: string; emoji: string; label: string }[]> = {
+const AREAS: Record<string, { value: string; icon: React.ReactNode; label: string }[]> = {
   'Learn a skill': [
-    { value: 'Programming',          emoji: '💻', label: 'Programming' },
-    { value: 'Data Science',         emoji: '📊', label: 'Data Science' },
-    { value: 'Web Development',      emoji: '🌐', label: 'Web Dev' },
-    { value: 'Machine Learning & AI',emoji: '🤖', label: 'AI & ML' },
-    { value: 'Cybersecurity',        emoji: '🔐', label: 'Cybersecurity' },
-    { value: 'Finance & Investing',  emoji: '💰', label: 'Finance' },
-    { value: 'Marketing',            emoji: '📣', label: 'Marketing' },
-    { value: 'Leadership & Management',emoji:'👥', label: 'Leadership' },
+    { value: 'Programming',          icon: <Terminal size={18}/>, label: 'Programming' },
+    { value: 'Data Science',         icon: <BarChart size={18}/>, label: 'Data Science' },
+    { value: 'Web Development',      icon: <Globe size={18}/>, label: 'Web Dev' },
+    { value: 'Machine Learning & AI',icon: <Bot size={18}/>, label: 'AI & ML' },
+    { value: 'Cybersecurity',        icon: <Lock size={18}/>, label: 'Cybersecurity' },
+    { value: 'Finance & Investing',  icon: <BadgeDollarSign size={18}/>, label: 'Finance' },
+    { value: 'Marketing',            icon: <Megaphone size={18}/>, label: 'Marketing' },
+    { value: 'Leadership & Management',icon:<Users size={18}/>, label: 'Leadership' },
   ],
   'Explore a topic': [
-    { value: 'Physics',        emoji: '⚛️',  label: 'Physics' },
-    { value: 'Biology',        emoji: '🧬',  label: 'Biology' },
-    { value: 'Neuroscience',   emoji: '🧠',  label: 'Neuroscience' },
-    { value: 'History',        emoji: '📜',  label: 'History' },
-    { value: 'Philosophy',     emoji: '🏛️',  label: 'Philosophy' },
-    { value: 'Economics',      emoji: '📈',  label: 'Economics' },
-    { value: 'Mathematics',    emoji: '∑',   label: 'Mathematics' },
-    { value: 'Psychology',     emoji: '🔬',  label: 'Psychology' },
+    { value: 'Physics',        icon: <Atom size={18}/>,  label: 'Physics' },
+    { value: 'Biology',        icon: <Dna size={18}/>,  label: 'Biology' },
+    { value: 'Neuroscience',   icon: <BrainCircuit size={18}/>,  label: 'Neuroscience' },
+    { value: 'History',        icon: <Scroll size={18}/>,  label: 'History' },
+    { value: 'Philosophy',     icon: <Landmark size={18}/>,  label: 'Philosophy' },
+    { value: 'Economics',      icon: <TrendingUp size={18}/>,  label: 'Economics' },
+    { value: 'Mathematics',    icon: <Sigma size={18}/>,   label: 'Mathematics' },
+    { value: 'Psychology',     icon: <Microscope size={18}/>,  label: 'Psychology' },
   ],
   'Be entertained': [
-    { value: 'Science Fiction',    emoji: '🚀', label: 'Sci-Fi' },
-    { value: 'Fantasy',            emoji: '🐉', label: 'Fantasy' },
-    { value: 'Mystery & Thriller', emoji: '🔍', label: 'Mystery' },
-    { value: 'Romance',            emoji: '💕', label: 'Romance' },
-    { value: 'Horror',             emoji: '👻', label: 'Horror' },
-    { value: 'Historical Fiction', emoji: '🏰', label: 'Historical' },
-    { value: 'Literary Fiction',   emoji: '📖', label: 'Literary' },
-    { value: 'Graphic Novels',     emoji: '🎨', label: 'Graphic Novels' },
+    { value: 'Science Fiction',    icon: <Rocket size={18}/>, label: 'Sci-Fi' },
+    { value: 'Fantasy',            icon: <Wand size={18}/>, label: 'Fantasy' },
+    { value: 'Mystery & Thriller', icon: <Search size={18}/>, label: 'Mystery' },
+    { value: 'Romance',            icon: <Heart size={18}/>, label: 'Romance' },
+    { value: 'Horror',             icon: <Ghost size={18}/>, label: 'Horror' },
+    { value: 'Historical Fiction', icon: <Castle size={18}/>, label: 'Historical' },
+    { value: 'Literary Fiction',   icon: <BookOpen size={18}/>, label: 'Literary' },
+    { value: 'Graphic Novels',     icon: <Palette size={18}/>, label: 'Graphic Novels' },
   ],
   'Grow as a person': [
-    { value: 'Self-Help',                emoji: '✨', label: 'Self-Help' },
-    { value: 'Productivity & Habits',    emoji: '⏰', label: 'Productivity' },
-    { value: 'Spirituality & Mindfulness',emoji:'🧘',label: 'Mindfulness' },
-    { value: 'Mental Health',           emoji: '💚', label: 'Mental Health' },
-    { value: 'Relationships',           emoji: '🤝', label: 'Relationships' },
-    { value: 'Health & Fitness',        emoji: '🏃', label: 'Health' },
-    { value: 'Philosophy',             emoji: '🏛️', label: 'Philosophy' },
-    { value: 'Psychology',             emoji: '🔬', label: 'Psychology' },
+    { value: 'Self-Help',                icon: <Sparkles size={18}/>, label: 'Self-Help' },
+    { value: 'Productivity & Habits',    icon: <Clock size={18}/>, label: 'Productivity' },
+    { value: 'Spirituality & Mindfulness',icon:<Smile size={18}/>,label: 'Mindfulness' },
+    { value: 'Mental Health',           icon: <Heart size={18}/>, label: 'Mental Health' },
+    { value: 'Relationships',           icon: <Users size={18}/>, label: 'Relationships' },
+    { value: 'Health & Fitness',        icon: <Sprout size={18}/>, label: 'Health' },
+    { value: 'Philosophy',             icon: <Landmark size={18}/>, label: 'Philosophy' },
+    { value: 'Psychology',             icon: <Microscope size={18}/>, label: 'Psychology' },
   ],
   'Be challenged': [
-    { value: 'Mathematics',    emoji: '∑',   label: 'Mathematics' },
-    { value: 'Physics',        emoji: '⚛️',  label: 'Physics' },
-    { value: 'Philosophy',     emoji: '🏛️',  label: 'Philosophy' },
-    { value: 'Economics',      emoji: '📈',  label: 'Economics' },
-    { value: 'Neuroscience',   emoji: '🧠',  label: 'Neuroscience' },
-    { value: 'Literary Fiction',emoji:'📖',  label: 'Literary Fiction' },
-    { value: 'Machine Learning & AI',emoji:'🤖',label:'AI & ML' },
-    { value: 'Cloud & DevOps', emoji: '☁️', label: 'Cloud & DevOps' },
+    { value: 'Mathematics',    icon: <Sigma size={18}/>,   label: 'Mathematics' },
+    { value: 'Physics',        icon: <Atom size={18}/>,  label: 'Physics' },
+    { value: 'Philosophy',     icon: <Landmark size={18}/>,  label: 'Philosophy' },
+    { value: 'Economics',      icon: <TrendingUp size={18}/>,  label: 'Economics' },
+    { value: 'Neuroscience',   icon: <BrainCircuit size={18}/>,  label: 'Neuroscience' },
+    { value: 'Literary Fiction',icon:<BookOpen size={18}/>,  label: 'Literary Fiction' },
+    { value: 'Machine Learning & AI',icon:<Bot size={18}/>,label:'AI & ML' },
+    { value: 'Cloud & DevOps', icon: <Cloud size={18}/>, label: 'Cloud & DevOps' },
   ],
   'Relax and escape': [
-    { value: 'Fantasy',            emoji: '🐉', label: 'Fantasy' },
-    { value: 'Romance',            emoji: '💕', label: 'Romance' },
-    { value: 'Comedy & Humor',     emoji: '😂', label: 'Humor' },
-    { value: 'Historical Fiction', emoji: '🏰', label: 'Historical' },
-    { value: 'Science Fiction',    emoji: '🚀', label: 'Sci-Fi' },
-    { value: 'Mystery & Thriller', emoji: '🔍', label: 'Mystery' },
-    { value: 'Graphic Novels',     emoji: '🎨', label: 'Graphic Novels' },
-    { value: 'Spirituality & Mindfulness',emoji:'🧘',label:'Mindfulness' },
+    { value: 'Fantasy',            icon: <Wand size={18}/>, label: 'Fantasy' },
+    { value: 'Romance',            icon: <Heart size={18}/>, label: 'Romance' },
+    { value: 'Comedy & Humor',     icon: <Smile size={18}/>, label: 'Humor' },
+    { value: 'Historical Fiction', icon: <Castle size={18}/>, label: 'Historical' },
+    { value: 'Science Fiction',    icon: <Rocket size={18}/>, label: 'Sci-Fi' },
+    { value: 'Mystery & Thriller', icon: <Search size={18}/>, label: 'Mystery' },
+    { value: 'Graphic Novels',     icon: <Palette size={18}/>, label: 'Graphic Novels' },
+    { value: 'Spirituality & Mindfulness',icon:<Sparkles size={18}/>,label:'Mindfulness' },
   ],
 };
 
 const STYLES = [
-  { value: 'Beginner',        emoji: '🌱', label: 'Complete Beginner',   sub: 'No prior knowledge needed' },
-  { value: 'Intermediate',    emoji: '📘', label: 'Some Background',     sub: 'I know the basics' },
-  { value: 'Advanced',        emoji: '🚀', label: 'Deep Dive',           sub: 'I want expert-level content' },
-  { value: 'Highly rated only',emoji:'⭐', label: 'Highest Rated Only',  sub: 'Only the absolute best' },
-  { value: 'Quick Read',      emoji: '⚡', label: 'Quick Read',          sub: 'Under 250 pages' },
+  { value: 'Beginner',        icon: <Sprout size={18}/>, label: 'Complete Beginner',   sub: 'No prior knowledge needed' },
+  { value: 'Intermediate',    icon: <BookOpen size={18}/>, label: 'Some Background',     sub: 'I know the basics' },
+  { value: 'Advanced',        icon: <Rocket size={18}/>, label: 'Deep Dive',           sub: 'I want expert-level content' },
+  { value: 'Highly rated only',icon:<Star size={18}/>, label: 'Highest Rated Only',  sub: 'Only the absolute best' },
+  { value: 'Quick Read',      icon: <Zap size={18}/>, label: 'Quick Read',          sub: 'Under 250 pages' },
 ];
 
 // ── Types ─────────────────────────────────────────────────────
@@ -111,11 +120,11 @@ interface RecommendedBook {
 // ── Chip Component ────────────────────────────────────────────
 
 function Chip({
-  selected, onClick, emoji, label, sub
+  selected, onClick, icon, label, sub
 }: {
   selected: boolean;
   onClick: () => void;
-  emoji: string;
+  icon: React.ReactNode;
   label: string;
   sub?: string;
 }) {
@@ -133,7 +142,7 @@ function Chip({
         cursor: 'pointer',
       }}
     >
-      <span className="text-base">{emoji}</span>
+      <span className="opacity-70">{icon}</span>
       <span>{label}</span>
       {sub && <span className="text-xs opacity-60 hidden sm:inline">· {sub}</span>}
     </button>
@@ -186,7 +195,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
               unoptimized
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl">📖</div>
+            <div className="w-full h-full flex items-center justify-center text-xs text-center p-1 font-bold text-gray-400">No Cover</div>
           )}
         </div>
 
@@ -214,7 +223,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
                 className="text-xs font-bold px-2 py-0.5 rounded-full"
                 style={{ background: '#f5e642', color: '#0a0a0a', border: '1px solid #0a0a0a' }}
               >
-                ⭐ {rating.toFixed(1)}
+                {rating.toFixed(1)} Rating
               </span>
             )}
             {book.difficulty_level && (
@@ -230,7 +239,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{ background: '#f5f5f0', color: '#0a0a0a', border: '1px solid #e5e5e5' }}
               >
-                {book.genres.icon} {book.genres.name}
+                {book.genres.name}
               </span>
             )}
           </div>
@@ -301,17 +310,17 @@ export default function RecommendWizard() {
         }}
       >
         {/* Step 1: Goal */}
-        <div className="mb-6">
-          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#888' }}>
+        <div className="mb-6 text-center">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#888' }}>
             01 — What do you want from this book?
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-3">
             {GOALS.map(g => (
               <Chip
                 key={g.value}
                 selected={goal === g.value}
                 onClick={() => handleGoalChange(g.value)}
-                emoji={g.emoji}
+                icon={g.icon}
                 label={g.label}
               />
             ))}
@@ -321,19 +330,19 @@ export default function RecommendWizard() {
         {/* Step 2: Area (only shown after goal is selected) */}
         {goal && currentAreas.length > 0 && (
           <div
-            className="mb-6 pt-6"
+            className="mb-6 pt-6 text-center"
             style={{ borderTop: '2px dashed #e5e5e5' }}
           >
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#888' }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#888' }}>
               02 — Pick your area
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-3">
               {currentAreas.map(a => (
                 <Chip
                   key={a.value}
                   selected={area === a.value}
                   onClick={() => setArea(prev => prev === a.value ? null : a.value)}
-                  emoji={a.emoji}
+                  icon={a.icon}
                   label={a.label}
                 />
               ))}
@@ -344,19 +353,19 @@ export default function RecommendWizard() {
         {/* Step 3: Style (only shown after area is selected) */}
         {area && (
           <div
-            className="mb-6 pt-6"
+            className="mb-6 pt-6 text-center"
             style={{ borderTop: '2px dashed #e5e5e5' }}
           >
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#888' }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#888' }}>
               03 — Your reading style <span className="font-normal normal-case text-xs" style={{ color: '#aaa' }}>(optional)</span>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-3">
               {STYLES.map(s => (
                 <Chip
                   key={s.value}
                   selected={style === s.value}
                   onClick={() => setStyle(prev => prev === s.value ? null : s.value)}
-                  emoji={s.emoji}
+                  icon={s.icon}
                   label={s.label}
                   sub={s.sub}
                 />
@@ -390,7 +399,7 @@ export default function RecommendWizard() {
                   AI is finding your perfect books...
                 </>
               ) : (
-                <>✨ Find My Perfect Books</>
+                <><Sparkles size={20} /> Find My Perfect Books</>
               )}
             </button>
           </div>
@@ -403,7 +412,7 @@ export default function RecommendWizard() {
           className="mt-4 p-4 rounded-xl text-sm"
           style={{ background: '#fff0f0', border: '2px solid #ff4444', color: '#cc0000' }}
         >
-          ⚠️ {error}
+          Error: {error}
         </div>
       )}
 
@@ -415,7 +424,7 @@ export default function RecommendWizard() {
               className="text-xl font-black"
               style={{ color: '#0a0a0a', fontFamily: 'var(--font-bebas)', letterSpacing: '0.02em', fontSize: 28 }}
             >
-              {results.length > 0 ? `📚 Your ${results.length} Perfect Matches` : '😔 No Matches Found'}
+              {results.length > 0 ? `Your ${results.length} Perfect Matches` : 'No Matches Found'}
             </h2>
             {results.length > 0 && (
               <button
@@ -447,7 +456,7 @@ export default function RecommendWizard() {
               className="inline-flex items-center gap-2 text-sm font-medium underline"
               style={{ color: '#444' }}
             >
-              🔍 Describe exactly what you want in your own words →
+              Describe exactly what you want in your own words →
             </Link>
           </div>
         </div>

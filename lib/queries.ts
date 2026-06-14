@@ -1,5 +1,5 @@
 // ============================================================
-// BookSphere — Centralized Query Functions
+// ChapterOne — Centralized Query Functions
 // All Supabase data fetching lives here.
 // Import and call these in Server Components only.
 // ============================================================
@@ -17,7 +17,7 @@ import type {
 // ── Helper: throw on Supabase error ──────────────────────────
 function handleError<T>(data: T | null, error: unknown): T {
   if (error) {
-    console.error('[BookSphere Query Error]', error);
+    console.error('[ChapterOne Query Error]', error);
     throw new Error(typeof error === 'object' && error !== null && 'message' in error
       ? String((error as { message: string }).message)
       : 'Database query failed'

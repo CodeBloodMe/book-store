@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-/* ============================================================
+/* 
    BookSphere Design System
    Theme: Deep Navy + Electric Indigo + Gold
    Note: Inter font is loaded via next/font/google in layout.tsx
-   ============================================================ */
+   */
 
 :root {
   /* ── Backgrounds ─────────────────────────────────────────── */

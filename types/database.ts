@@ -1,5 +1,5 @@
 // ============================================================
-// BookSphere — TypeScript Database Interfaces
+// ChapterOne — TypeScript Database Interfaces
 // All types mirror the Supabase PostgreSQL schema exactly.
 // Import from here in every component and query function.
 // ============================================================

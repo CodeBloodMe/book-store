@@ -1,5 +1,5 @@
 -- ============================================================
--- BookSphere — Complete Database Setup & Seed Data
+-- ChapterOne — Complete Database Setup & Seed Data
 -- Run this ENTIRE file in your Supabase SQL Editor.
 -- It creates all tables, indexes, and inserts 150+ real books
 -- across 33 genres with real ISBNs, Amazon links, Goodreads
@@ -1088,6 +1088,6 @@ UPDATE genres SET book_count = (
 );
 
 -- ── DONE ─────────────────────────────────────────────────────
--- Your BookSphere database is ready!
+-- Your ChapterOne database is ready!
 -- Run: SELECT COUNT(*) FROM books; to confirm all books were inserted.
 -- Run: SELECT name, book_count FROM genres ORDER BY book_count DESC; to see genre counts.
