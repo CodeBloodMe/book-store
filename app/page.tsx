@@ -1,65 +1,248 @@
-import Image from "next/image";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import {
+  getAllGenres,
+  getTopRatedBooks,
+} from '@/lib/queries';
+import BookCard from '@/components/ui/BookCard';
+import GenreCard from '@/components/ui/GenreCard';
+import RecommendWizard from '@/components/features/RecommendWizard';
+import type { Genre } from '@/types/database';
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: 'BookSphere — Find Your Perfect Book with AI',
+  description:
+    'Tell us what you want and our AI finds the perfect book for you instantly. 1,200+ curated books across every genre.',
+};
+
+export const revalidate = 0;
+
+export default async function HomePage() {
+  const [genres, topRated] = await Promise.all([
+    getAllGenres().catch(() => []),
+    getTopRatedBooks(8).catch(() => []),
+  ]);
+
+  const grouped = genres.reduce<Record<string, Genre[]>>((acc, g) => {
+    const cat = g.super_categories?.name ?? 'Other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(g);
+    return acc;
+  }, {});
+  const catOrder = ['Learning', 'Fiction', 'Personal Growth'];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <>
+      {/* ══════════════════════════════════════════════════════
+          HERO — AI Recommendation Wizard
+          ══════════════════════════════════════════════════════ */}
+      <section className="py-16 px-4" style={{ background: '#f5f5f0' }}>
+        <div className="max-w-4xl mx-auto">
+          {/* Heading */}
+          <div className="mb-10 text-center">
+            <div
+              className="inline-block text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-5"
+              style={{
+                background: '#f5e642',
+                color: '#0a0a0a',
+                border: '2px solid #0a0a0a',
+                boxShadow: '3px 3px 0 #0a0a0a',
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              ✨ AI-Powered Book Finder
+            </div>
+            <h1
+              className="font-black leading-tight mb-4"
+              style={{
+                fontFamily: 'var(--font-bebas)',
+                fontSize: 'clamp(44px, 7vw, 80px)',
+                letterSpacing: '0.02em',
+                color: '#0a0a0a',
+              }}
             >
-              Learning
-            </a>{" "}
-            center.
+              Find Your Perfect Book
+            </h1>
+            <p className="text-base max-w-lg mx-auto" style={{ color: '#555' }}>
+              Tell us what you want. Our AI instantly matches you with the best books from our 1,200+ curated collection.
+            </p>
+          </div>
+
+          {/* The Wizard */}
+          <RecommendWizard />
+
+          {/* Divider */}
+          <div className="mt-8 flex items-center gap-4">
+            <div className="flex-1 h-px" style={{ background: '#ddd' }} />
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#aaa' }}>or describe it yourself</span>
+            <div className="flex-1 h-px" style={{ background: '#ddd' }} />
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link
+              href="/recommend"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5"
+              style={{
+                background: '#0a0a0a',
+                color: '#f5e642',
+                border: '2px solid #0a0a0a',
+                boxShadow: '4px 4px 0 rgba(0,0,0,0.2)',
+              }}
+            >
+              🔍 Type exactly what you want →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          TOP RATED BOOKS
+          ══════════════════════════════════════════════════════ */}
+      {topRated.length > 0 && (
+        <section className="py-16" style={{ background: '#ffffff', borderTop: '3px solid #0a0a0a' }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-start justify-between mb-8 gap-4">
+              <div>
+                <h2
+                  className="font-black mb-1"
+                  style={{
+                    fontFamily: 'var(--font-bebas)',
+                    fontSize: 'clamp(28px, 4vw, 40px)',
+                    letterSpacing: '0.02em',
+                    color: '#0a0a0a',
+                  }}
+                >
+                  Highest Rated Right Now
+                </h2>
+                <p className="text-sm" style={{ color: '#777' }}>
+                  Books with the strongest expert consensus across all genres.
+                </p>
+              </div>
+              <Link
+                href="/#genres"
+                className="flex-shrink-0 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full"
+                style={{
+                  background: '#f5f5f0',
+                  color: '#0a0a0a',
+                  border: '2px solid #0a0a0a',
+                  boxShadow: '3px 3px 0 #0a0a0a',
+                }}
+              >
+                All Genres →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {topRated.map((book) => (
+                <BookCard key={book.id} book={book} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          GENRE BROWSER
+          ══════════════════════════════════════════════════════ */}
+      <section id="genres" className="py-16" style={{ background: '#f5f5f0', borderTop: '3px solid #0a0a0a' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10">
+            <h2
+              className="font-black mb-2"
+              style={{
+                fontFamily: 'var(--font-bebas)',
+                fontSize: 'clamp(28px, 4vw, 40px)',
+                letterSpacing: '0.02em',
+                color: '#0a0a0a',
+              }}
+            >
+              Browse by Genre
+            </h2>
+            <p className="text-sm" style={{ color: '#777' }}>
+              Every genre curated with the absolute best books — ranked by expert consensus.
+            </p>
+          </div>
+
+          {catOrder.filter((c) => grouped[c]).map((cat) => (
+            <div key={cat} className="mb-12">
+              <h3
+                className="inline-block text-sm font-bold uppercase tracking-widest mb-6 px-5 py-2"
+                style={{
+                  color: '#0a0a0a',
+                  background: '#ffffff',
+                  border: '3px solid #0a0a0a',
+                  borderRadius: '9999px',
+                  boxShadow: '4px 4px 0 #0a0a0a',
+                }}
+              >
+                {cat === 'Learning' && '🎓 '}
+                {cat === 'Fiction' && '🎭 '}
+                {cat === 'Personal Growth' && '🌱 '} {cat}
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {grouped[cat].slice(0, 5).map((genre) => (
+                  <GenreCard key={genre.id} genre={genre} />
+                ))}
+              </div>
+              {grouped[cat].length > 5 && (
+                <div className="mt-4">
+                  <details>
+                    <summary
+                      className="text-xs font-bold uppercase tracking-widest cursor-pointer inline-flex items-center gap-1"
+                      style={{ color: '#888', listStyle: 'none' }}
+                    >
+                      + {grouped[cat].length - 5} more {cat} genres
+                    </summary>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+                      {grouped[cat].slice(5).map((genre) => (
+                        <GenreCard key={genre.id} genre={genre} />
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          AI RECOMMEND CTA
+          ══════════════════════════════════════════════════════ */}
+      <section
+        className="py-16"
+        style={{ background: '#0a0a0a', borderTop: '3px solid #0a0a0a' }}
+      >
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#555' }}>
+            Can&apos;t find what you want?
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <h2
+            className="font-black leading-tight mb-4"
+            style={{
+              fontFamily: 'var(--font-bebas)',
+              fontSize: 'clamp(36px, 5vw, 60px)',
+              letterSpacing: '0.02em',
+              color: '#ffffff',
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Just Tell Us What You Want
+          </h2>
+          <p className="text-base mb-8 max-w-lg mx-auto" style={{ color: '#888' }}>
+            Type anything — &ldquo;a beginner book on investing&rdquo; or &ldquo;something like Harry Potter but darker&rdquo;. Our AI understands.
+          </p>
+          <Link
+            href="/recommend"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-black text-base transition-all hover:-translate-y-1"
+            style={{
+              background: '#f5e642',
+              color: '#0a0a0a',
+              border: '3px solid #f5e642',
+              boxShadow: '5px 5px 0 rgba(245,230,66,0.3)',
+            }}
           >
-            Documentation
-          </a>
+            ✨ Start AI Book Search
+          </Link>
         </div>
-      </main>
-    </div>
+      </section>
+    </>
   );
 }

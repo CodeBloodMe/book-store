@@ -1,26 +1,319 @@
 @import "tailwindcss";
 
+/* ============================================================
+   BookSphere Design System
+   Theme: Deep Navy + Electric Indigo + Gold
+   Note: Inter font is loaded via next/font/google in layout.tsx
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Backgrounds ─────────────────────────────────────────── */
+  --bg-base:     #ffffff;
+  --bg-primary:  #f9fafb;
+  --bg-card:     #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --bg-surface:  #f3f4f6;
+  --bg-input:    #ffffff;
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --border-subtle:  #f3f4f6;
+  --border-default: #e5e7eb;
+  --border-strong:  #d1d5db;
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --text-primary:   #111827;
+  --text-secondary: #4b5563;
+  --text-muted:     #6b7280;
+  --text-inverse:   #ffffff;
+
+  /* ── Brand Colors ────────────────────────────────────────── */
+  --indigo-300: #a5b4fc;
+  --indigo-400: #818cf8;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-700: #4338ca;
+
+  --gold-300: #fde68a;
+  --gold-400: #fbbf24;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+
+  /* ── Difficulty Colors ───────────────────────────────────── */
+  --beginner-bg:      #ecfdf5;
+  --beginner-text:    #059669;
+  --beginner-border:  #a7f3d0;
+
+  --intermediate-bg:   #fffbeb;
+  --intermediate-text: #d97706;
+  --intermediate-border:#fde68a;
+
+  --advanced-bg:     #fef2f2;
+  --advanced-text:   #dc2626;
+  --advanced-border: #fecaca;
 }
 
+/* ──────────────────────────────────────────────────────────
+   Tailwind v4 @theme block.
+   IMPORTANT: @theme inline does NOT support var() references —
+   only literal values are allowed here.
+   ────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background:     #ffffff;
+  --color-surface:        #f3f4f6;
+  --color-border:         #e5e7eb;
+  --color-text-primary:   #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted:     #6b7280;
+  --color-indigo:         #6366f1;
+  --color-indigo-light:   #818cf8;
+  --color-gold:           #f59e0b;
+  --color-gold-light:     #fbbf24;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base Styles ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Custom Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--indigo-500); }
+
+/* ── Typography ──────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--indigo-400);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+a:hover { color: var(--indigo-300); }
+
+/* ── Glass Card ──────────────────────────────────────────── */
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.glass-card:hover {
+  border-color: var(--border-default);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+/* ── Gradient Text ───────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--indigo-400) 0%, var(--gold-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glow Button ─────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--indigo-500);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+.btn-primary:hover {
+  background: var(--indigo-600);
+  box-shadow: 0 0 20px var(--indigo-500)66;
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+.btn-ghost:hover {
+  border-color: var(--indigo-500);
+  color: var(--indigo-600);
+  background: var(--bg-surface);
+}
+
+/* ── Badge ───────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+.badge-beginner {
+  background: var(--beginner-bg);
+  color: var(--beginner-text);
+  border-color: var(--beginner-border);
+}
+.badge-intermediate {
+  background: var(--intermediate-bg);
+  color: var(--intermediate-text);
+  border-color: var(--intermediate-border);
+}
+.badge-advanced {
+  background: var(--advanced-bg);
+  color: var(--advanced-text);
+  border-color: var(--advanced-border);
+}
+.badge-bestseller {
+  background: #1c1200;
+  color: var(--gold-400);
+  border-color: #7c4f00;
+}
+
+/* ── Skeleton Shimmer ────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    var(--border-subtle) 37%,
+    var(--bg-surface) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 6px;
+}
+
+/* ── Fade-In Animation ───────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fadeInUp 0.4s ease both;
+}
+
+/* ── Stagger children ────────────────────────────────────── */
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.30s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.40s; }
+
+/* ── Hero Glow ───────────────────────────────────────────── */
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ── Star rating ─────────────────────────────────────────── */
+.star-filled  { color: var(--gold-400); }
+.star-empty   { color: var(--border-strong); }
+.star-half    { color: var(--gold-400); }
+
+/* ── Input ───────────────────────────────────────────────── */
+.input-base {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input-base::placeholder { color: var(--text-muted); }
+.input-base:focus {
+  border-color: var(--indigo-500);
+  box-shadow: 0 0 0 3px var(--indigo-500)22;
+}
+
+/* ── Divider ─────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 24px 0;
+}
+
+/* ── Section Title ───────────────────────────────────────── */
+.section-title {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.section-subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* ── Expert Quote ────────────────────────────────────────── */
+.expert-quote {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+  border-left: 2px solid var(--gold-500);
+  padding-left: 10px;
+  margin-top: 10px;
+}
+
+/* ── Horizontal Scroll ───────────────────────────────────── */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -ms-overflow-style: none;
+}
+.scroll-x::-webkit-scrollbar { height: 4px; }
+
+/* ── Focus ring ──────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--indigo-500);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
