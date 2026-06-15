@@ -39,6 +39,16 @@ export type LengthCategory = 'Quick Read' | 'Standard' | 'Epic';
 // Sort options for the genre book list
 export type SortOption = 'expert_rating' | 'community_rating' | 'published_year';
 
+export interface Author {
+  id: string;
+  name: string;
+  ai_bio: string | null;
+  ai_style: string[] | null;
+  ai_last_updated: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Book {
   id: string;
   genre_id: string;
@@ -52,6 +62,8 @@ export interface Book {
   published_year: number | null;
   isbn: string | null;
   language: string;
+  series_name: string | null;
+  series_number: number | null;
 
   // External Links
   amazon_url: string | null;
@@ -111,6 +123,25 @@ export interface Book {
    * to avoid over-fetching in queries — we just need enough for the NextBookPanel.
    */
   next_book?: Pick<Book, 'id' | 'title' | 'author' | 'cover_image_url' | 'expert_rating' | 'difficulty_level' | 'isbn'> | null;
+}
+
+export interface Review {
+  id: string;
+  book_id: string;
+  user_id: string | null;
+  reviewer_name: string;
+  rating: number;
+  content: string;
+  created_at: string;
+}
+
+export interface UserShelf {
+  id: string;
+  user_id: string;
+  book_id: string;
+  status: 'want_to_read' | 'reading' | 'read';
+  created_at: string;
+  updated_at: string;
 }
 
 /** Filters for the Fiction Taste-Maker questionnaire */

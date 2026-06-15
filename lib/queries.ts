@@ -141,6 +141,23 @@ export async function getEditorsPicks(): Promise<Book[]> {
   return handleError(data, error) as Book[];
 }
 
+/** Fetches similar books in the same genre */
+export async function getSimilarBooks(genreId: string, currentBookId: string): Promise<Book[]> {
+  if (!genreId) return [];
+
+  const { data, error } = await supabase
+    .from('books')
+    .select(`
+      *,
+      genres(id, name, slug, icon, color)
+    `)
+    .eq('genre_id', genreId)
+    .neq('id', currentBookId)
+    .order('expert_rating', { ascending: false })
+    .limit(3);
+  return handleError(data, error) as Book[];
+}
+
 /** Fetches books marked as featured for the homepage hero */
 export async function getFeaturedBooks(): Promise<Book[]> {
   const { data, error } = await supabase

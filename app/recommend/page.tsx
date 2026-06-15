@@ -1,9 +1,9 @@
 'use client';
 
-// ============================================================
+
 // /recommend — Free-text AI recommendation page
 // User types what they want in plain English → Gemini + DB
-// ============================================================
+
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
@@ -21,7 +21,10 @@ interface RecommendedBook {
   is_bestseller: boolean;
   genres?: { name: string; color: string; icon: string; slug: string } | null;
   why: string;
+  path_level?: string;
 }
+
+type SearchMode = 'books' | 'path';
 
 const EXAMPLES = [
   "I want to learn Python for data science as a complete beginner",
@@ -86,7 +89,9 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
           >
             {book.title}
           </h3>
-          <p className="text-sm mb-2 font-medium" style={{ color: '#555' }}>by {book.author}</p>
+          <p className="text-sm mb-2 font-medium" style={{ color: '#555' }}>
+            by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="hover:underline hover:text-[#0a0a0a]">{book.author}</Link>
+          </p>
 
           <p
             className="text-sm leading-relaxed mb-3 line-clamp-2"
@@ -128,12 +133,13 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
 }
 
 export default function RecommendPage() {
-  const [input, setInput]       = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [results, setResults]   = useState<RecommendedBook[] | null>(null);
-  const [noResultMsg, setNoResultMsg] = useState<string | null>(null);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<RecommendedBook[] | null>(null);
+  const [noResultMsg, setNoResultMsg] = useState('');
+  const [mode, setMode] = useState<SearchMode>('books');
   const [searchedQuery, setSearchedQuery] = useState('');
-  const [error, setError]       = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = async (searchQuery?: string) => {
@@ -142,11 +148,12 @@ export default function RecommendPage() {
     setLoading(true);
     setError(null);
     setResults(null);
-    setNoResultMsg(null);
+    setNoResultMsg('');
     setSearchedQuery(q.trim());
 
     try {
-      const res = await fetch('/api/recommend', {
+      const endpoint = mode === 'path' ? '/api/recommend-path' : '/api/recommend';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q }),
@@ -189,7 +196,7 @@ export default function RecommendPage() {
             Find Your Perfect Book
           </h1>
           <p className="text-base max-w-xl mx-auto" style={{ color: '#aaa' }}>
-            Describe what you want in plain English. Our AI searches 1,200+ real books
+            Describe what you want in plain English. Our AI searches real books
             to find the perfect match for exactly what you need right now.
           </p>
         </div>
@@ -197,6 +204,24 @@ export default function RecommendPage() {
 
       {/* Search */}
       <div className="max-w-3xl mx-auto px-4 -mt-6">
+        {/* Mode Toggle */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex rounded-full p-1" style={{ background: '#f5f5f0', border: '2px solid #0a0a0a' }}>
+            <button
+              onClick={() => setMode('books')}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${mode === 'books' ? 'bg-[#0a0a0a] text-white' : 'text-[#555] hover:text-[#0a0a0a]'}`}
+            >
+              Single Books
+            </button>
+            <button
+              onClick={() => setMode('path')}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${mode === 'path' ? 'bg-[#0a0a0a] text-white' : 'text-[#555] hover:text-[#0a0a0a]'}`}
+            >
+              Learning Path
+            </button>
+          </div>
+        </div>
+
         <div
           className="rounded-2xl p-4"
           style={{
@@ -242,7 +267,7 @@ export default function RecommendPage() {
                   </svg>
                   Searching...
                 </>
-              ) : '✨ Find Books'}
+              ) : 'Find Books'}
             </button>
           </div>
         </div>
@@ -283,24 +308,16 @@ export default function RecommendPage() {
 
         {/* Results */}
         {results !== null && (
-          <div ref={resultsRef} className="mt-8 pb-16">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="font-black text-2xl" style={{ color: '#0a0a0a', fontFamily: 'var(--font-bebas)', letterSpacing: '0.03em' }}>
-                  {results.length > 0 ? `${results.length} Books Found` : 'No Exact Matches'}
-                </h2>
-                {searchedQuery && (
-                  <p className="text-xs mt-0.5" style={{ color: '#888' }}>
-                    Results for: &ldquo;{searchedQuery}&rdquo;
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => { setResults(null); setNoResultMsg(null); setInput(''); }}
-                className="text-xs underline"
-                style={{ color: '#666', cursor: 'pointer' }}
+          <div className="mt-16" ref={resultsRef}>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-black" style={{ color: '#0a0a0a' }}>
+                {mode === 'path' ? 'Your Learning Path' : 'Your Matches'}
+              </h2>
+              <button 
+                onClick={() => { setResults(null); setInput(''); }}
+                className="text-sm font-bold underline"
               >
-                New search
+                Start Over
               </button>
             </div>
 
@@ -328,8 +345,25 @@ export default function RecommendPage() {
                   ))}
                 </div>
               </div>
+            ) : mode === 'path' ? (
+              <div className="relative border-l-4 border-[#0a0a0a] ml-4 pl-8 space-y-12">
+                {results.map((book, i) => (
+                  <div key={book.id} className="relative">
+                    {/* Step indicator dot */}
+                    <div className="absolute -left-[46px] top-4 w-6 h-6 rounded-full bg-[#f5e642] border-[3px] border-[#0a0a0a] z-10" />
+                    
+                    <div className="mb-3">
+                      <span className="inline-block px-3 py-1 bg-[#0a0a0a] text-white text-[10px] font-black uppercase tracking-widest rounded-full">
+                        Step {i + 1}: {book.path_level}
+                      </span>
+                    </div>
+                    
+                    <BookResultCard book={book} rank={i + 1} />
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
                 {results.map((book, i) => (
                   <BookResultCard key={book.id} book={book} rank={i + 1} />
                 ))}

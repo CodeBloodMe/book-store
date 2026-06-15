@@ -68,13 +68,13 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
               loading="lazy"
             />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center p-6"
-              style={{ background: getGradient(book.title) }}
-            >
-              <span className="text-white font-bold text-center drop-shadow-md text-2xl">
-                {book.title}
-              </span>
+            <div className="relative w-full h-full flex items-end p-6 transition-transform duration-700 group-hover:scale-105 bg-[#e5e5e5]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src="/placeholder-book.png" 
+                alt="Placeholder cover" 
+                className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-50 grayscale"
+              />
             </div>
           )}
           
@@ -98,7 +98,16 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
           </h3>
           
           <p className="text-gray-300 text-sm leading-relaxed line-clamp-3 mb-4">
-            {book.description || `An incredible work by ${book.author} that has captured the attention of experts and readers alike. Explore the depths of its ideas and insights.`}
+            {book.description ? (
+              <>
+                <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-semibold text-white hover:underline relative z-20">
+                  {book.author}
+                </Link>
+                {' — '}{book.description}
+              </>
+            ) : (
+              `An incredible work by ${book.author} that has captured the attention of experts and readers alike.`
+            )}
           </p>
 
           <div className="flex flex-wrap gap-2 mb-5">

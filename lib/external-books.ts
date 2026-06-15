@@ -5,7 +5,7 @@ import { Book } from '@/types/database';
 export async function searchGoogleBooks(query: string): Promise<Partial<Book>[]> {
   try {
     const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return [];
     
     const data = await res.json();
@@ -30,7 +30,7 @@ export async function searchGoogleBooks(query: string): Promise<Partial<Book>[]>
 export async function searchOpenLibrary(query: string): Promise<Partial<Book>[]> {
   try {
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return [];
     
     const data = await res.json();
@@ -166,4 +166,25 @@ export async function fetchAndImportExternalBook(extId: string): Promise<string 
   }
 
   return newBook.id;
+}
+
+// ── 5. Fetch Author Image (Wikipedia API) ──
+export async function fetchAuthorImage(authorName: string): Promise<string | null> {
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&titles=${encodeURIComponent(authorName)}&pithumbsize=500&format=json`;
+    // We intentionally allow this to be cached by Next.js since Wikipedia images rarely change
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const pages = data.query?.pages;
+    if (!pages) return null;
+    
+    const pageId = Object.keys(pages)[0];
+    if (pageId === '-1') return null; // Not found
+    
+    return pages[pageId].thumbnail?.source || null;
+  } catch (err) {
+    console.warn('Wikipedia image fetch failed:', err);
+    return null;
+  }
 }

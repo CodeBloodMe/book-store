@@ -4,18 +4,16 @@ import { GoogleGenAI } from '@google/genai';
 
 // ── Types ────────────────────────────────────────────────────
 
-interface RecommendRequest {
-  query?: string;
-  goal?: string;
-  area?: string;
-  style?: string;
+interface RecommendPathRequest {
+  query: string;
 }
 
-interface AIBook {
+interface AIPathBook {
+  level: string; // 'Beginner', 'Intermediate', 'Advanced'
   title: string;
   author: string;
   why: string;
-  genre_guess: string; // AI's guess of the closest genre slug
+  genre_guess: string;
 }
 
 // ── AI Providers ─────────────────────────────────────────────
@@ -79,15 +77,15 @@ async function callAnyAI(prompt: string): Promise<string> {
   let lastError: Error | null = null;
   for (const provider of providers) {
     try {
-      console.log(`[Recommend] Trying ${provider.name}...`);
+      console.log(`[Recommend Path] Trying ${provider.name}...`);
       const result = await provider.fn(prompt);
       if (result) {
-        console.log(`[Recommend] ✅ Success with ${provider.name}`);
+        console.log(`[Recommend Path] ✅ Success with ${provider.name}`);
         return result;
       }
     } catch (err: unknown) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`[Recommend] ❌ ${provider.name} failed:`, lastError.message);
+      console.warn(`[Recommend Path] ❌ ${provider.name} failed:`, lastError.message);
     }
   }
   throw new Error(`All AI providers failed. Last: ${lastError?.message}`);
@@ -120,7 +118,6 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
     return { description: `A book by ${author}.`, cover_url: null, page_count: null, published_year: null, isbn: null };
   }
 
-  // Try to find a document that actually has a cover image
   const docWithCover = docs.find((d: any) => d.cover_i);
   const doc = docWithCover || docs[0];
 
@@ -155,60 +152,69 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
 
 export async function POST(request: Request) {
   try {
-    const body: RecommendRequest = await request.json();
-    const { query, goal, area, style } = body;
+    const body: RecommendPathRequest = await request.json();
+    const { query } = body;
 
-    if (!query && !goal) {
+    if (!query) {
       return NextResponse.json({ error: 'Please provide a query.' }, { status: 400 });
     }
 
-    const userIntent = query
-      ? query.trim()
-      : `I want to: ${goal}. About: ${area}. My level: ${style}.`;
+    const userIntent = query.trim();
 
     // ── Step 1: Fetch genre list for AI context ──────────────
     const { data: genres } = await supabase.from('genres').select('id, name, slug');
     const genreList = (genres || []).map((g) => `${g.name} (slug: ${g.slug})`).join(', ');
     const genreMap = new Map((genres || []).map((g) => [g.slug, g.id]));
 
-    // Pick a fallback genre (the first one, or "Global Catalog")
     const fallbackGenreId = genres?.[0]?.id ?? null;
 
-    // ── Step 2: Ask AI to recommend SPECIFIC real books ──────
-    const aiPrompt = `You are a world-class book recommendation expert with encyclopedic knowledge of every book ever written.
+    // ── Step 2: Ask AI to recommend a SPECIFIC learning path ─
+    const aiPrompt = `You are a world-class education and book recommendation expert.
 
-The user wants: "${userIntent}"
+The user wants to learn about or explore: "${userIntent}"
 
 Available genres in the database: ${genreList}
 
-Your job: Recommend exactly 6 real, specific books that PERFECTLY match what the user wants.
+Your job: Create a 3-step reading curriculum (Beginner, Intermediate, Advanced) using REAL books.
+The progression should logically take the user from a foundational understanding to deep mastery.
 
-Return ONLY a JSON array (no markdown, no explanation, just raw JSON):
+Return ONLY a JSON array with exactly 3 objects (no markdown, no explanation):
 [
   {
+    "level": "Beginner",
     "title": "exact book title",
     "author": "exact author name",
-    "why": "1 sentence explaining why this book is perfect for what the user asked",
-    "genre_guess": "closest genre slug from the available list"
+    "why": "Why this is the perfect starting point",
+    "genre_guess": "closest genre slug"
+  },
+  {
+    "level": "Intermediate",
+    "title": "exact book title",
+    "author": "exact author name",
+    "why": "How this builds on the beginner book",
+    "genre_guess": "closest genre slug"
+  },
+  {
+    "level": "Advanced",
+    "title": "exact book title",
+    "author": "exact author name",
+    "why": "Why this is the ultimate mastery text",
+    "genre_guess": "closest genre slug"
   }
 ]
 
 Critical rules:
 - ONLY recommend REAL books that actually exist. No made-up titles.
-- Be SPECIFIC to what the user asked. If they say "indian books", recommend famous Indian literature like The White Tiger, Midnight's Children, The God of Small Things, etc.
-- If they say "python programming", recommend actual Python books like Automate the Boring Stuff, Python Crash Course, etc.
-- The "why" must be specific to the user's request, not generic.
-- genre_guess must be a slug from the available genres list.
-- Return EXACTLY 6 books.`;
+- Must be exactly 3 steps: Beginner, Intermediate, Advanced.
+- genre_guess must be a slug from the available genres list.`;
 
     const rawText = await callAnyAI(aiPrompt);
 
-    // Parse the JSON array from AI response
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
     if (!jsonMatch) throw new Error('AI returned invalid response');
 
-    const aiBooks: AIBook[] = JSON.parse(jsonMatch[0]);
-    console.log(`[Recommend] AI suggested ${aiBooks.length} books`);
+    const aiBooks: AIPathBook[] = JSON.parse(jsonMatch[0]);
+    console.log(`[Recommend Path] AI suggested ${aiBooks.length} steps`);
 
     // ── Step 3: For each AI book, find or create in DB ───────
     const selectFields =
@@ -216,23 +222,19 @@ Critical rules:
 
     const resultBooks = [];
 
-    for (const aiBook of aiBooks.slice(0, 8)) {
+    for (const aiBook of aiBooks) {
       try {
-        // A) Check if it already exists in DB (case-insensitive title + author match)
         const { data: existing } = await supabase
           .from('books')
           .select(selectFields)
           .ilike('title', aiBook.title)
-          .ilike('author', `%${aiBook.author.split(' ').pop()}%`) // match on last name
+          .ilike('author', `%${aiBook.author.split(' ').pop()}%`)
           .limit(1);
 
         if (existing && existing.length > 0) {
-          console.log(`[Recommend] ✅ Found in DB: "${aiBook.title}"`);
           const existingBook = existing[0];
           
-          // If the book in our DB is missing a cover, let's fix it on the fly!
           if (!existingBook.cover_image_url) {
-            console.log(`[Recommend] 🔧 Fixing missing cover for "${aiBook.title}"`);
             const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
             if (olData.cover_url) {
               await supabase
@@ -246,23 +248,16 @@ Critical rules:
           resultBooks.push({
             ...existingBook,
             why: aiBook.why,
+            path_level: aiBook.level,
           });
           continue;
         }
 
-        // B) Not in DB — fetch from OpenLibrary and insert
-        console.log(`[Recommend] 🔍 Fetching from OpenLibrary: "${aiBook.title}" by ${aiBook.author}`);
         const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
-
-        // Determine genre_id: use AI's guess, fallback to first genre
         const genreId = genreMap.get(aiBook.genre_guess) ?? fallbackGenreId;
 
-        if (!genreId) {
-          console.warn(`[Recommend] ⚠️ No genre found for "${aiBook.title}", skipping`);
-          continue;
-        }
+        if (!genreId) continue;
 
-        // Insert into database
         const { data: inserted, error: insertError } = await supabase
           .from('books')
           .insert({
@@ -286,39 +281,28 @@ Critical rules:
           .select(selectFields)
           .single();
 
-        if (insertError) {
-          console.error(`[Recommend] ❌ Insert failed for "${aiBook.title}":`, insertError.message);
-          continue;
-        }
+        if (insertError) continue;
 
-        console.log(`[Recommend] ✅ Inserted into DB: "${aiBook.title}"`);
         resultBooks.push({
           ...inserted,
           why: aiBook.why,
+          path_level: aiBook.level,
         });
       } catch (bookErr) {
-        console.warn(`[Recommend] ⚠️ Error processing "${aiBook.title}":`, bookErr);
-        continue; // Skip this book, try the next one
+        continue;
       }
     }
 
-    // ── Step 4: Return results ───────────────────────────────
     if (resultBooks.length === 0) {
       return NextResponse.json({
         books: [],
-        message: `We couldn't find or fetch books for "${userIntent}". Try a different query.`,
+        message: `We couldn't generate a path for "${userIntent}".`,
       });
     }
 
-    // Add rank labels
-    const booksWithRank = resultBooks.map((book, i) => ({
-      ...book,
-      why: i === 0 ? `⭐ Top pick: ${book.why}` : book.why,
-    }));
-
-    return NextResponse.json({ books: booksWithRank });
+    return NextResponse.json({ books: resultBooks });
   } catch (err: unknown) {
-    console.error('[Recommend API Error]', err);
+    console.error('[Recommend Path API Error]', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Something went wrong.' },
       { status: 500 }

@@ -4,23 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
-// ── Source 1: HackerNews Algolia API ──
-async function fetchHackerNewsComments(query: string): Promise<string[]> {
-  try {
-    const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=comment&hitsPerPage=20`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.hits
-      .map((hit: { comment_text?: string }) => hit.comment_text?.replace(/<[^>]*>?/gm, '') || '') // strip HTML
-      .filter((text: string) => text.length > 50 && text.length < 2000);
-  } catch (err) {
-    console.warn('HN fetch failed:', err);
-    return [];
-  }
-}
-
-// ── Source 2: OpenLibrary API ──
+// ── Source 1: OpenLibrary API ──
 async function fetchOpenLibraryData(query: string): Promise<string> {
   try {
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`;
@@ -35,46 +19,6 @@ async function fetchOpenLibraryData(query: string): Promise<string> {
   } catch (err) {
     console.warn('OpenLibrary fetch failed:', err);
     return '';
-  }
-}
-
-// ── Source 3: Reddit API (Fallback) ──
-async function fetchRedditComments(query: string): Promise<string[]> {
-  const url = `https://www.reddit.com/search.json?q=${encodeURIComponent(query + ' book review')}&type=comment&limit=50`;
-  try {
-    // Try to fetch from Reddit
-    const res = await fetch(url, { 
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' 
-      } 
-    });
-    
-    // If it's HTML (blocked) or fails, throw to use fallback
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Reddit returned non-JSON response (likely blocked)');
-    }
-
-    const data = await res.json();
-    if (!data.data || !data.data.children || data.data.children.length === 0) {
-      throw new Error('No comments found');
-    }
-    
-    return data.data.children
-      .map((child: { data: { body: string } }) => child.data.body)
-      .filter((body: string) => body && body.length > 50 && body.length < 2000);
-      
-  } catch (error) {
-    console.warn('Reddit fetch failed or was blocked, using fallback mock data:', error);
-    // Fallback: Mock realistic Reddit comments so the AI can still demonstrate the feature
-    return [
-      `I just finished reading ${query} and it was honestly a game changer. The way the author explains complex concepts is brilliant.`,
-      `Honestly, ${query} is a bit overhyped. It's good, but it repeats the same three points over and over. You could probably get the gist from a summary.`,
-      `Highly recommend this to anyone starting out! The examples were super clear, though I wish it went a bit deeper in the later chapters.`,
-      `I've read a lot of books in this space, and ${query} is easily top 3. Very practical advice you can use immediately.`,
-      `A bit too dense for me. I felt like I was reading a textbook sometimes. But the core framework is solid.`,
-      `Absolutely loved it. The storytelling keeps you engaged the entire time. 5/5 stars.`
-    ];
   }
 }
 
@@ -100,46 +44,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
     }
 
-    // Optional: Prevent re-generating if already exists (unless forced)
-    // We'll allow overwriting for this feature demo.
-
     // 2. Scrape Multi-Source Data
     const searchString = `${book.title} ${book.author}`;
-    
-    // Run all fetchers in parallel to keep it fast
-    const [redditComments, hnComments, openLibraryData] = await Promise.all([
-      fetchRedditComments(searchString),
-      fetchHackerNewsComments(book.title),
-      fetchOpenLibraryData(searchString)
-    ]);
-
-    const totalComments = redditComments.length + hnComments.length;
-    if (totalComments === 0 && !openLibraryData) {
-      return NextResponse.json({ error: 'Not enough data found across sources to generate a review.' }, { status: 404 });
-    }
+    const openLibraryData = await fetchOpenLibraryData(searchString);
 
     // 3. Call Gemini with Omni-Prompt
     const prompt = `
-You are an expert book critic. Your goal is to generate a definitive "Master Review" for the book "${book.title}" by ${book.author}.
+You are an expert book critic. Your goal is to generate a definitive, highly specific "Master Review" for the book "${book.title}" by ${book.author}.
 
-I am providing you with raw data scraped from multiple corners of the internet. You must synthesize this into a cohesive consensus.
+Here is the data scraped from the internet:
 
 --- OPEN LIBRARY METADATA ---
 ${openLibraryData || 'No metadata found.'}
 
---- HACKER NEWS COMMENTS ---
-${hnComments.length > 0 ? hnComments.join('\n\n') : 'No discussions found.'}
-
---- REDDIT COMMENTS ---
-${redditComments.length > 0 ? redditComments.join('\n\n') : 'No discussions found.'}
-
 --- END OF DATA ---
 
-Based on ALL the above data, generate a structured JSON response with exactly these keys:
-- summary: A cohesive 3-sentence summary of the general consensus across all platforms.
-- pros: An array of 3 strings (the most commonly praised aspects).
-- cons: An array of 3 strings (the most common complaints or caveats).
-- rating: A number between 0.0 and 5.0 representing the true aggregated consensus rating based on the sentiment.
+CRITICAL INSTRUCTION: You MUST rely entirely on your internal knowledge of "${book.title}". 
+You must provide DEEP, NUANCED, and HIGHLY SPECIFIC insights. 
+- Mention specific character names, plot points, or chapters.
+- If it's non-fiction, name the specific frameworks, laws, or case studies the author uses.
+- NEVER use generic filler phrases like "explains complex concepts brilliantly" or "can be repetitive". Give exact, specific examples of WHAT is brilliant or WHAT is repetitive.
+
+Generate a structured JSON response with exactly these keys:
+- summary: A cohesive 3-sentence summary of the general consensus, using specific details from the book.
+- pros: An array of 3 strings (the most commonly praised aspects, must include specific details/names from the book).
+- cons: An array of 3 strings (the most common complaints or caveats, must be highly specific to the author's actual writing).
+- rating: A number between 0.0 and 5.0 representing the true aggregated consensus rating.
 
 OUTPUT ONLY VALID JSON.
     `;
@@ -149,6 +79,7 @@ OUTPUT ONLY VALID JSON.
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.7,
       }
     });
 

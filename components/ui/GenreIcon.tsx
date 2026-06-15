@@ -1,5 +1,5 @@
-import { 
-  Rocket, Sparkles, Heart, Search, Ghost, BookOpen, User, 
+import {
+  Rocket, Sparkles, Heart, Search, Ghost, BookOpen, User,
   Lightbulb, ShieldAlert, Cpu, Leaf, Globe, FlaskConical,
   Scale, Briefcase, Glasses, BookText, Swords, Palette,
   Camera, Music, MonitorPlay
@@ -7,8 +7,8 @@ import {
 
 export function getGenreIcon(slug: string, className?: string) {
   const props = { className: className || "w-5 h-5" };
-  
-  switch(slug) {
+
+  switch (slug) {
     case 'science-fiction': return <Rocket {...props} />;
     case 'fantasy': return <Sparkles {...props} />;
     case 'romance': return <Heart {...props} />;

@@ -8,16 +8,20 @@ import Link from 'next/link';
 import { getAllGenres } from '@/lib/queries';
 import SearchBar from './SearchBar';
 import type { Genre } from '@/types/database';
-import MobileMenu from './MobileMenu';
 import { getGenreIcon } from './GenreIcon';
-import { BookOpen, Sparkles } from 'lucide-react';
+import { BookOpen, Sparkles, User, Bookmark } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import ProfileSidebar from './ProfileSidebar';
 
 export default async function Navbar() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   let genres: Genre[] = [];
   try {
     genres = await getAllGenres();
   } catch {
-    // Don't crash if genre fetch fails — Navbar still renders
+    // Don't crash if genre fetch fails
   }
 
   // Group genres by super-category for the mega-menu
@@ -38,7 +42,7 @@ export default async function Navbar() {
       className="sticky top-0 z-50 bg-white border-b"
       style={{ borderBottomColor: 'var(--border-default)' }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex items-center justify-between h-24 gap-4">
 
           {/* ── Logo ─────────────────────────────────────────── */}
@@ -103,7 +107,7 @@ export default async function Navbar() {
             </Link>
             <Link
               href="/recommend"
-              className="text-sm px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all hover:-translate-y-0.5"
+              className="text-sm px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 mr-2"
               style={{
                 background: '#f5e642',
                 color: '#0a0a0a',
@@ -121,8 +125,19 @@ export default async function Navbar() {
               <SearchBar />
             </div>
 
-            {/* Mobile hamburger — client component for toggle */}
-            <MobileMenu groups={sortedGroups} />
+            <div className="flex items-center gap-3 ml-2 lg:border-l lg:pl-6 lg:border-gray-200">
+              {/* Desktop explicit Log In button (hidden on mobile, hidden if logged in) */}
+              {!user && (
+                <Link href="/login" className="hidden lg:flex items-center gap-2 text-sm font-bold bg-white text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] transition-all px-4 py-2" style={{ borderRadius: '12px' }}>
+                  <User size={18} /> Log In
+                </Link>
+              )}
+
+              {/* Universal Sidebar Toggle: Show on mobile always, show on desktop if logged in */}
+              <div className={`${user ? 'flex' : 'flex lg:hidden'}`}>
+                <ProfileSidebar groups={sortedGroups} isAuthenticated={!!user} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

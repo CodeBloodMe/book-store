@@ -181,8 +181,8 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
 
         {/* Cover */}
         <div
-          className="flex-shrink-0 rounded-lg overflow-hidden"
-          style={{ width: 56, height: 80, background: '#f0f0f0', border: '1px solid #e5e5e5' }}
+          className="relative flex-shrink-0 rounded-lg overflow-hidden bg-gray-100"
+          style={{ width: 56, height: 80, border: '1px solid #e5e5e5' }}
         >
           {book.cover_image_url && !imgError ? (
             <Image
@@ -195,7 +195,14 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
               unoptimized
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs text-center p-1 font-bold text-gray-400">No Cover</div>
+            <Image
+              src="/placeholder-book.png"
+              alt="Placeholder cover"
+              width={56}
+              height={80}
+              className="w-full h-full object-cover opacity-80"
+              unoptimized
+            />
           )}
         </div>
 

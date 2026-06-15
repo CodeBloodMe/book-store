@@ -31,11 +31,17 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
   }
 
   return (
-    <div
-      className="w-full h-full flex items-end p-4"
-      style={{ background: fallbackGradient }}
-    >
-      <span className="text-white font-bold text-lg leading-tight drop-shadow-lg line-clamp-3">
+    <div className="relative w-full h-full flex items-end p-4 overflow-hidden bg-gray-100">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img 
+        src="/placeholder-book.png" 
+        alt="Placeholder cover" 
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+      <div 
+        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"
+      />
+      <span className="relative z-10 text-white font-bold text-lg leading-tight drop-shadow-lg line-clamp-3">
         {fallbackText}
       </span>
     </div>

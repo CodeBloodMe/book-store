@@ -9,9 +9,14 @@ import { getBookById, getAllGenres } from '@/lib/queries';
 import RatingStars from '@/components/ui/RatingStars';
 import NextBookPanel from '@/components/features/NextBookPanel';
 import AIReviewPanel from '@/components/features/AIReviewPanel';
+import UserReviews from '@/components/features/UserReviews';
 import BookCover from '@/components/ui/BookCover';
 import { fetchAndImportExternalBook } from '@/lib/external-books';
+import { getReviewsForBook } from '@/app/actions/reviews';
 import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
+import SimilarBooks from '@/components/features/SimilarBooks';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -51,6 +56,22 @@ export default async function BookDetailPage({ params }: PageProps) {
   } catch {
     notFound();
     return null;
+  }
+
+  const reviews = await getReviewsForBook(book.id);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  let initialShelfStatus = null;
+  if (user) {
+    const { data: shelf } = await supabase
+      .from('user_shelves')
+      .select('status')
+      .eq('user_id', user.id)
+      .eq('book_id', book.id)
+      .single();
+    if (shelf) initialShelfStatus = shelf.status;
   }
 
   const genre = book.genres;
@@ -114,14 +135,19 @@ export default async function BookDetailPage({ params }: PageProps) {
             </div>
 
             {/* Title & Author */}
+            {book.series_name && (
+              <p className="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-1">
+                {book.series_name} {book.series_number ? `#${book.series_number}` : ''}
+              </p>
+            )}
             <h1 
               className="font-bold leading-tight mb-2"
               style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontFamily: 'var(--font-serif)', color: 'var(--text-primary)' }}
             >
               {book.title}
             </h1>
-            <p className="text-lg text-gray-500 mb-6">
-              by <span className="font-semibold text-gray-700">{book.author}</span>
+            <p className="text-xl md:text-2xl text-gray-500 font-medium tracking-wide">
+              by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-semibold text-gray-700 hover:text-[#0a0a0a] hover:underline transition-colors">{book.author}</Link>
             </p>
 
             {/* Description */}
@@ -149,20 +175,72 @@ export default async function BookDetailPage({ params }: PageProps) {
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-4">
-              <a 
-                href={book.amazon_url || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary rounded-xl px-6 py-3"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                Read overview
-              </a>
-              <button className="btn-ghost rounded-xl px-6 py-3">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path></svg>
-                Save for later
-              </button>
+            <div className="flex flex-col gap-4 mt-4">
+              <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Get this book</h4>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Amazon */}
+                <a 
+                  href={(() => {
+                    const amz = book.amazon_url?.trim() || '';
+                    if (amz.includes('amazon.com')) {
+                      return amz.startsWith('http') ? amz : `https://${amz}`;
+                    }
+                    const query = cleanIsbn ? cleanIsbn : `${book.title} ${book.author}`;
+                    return `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-[#0f1111] transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
+                  style={{ background: '#FF9900', border: '1px solid #F3A847' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                  Amazon
+                </a>
+                
+                {/* Barnes & Noble */}
+                <a 
+                  href={`https://www.barnesandnoble.com/search?q=${encodeURIComponent(cleanIsbn || book.title)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
+                  style={{ background: '#1C4A3A' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
+                  Barnes & Noble
+                </a>
+                
+                {/* Bookshop.org */}
+                <a 
+                  href={cleanIsbn ? `https://bookshop.org/a/0/${cleanIsbn}` : `https://bookshop.org/search?keywords=${encodeURIComponent(book.title).replace(/%20/g, '+')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
+                  style={{ background: '#d83a30' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                  Bookshop.org
+                </a>
+
+                {/* Find in Library */}
+                <a 
+                  href={`https://search.worldcat.org/search?q=${encodeURIComponent(cleanIsbn || book.title + ' ' + book.author)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-[#0a0a0a] transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
+                  style={{ background: '#f5f5f0', border: '1px solid #e5e5e5' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m4 6 8-4 8 4"></path><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"></path><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"></path><path d="M18 5v17"></path><path d="M6 5v17"></path><circle cx="12" cy="9" r="2"></circle></svg>
+                  Library
+                </a>
+
+                {/* Save for later */}
+                <SaveToBookshelfButton 
+                  bookId={book.id} 
+                  initialStatus={initialShelfStatus as any} 
+                  isAuthenticated={!!user} 
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -178,48 +256,15 @@ export default async function BookDetailPage({ params }: PageProps) {
               {book.next_book ? (
                 <NextBookPanel nextBook={book.next_book} />
               ) : (
-                <div className="text-sm text-gray-500 italic">No recommendations available.</div>
+                <SimilarBooks genreId={book.genre_id} currentBookId={book.id} genreColor={genre?.color} />
               )}
             </div>
           </div>
         </div>
 
-        {/* ── Bottom Section: Community Resonance ───────────── */}
-        <div>
-          <h3 className="font-bold text-gray-900 mb-6 font-serif text-xl">Community Resonance</h3>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Mocking Community Resonance Cards since we don't have this in DB directly */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center text-white text-xs font-bold">Y</div>
-                <span className="text-xs font-semibold text-gray-700">HackerNews Discussion</span>
-              </div>
-              <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                "The interpretation in chapter 4 is surprisingly accurate for a work of its kind. It doesn't rely on the usual tropes to resolve the plot, but rather leans into the complexity..."
-              </p>
-              <div className="flex gap-4 text-xs text-gray-400 font-medium">
-                <span>↑ 132 pts</span>
-                <span>💬 128 comments</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                </div>
-                <span className="text-xs font-semibold text-gray-700">r/books</span>
-              </div>
-              <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                "I finished it in one sitting. The existential dread is palpable. If you liked 'Dune Messiah', you need to read this immediately. The ending left me staring at the wall for an hour."
-              </p>
-              <div className="flex gap-4 text-xs text-gray-400 font-medium">
-                <span>↑ 1.2k pts</span>
-                <span>💬 342 comments</span>
-              </div>
-            </div>
-          </div>
+        {/* ── Bottom Section: User Reviews ──────── */}
+        <div className="mb-16">
+          <UserReviews bookId={book.id} initialReviews={reviews} currentUserId={user?.id ?? null} />
         </div>
 
       </div>

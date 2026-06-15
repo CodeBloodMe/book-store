@@ -228,7 +228,7 @@ export default function FictionQuestionnaire() {
             onClick={handleSubmit}
             className="btn-primary text-sm"
           >
-            Find My Books ✨
+            Find My Books
           </button>
         )}
       </div>
