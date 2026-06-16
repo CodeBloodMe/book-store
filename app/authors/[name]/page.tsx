@@ -60,7 +60,7 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
             </Link>
             <h1 
               className="text-5xl md:text-7xl font-black mb-4 uppercase"
-              style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '0.02em' }}
+              style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '0.02em', color: 'white' }}
             >
               {authorName}
             </h1>

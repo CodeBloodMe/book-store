@@ -3,7 +3,11 @@
 // Redesigned with a neo-brutalist aesthetic.
 // ============================================================
 
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Genre } from '@/types/database';
 import { getGenreIcon } from './GenreIcon';
 
@@ -14,6 +18,7 @@ interface GenreCardProps {
 export default function GenreCard({ genre }: GenreCardProps) {
   // Use a fallback color if genre color isn't available
   const accentColor = genre.color || '#f5e642';
+  const [imgError, setImgError] = useState(false);
 
   return (
     <Link
@@ -35,13 +40,26 @@ export default function GenreCard({ genre }: GenreCardProps) {
           borderBottom: '5px solid #0a0a0a'
         }}
       >
-        {/* Halftone Pattern Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'repeating-linear-gradient(45deg, transparent 0px, transparent 8px, rgba(0, 0, 0, 0.12) 8px, rgba(0, 0, 0, 0.12) 10px)'
-          }}
-        />
+        {/* Halftone Pattern Overlay or Custom Image */}
+        {!imgError ? (
+          <div className="absolute inset-0 pointer-events-none z-0">
+            <Image 
+              src={`/illustrations/${genre.slug}.png`}
+              alt={genre.name}
+              fill
+              className="object-cover"
+              onError={() => setImgError(true)}
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'repeating-linear-gradient(45deg, transparent 0px, transparent 8px, rgba(0, 0, 0, 0.12) 8px, rgba(0, 0, 0, 0.12) 10px)'
+            }}
+          />
+        )}
 
         {/* Big Background Number (removed book count) */}
 

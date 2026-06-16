@@ -17,6 +17,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
 import SimilarBooks from '@/components/features/SimilarBooks';
+import SeriesPanel from '@/components/features/SeriesPanel';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -89,8 +90,7 @@ export default async function BookDetailPage({ params }: PageProps) {
           {/* Cover */}
           <div className="md:col-span-4 flex justify-center md:justify-start">
             <div 
-              className="relative rounded-2xl overflow-hidden shadow-2xl"
-              style={{ width: 280, height: 400 }}
+              className="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-[280px] aspect-[2/3] mx-auto md:mx-0"
             >
               <BookCover
                 src={coverUrl}
@@ -102,7 +102,7 @@ export default async function BookDetailPage({ params }: PageProps) {
           </div>
 
           {/* Info */}
-          <div className="md:col-span-8 flex flex-col pt-4">
+          <div className="md:col-span-8 flex flex-col pt-4 relative z-10">
             {/* Tags */}
             <div className="flex gap-2 flex-wrap mb-4">
               {genre && (
@@ -185,7 +185,8 @@ export default async function BookDetailPage({ params }: PageProps) {
                     if (amz.includes('amazon.com')) {
                       return amz.startsWith('http') ? amz : `https://${amz}`;
                     }
-                    const query = cleanIsbn ? cleanIsbn : `${book.title} ${book.author}`;
+                    const isValidIsbn = cleanIsbn && cleanIsbn !== '0000000000';
+                    const query = isValidIsbn ? cleanIsbn : `${book.title} ${book.author}`;
                     return `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
                   })()}
                   target="_blank"
@@ -199,7 +200,7 @@ export default async function BookDetailPage({ params }: PageProps) {
                 
                 {/* Barnes & Noble */}
                 <a 
-                  href={`https://www.barnesandnoble.com/search?q=${encodeURIComponent(cleanIsbn || book.title)}`}
+                  href={`https://www.barnesandnoble.com/search?q=${encodeURIComponent((cleanIsbn && cleanIsbn !== '0000000000') ? cleanIsbn : `${book.title} ${book.author}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   referrerPolicy="no-referrer"
@@ -210,21 +211,11 @@ export default async function BookDetailPage({ params }: PageProps) {
                   Barnes & Noble
                 </a>
                 
-                {/* Bookshop.org */}
-                <a 
-                  href={cleanIsbn ? `https://bookshop.org/a/0/${cleanIsbn}` : `https://bookshop.org/search?keywords=${encodeURIComponent(book.title).replace(/%20/g, '+')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
-                  style={{ background: '#d83a30' }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
-                  Bookshop.org
-                </a>
+
 
                 {/* Find in Library */}
                 <a 
-                  href={`https://search.worldcat.org/search?q=${encodeURIComponent(cleanIsbn || book.title + ' ' + book.author)}`}
+                  href={`https://search.worldcat.org/search?q=${encodeURIComponent((cleanIsbn && cleanIsbn !== '0000000000') ? cleanIsbn : `${book.title} ${book.author}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-[#0a0a0a] transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow"
@@ -260,6 +251,11 @@ export default async function BookDetailPage({ params }: PageProps) {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Series Section ──────── */}
+        <div className="mb-16">
+          <SeriesPanel title={book.title} author={book.author} />
         </div>
 
         {/* ── Bottom Section: User Reviews ──────── */}

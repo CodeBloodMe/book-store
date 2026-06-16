@@ -47,8 +47,8 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
 
   return (
     <article 
-      className="relative overflow-hidden group rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300"
-      style={{ height: featured ? '460px' : '420px', backgroundColor: '#222222' }}
+      className={`relative overflow-hidden group rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 ${featured ? 'h-[400px] sm:h-[460px]' : 'h-[360px] sm:h-[420px]'}`}
+      style={{ backgroundColor: '#222222' }}
     >
       <Link href={`/books/${book.id}`} className="block w-full h-full">
         {/* ── Full Cover Background ─────────────────────────────── */}
@@ -100,7 +100,7 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
           <p className="text-gray-300 text-sm leading-relaxed line-clamp-3 mb-4">
             {book.description ? (
               <>
-                <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-semibold text-white hover:underline relative z-20">
+                <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-bold text-white hover:underline relative z-20">
                   {book.author}
                 </Link>
                 {' — '}{book.description}

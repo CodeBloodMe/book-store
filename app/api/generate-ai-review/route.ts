@@ -74,17 +74,66 @@ Generate a structured JSON response with exactly these keys:
 OUTPUT ONLY VALID JSON.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
+    // 3. Fallback AI Call logic
+    const providers = [
+      {
+        name: 'Groq',
+        fn: async () => {
+          if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
+          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: prompt }],
+              response_format: { type: "json_object" },
+              temperature: 0.7,
+            }),
+          });
+          if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
+          const data = await res.json();
+          return data.choices[0].message.content;
+        }
+      },
+      {
+        name: 'Gemini',
+        fn: async () => {
+          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.7,
+            }
+          });
+          return response.text;
+        }
       }
-    });
+    ];
 
-    const resultText = response.text;
-    if (!resultText) throw new Error('Empty response from AI');
+    let resultText = '';
+    let lastError: any = null;
+
+    for (const provider of providers) {
+      try {
+        const text = await provider.fn();
+        if (text) {
+          resultText = text;
+          break; // Success!
+        }
+      } catch (err) {
+        console.warn(`[AI Review] ${provider.name} failed:`, err);
+        lastError = err;
+      }
+    }
+
+    if (!resultText) {
+      throw new Error(`All AI providers failed. Last error: ${lastError?.message || 'Unknown error'}`);
+    }
 
     const aiData = JSON.parse(resultText);
 

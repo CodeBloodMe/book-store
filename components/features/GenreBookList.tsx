@@ -6,7 +6,7 @@
 // Provides client-side: level filter, sort control, tag filter.
 // ============================================================
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Book, DifficultyLevel, SortOption } from '@/types/database';
 import BookCard from '@/components/ui/BookCard';
 
@@ -26,20 +26,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
   const [activeLevel, setActiveLevel] = useState<DifficultyLevel | 'All'>('All');
   const [sort, setSort]               = useState<SortOption>('expert_rating');
   const [activeTags, setActiveTags]   = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState<number>(24);
-  
-  const observer = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
-    if (observer.current) observer.current.disconnect();
-    if (node) {
-      observer.current = new IntersectionObserver(entries => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount(prev => prev + 24);
-        }
-      }, { rootMargin: '400px' });
-      observer.current.observe(node);
-    }
-  }, [visibleCount]);
+  const [visibleCount, setVisibleCount] = useState<number>(4);
 
   // Collect all unique tags from the books for the filter chips
   const allTags = useMemo(() => {
@@ -85,7 +72,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
 
   // Reset visible count when filters change
   useEffect(() => {
-    setVisibleCount(24);
+    setVisibleCount(4);
   }, [filtered]);
 
   return (
@@ -190,16 +177,22 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
             ))}
           </div>
           
-          {/* Infinite Scroll Trigger */}
+          {/* Load More Button */}
           {visibleCount < filtered.length && (
-            <div ref={loadMoreRef} className="py-12 flex justify-center items-center w-full">
-              <div className="animate-pulse flex items-center gap-2 text-gray-500">
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span className="font-medium">Loading more books...</span>
-              </div>
+            <div className="py-12 flex justify-center items-center w-full">
+              <button 
+                onClick={() => setVisibleCount(prev => prev + 4)}
+                className="px-6 py-3 font-bold text-sm tracking-widest uppercase transition-transform hover:-translate-y-1"
+                style={{
+                  background: '#f5f5f0',
+                  color: '#0a0a0a',
+                  border: '3px solid #0a0a0a',
+                  boxShadow: '4px 4px 0 #0a0a0a',
+                  cursor: 'pointer'
+                }}
+              >
+                Load More
+              </button>
             </div>
           )}
         </>

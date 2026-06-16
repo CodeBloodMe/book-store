@@ -47,3 +47,10 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Scratch and test files
+test-*.js
+test-*.ts
+proxy.ts
+fix_database.sql
+scripts/clean_ai_reviews.ts

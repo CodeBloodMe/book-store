@@ -96,46 +96,7 @@ try {
               )}
             </div>
 
-            {/* Stats */}
-            <div
-              className="flex gap-4 p-4 rounded-xl flex-shrink-0"
-              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
-            >
-              <div className="text-center">
-                <p className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-                  {books.length}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Books</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-extrabold" style={{ color: 'var(--gold-500)' }}>
-                  {avgRating.toFixed(1)}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Avg Rating</p>
-              </div>
-              {genre.is_learning && (
-                <>
-                  <div className="text-center">
-                    <p className="text-xl font-bold" style={{ color: 'var(--beginner-text)' }}>
-                      {beginnerCount}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Beginner</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xl font-bold" style={{ color: 'var(--intermediate-text)' }}>
-                      {intermediateCount}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Intermediate</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xl font-bold" style={{ color: 'var(--advanced-text)' }}>
-                      {advancedCount}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Advanced</p>
-                  </div>
-                </>
-              )}
-            </div>
+
           </div>
         </div>
       </div>

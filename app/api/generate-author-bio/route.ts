@@ -2,35 +2,74 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { GoogleGenAI } from '@google/genai';
 
-async function callGemini(prompt: string): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) throw new Error('No Gemini API Key');
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  let retries = 3;
-  while (retries > 0) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.7,
+async function callAnyAI(prompt: string): Promise<string> {
+  const providers = [
+    {
+      name: 'Groq',
+      fn: async () => {
+        if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+          }),
+        });
+        if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
+        const data = await res.json();
+        return data.choices[0].message.content;
+      }
+    },
+    {
+      name: 'Gemini',
+      fn: async () => {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const response = await ai.models.generateContent({
+              model: 'gemini-2.0-flash',
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              config: {
+                responseMimeType: 'application/json',
+                temperature: 0.7,
+              }
+            });
+            const text = response.text ?? '';
+            if (!text) throw new Error('Gemini returned empty response');
+            return text;
+          } catch (err: any) {
+            if (err?.status === 429 || err?.message?.includes('429')) {
+              retries--;
+              if (retries === 0) throw err;
+              await new Promise(resolve => setTimeout(resolve, 7000));
+            } else {
+              throw err;
+            }
+          }
         }
-      });
-      const text = response.text ?? '';
-      if (!text) throw new Error('Gemini returned empty response');
-      return text;
-    } catch (err: any) {
-      if (err?.status === 429 || err?.message?.includes('429')) {
-        retries--;
-        if (retries === 0) throw err;
-        // Wait 7 seconds before retrying
-        await new Promise(resolve => setTimeout(resolve, 7000));
-      } else {
-        throw err;
+        throw new Error('Failed to call Gemini after retries');
       }
     }
+  ];
+
+  let lastError: any = null;
+  for (const provider of providers) {
+    try {
+      const result = await provider.fn();
+      if (result) return result;
+    } catch (err) {
+      console.warn(`[Author Bio] ${provider.name} failed:`, err);
+      lastError = err;
+    }
   }
-  throw new Error('Failed to call Gemini after retries');
+  throw new Error(`All AI providers failed. Last error: ${lastError?.message || 'Unknown'}`);
 }
 
 export async function POST(request: Request) {
@@ -63,7 +102,7 @@ Return ONLY a structured JSON object with the following keys:
 Make it engaging and specific. If the author is extremely obscure or unknown, provide a best-effort generic profile noting their known works.
     `;
 
-    const resultText = await callGemini(prompt);
+    const resultText = await callAnyAI(prompt);
     const aiData = JSON.parse(resultText);
 
     // 3. Upsert into database

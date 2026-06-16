@@ -97,9 +97,39 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
 
       {hasReview && !loading && (
         <div className="flex-1 flex flex-col fade-in-up">
-          <p className="text-gray-600 leading-relaxed mb-8">
-            {aiData.summary}
-          </p>
+          {(() => {
+            let parsedSummary = null;
+            try {
+              if (typeof aiData.summary === 'string' && aiData.summary.trim().startsWith('{')) {
+                parsedSummary = JSON.parse(aiData.summary);
+              }
+            } catch (e) {}
+
+            if (parsedSummary) {
+              return (
+                <div className="flex flex-col gap-4 mb-8">
+                  {parsedSummary.expert_consensus && (
+                    <p className="text-gray-600 leading-relaxed">
+                      <strong className="text-gray-900 font-semibold mr-2">Expert Consensus:</strong> 
+                      {parsedSummary.expert_consensus}
+                    </p>
+                  )}
+                  {parsedSummary.community_consensus && (
+                    <p className="text-gray-600 leading-relaxed">
+                      <strong className="text-gray-900 font-semibold mr-2">Community Consensus:</strong> 
+                      {parsedSummary.community_consensus}
+                    </p>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <p className="text-gray-600 leading-relaxed mb-8">
+                {aiData.summary}
+              </p>
+            );
+          })()}
 
           <div className="grid md:grid-cols-2 gap-8 mt-auto">
             {/* Key Strengths */}

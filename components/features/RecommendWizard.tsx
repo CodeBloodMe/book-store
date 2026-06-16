@@ -115,6 +115,10 @@ interface RecommendedBook {
   is_bestseller: boolean;
   genres?: { name: string; color: string; icon: string; slug: string } | null;
   why: string;
+  expert_quote?: string;
+  expert_name?: string;
+  expert_consensus?: string;
+  community_consensus?: string;
 }
 
 // ── Chip Component ────────────────────────────────────────────
@@ -153,22 +157,25 @@ function Chip({
 
 function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
   const [imgError, setImgError] = useState(false);
-  const rating = book.expert_rating ?? book.community_rating ?? 0;
+  const expertScore = book.expert_rating ? Math.round(book.expert_rating * 20) : null;
+  const communityScore = book.community_rating ? Math.round(book.community_rating * 20) : null;
 
   return (
-    <Link href={`/books/${book.id}`} className="block group">
-      <div
-        className="flex gap-4 p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
-        style={{
-          background: '#ffffff',
-          border: '2px solid #0a0a0a',
-          boxShadow: '4px 4px 0 #0a0a0a',
-        }}
-      >
-        {/* Rank badge */}
-        <div className="flex-shrink-0 flex flex-col items-center gap-2">
+    <div
+      className="flex flex-col rounded-2xl transition-all duration-200"
+      style={{
+        background: '#ffffff',
+        border: '2px solid #0a0a0a',
+        boxShadow: '4px 4px 0 #0a0a0a',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Top Header Section with Cover and Info */}
+      <div className="flex gap-4 p-4 border-b-2 border-gray-100">
+        <Link href={`/books/${book.id}`} className="block group flex-shrink-0 relative">
+          {/* Rank badge */}
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black"
+            className="absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black z-10"
             style={{
               background: rank === 1 ? '#f5e642' : '#f5f5f0',
               border: '2px solid #0a0a0a',
@@ -177,82 +184,105 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
           >
             {rank}
           </div>
-        </div>
-
-        {/* Cover */}
-        <div
-          className="relative flex-shrink-0 rounded-lg overflow-hidden bg-gray-100"
-          style={{ width: 56, height: 80, border: '1px solid #e5e5e5' }}
-        >
-          {book.cover_image_url && !imgError ? (
-            <Image
-              src={book.cover_image_url}
-              alt={book.title}
-              width={56}
-              height={80}
-              className="w-full h-full object-cover"
-              onError={() => setImgError(true)}
-              unoptimized
-            />
-          ) : (
-            <Image
-              src="/placeholder-book.png"
-              alt="Placeholder cover"
-              width={56}
-              height={80}
-              className="w-full h-full object-cover opacity-80"
-              unoptimized
-            />
-          )}
-        </div>
+          {/* Cover */}
+          <div
+            className="relative rounded-lg overflow-hidden bg-gray-100"
+            style={{ width: 72, height: 108, border: '1px solid #e5e5e5' }}
+          >
+            {book.cover_image_url && !imgError ? (
+              <Image
+                src={book.cover_image_url}
+                alt={book.title}
+                width={72}
+                height={108}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                onError={() => setImgError(true)}
+                unoptimized
+              />
+            ) : (
+              <Image
+                src="/placeholder-book.png"
+                alt="Placeholder cover"
+                width={72}
+                height={108}
+                className="w-full h-full object-cover opacity-80"
+                unoptimized
+              />
+            )}
+          </div>
+        </Link>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <h3
-            className="font-bold text-sm leading-tight mb-0.5 line-clamp-2 group-hover:underline"
-            style={{ color: '#0a0a0a' }}
-          >
-            {book.title}
-          </h3>
-          <p className="text-xs mb-2" style={{ color: '#666' }}>{book.author}</p>
+        <div className="flex-1 min-w-0 py-1">
+          <Link href={`/books/${book.id}`} className="group block">
+            <h3
+              className="font-bold text-base leading-tight mb-1 line-clamp-2 group-hover:underline"
+              style={{ color: '#0a0a0a' }}
+            >
+              {book.title}
+            </h3>
+            <p className="text-sm font-medium mb-2" style={{ color: '#666' }}>{book.author}</p>
+          </Link>
 
-          {/* Why this book */}
-          <p
-            className="text-xs leading-relaxed mb-2 line-clamp-2"
-            style={{ color: '#444', fontStyle: 'italic' }}
-          >
-            {book.why}
-          </p>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {rating > 0 && (
-              <span
-                className="text-xs font-bold px-2 py-0.5 rounded-full"
-                style={{ background: '#f5e642', color: '#0a0a0a', border: '1px solid #0a0a0a' }}
-              >
-                {rating.toFixed(1)} Rating
-              </span>
+          {/* Scores */}
+          <div className="flex items-center gap-4 mt-2">
+            {expertScore && (
+              <div className="flex items-center gap-1.5" title="Expert/Critic Rating">
+                <span className="text-sm">🍅</span>
+                <span className="font-bold text-sm" style={{ color: expertScore >= 80 ? '#d83a30' : '#444' }}>{expertScore}%</span>
+              </div>
             )}
+            {communityScore && (
+              <div className="flex items-center gap-1.5" title="Community/Reader Rating">
+                <span className="text-sm">🍿</span>
+                <span className="font-bold text-sm" style={{ color: communityScore >= 80 ? '#eab308' : '#444' }}>{communityScore}%</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             {book.difficulty_level && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: '#f5f5f0', color: '#0a0a0a', border: '1px solid #e5e5e5' }}
-              >
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#f5f5f0', color: '#666' }}>
                 {book.difficulty_level}
               </span>
             )}
             {book.genres && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: '#f5f5f0', color: '#0a0a0a', border: '1px solid #e5e5e5' }}
-              >
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#f5f5f0', color: '#666' }}>
                 {book.genres.name}
               </span>
             )}
           </div>
         </div>
       </div>
-    </Link>
+
+      {/* Review Aggregator Section */}
+      <div className="p-4 bg-gray-50 flex flex-col gap-3">
+        {book.why && (
+          <p className="text-sm leading-relaxed" style={{ color: '#333' }}>
+            <strong className="text-indigo-600">Why it&apos;s perfect:</strong> {book.why}
+          </p>
+        )}
+        
+        {book.expert_quote && (
+          <div className="bg-white p-3 rounded-xl border border-gray-200 text-sm italic text-gray-700 shadow-sm relative">
+            &quot;{book.expert_quote}&quot; 
+            {book.expert_name && <span className="block mt-1 text-xs font-semibold text-gray-500 not-italic">— {book.expert_name}</span>}
+          </div>
+        )}
+
+        {book.expert_consensus && (
+          <p className="text-xs leading-relaxed" style={{ color: '#555' }}>
+            <span className="font-bold text-gray-900">Expert Consensus:</span> {book.expert_consensus}
+          </p>
+        )}
+        
+        {book.community_consensus && (
+          <p className="text-xs leading-relaxed" style={{ color: '#555' }}>
+            <span className="font-bold text-gray-900">Reader Consensus:</span> {book.community_consensus}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
