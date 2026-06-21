@@ -54,3 +54,8 @@ test-*.ts
 proxy.ts
 fix_database.sql
 scripts/clean_ai_reviews.ts
+scripts/update_covers.js
+check-dragon-tattoo.js
+fix-dragon-tattoo.js
+check-isbns.js
+count-missing-covers.js

@@ -15,9 +15,20 @@ export default async function MyBooksPage() {
   // Fetch books from user shelves
   const { data: shelves, error } = await supabase
     .from('user_shelves')
-    .select(`
-      status,
-      books:book_id (
+    .select('book_id, status')
+    .eq('user_id', user.id);
+
+  if (error) {
+    return <div className="p-24 text-center text-red-500">Error loading shelves: {error.message}</div>;
+  }
+
+  const bookIds = shelves?.map(s => s.book_id) || [];
+  let savedBooks: any[] = [];
+
+  if (bookIds.length > 0) {
+    const { data: booksData, error: booksError } = await supabase
+      .from('books')
+      .select(`
         id,
         title,
         author,
@@ -34,22 +45,13 @@ export default async function MyBooksPage() {
           icon,
           color
         )
-      )
-    `)
-    .eq('user_id', user.id);
+      `)
+      .in('id', bookIds);
 
-  if (error) {
-    return <div className="p-24 text-center text-red-500">Error loading shelves: {error.message}</div>;
+    if (!booksError && booksData) {
+      savedBooks = booksData;
+    }
   }
-
-  // All books are considered 'Saved'
-  const savedBooks: any[] = [];
-
-  shelves?.forEach((item) => {
-    // Supabase nested relation returns object or array of objects, our 1:1 relation returns object
-    const book = Array.isArray(item.books) ? item.books[0] : item.books;
-    if (book) savedBooks.push(book);
-  });
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] pb-24">

@@ -146,17 +146,15 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
   const docWithCover = docs.find((d: any) => d.cover_i);
   const doc = docWithCover || docs[0];
 
-  const coverId = doc.cover_i;
-  const isbn = doc.isbn?.[0] ?? null;
-  
-  // Build the cover image URL
-  let cover_url = null;
-  if (coverId) {
-    cover_url = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
-  } else if (isbn) {
-    const cleanIsbn = isbn.replace(/[-\s]/g, '');
-    cover_url = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
-  }
+  // ISBN is usually an array. Grab the first one if it exists.
+  const isbn = doc.isbn && doc.isbn.length > 0 ? doc.isbn[0] : null;
+
+  // Favor ISBN cover if available (much more reliable), fallback to cover_i
+  const cover_url = isbn 
+    ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`
+    : doc.cover_i 
+      ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false` 
+      : null;
 
   // Extract the description (OpenLibrary sometimes puts this in different places)
   const description =

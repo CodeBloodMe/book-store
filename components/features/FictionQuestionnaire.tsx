@@ -18,31 +18,31 @@ interface Answers {
 }
 
 const VIBES = [
-  { value: 'Dark', label: 'Dark & Gritty',    emoji: '🌑' },
-  { value: 'Cozy', label: 'Cozy & Warm',       emoji: '☕' },
-  { value: 'Mind-Bending', label: 'Mind-Bending', emoji: '🌀' },
-  { value: 'Romantic', label: 'Romantic',       emoji: '💕' },
-  { value: 'Thrilling', label: 'Thrilling',     emoji: '⚡' },
-  { value: 'Adventurous', label: 'Adventurous', emoji: '🗺️' },
-  { value: 'Funny', label: 'Comedy & Humor',   emoji: '😂' },
-  { value: 'Atmospheric', label: 'Atmospheric', emoji: '🌫️' },
+  { value: 'Dark', label: 'Dark & Gritty' },
+  { value: 'Cozy', label: 'Cozy & Warm' },
+  { value: 'Mind-Bending', label: 'Mind-Bending' },
+  { value: 'Romantic', label: 'Romantic' },
+  { value: 'Thrilling', label: 'Thrilling' },
+  { value: 'Adventurous', label: 'Adventurous' },
+  { value: 'Funny', label: 'Comedy & Humor' },
+  { value: 'Atmospheric', label: 'Atmospheric' },
 ];
 
 const PLOTS = [
-  { value: 'Mystery',        label: 'Mystery / Whodunit',    emoji: '🔍' },
-  { value: 'Epic Quest',     label: 'Epic Quest / Adventure', emoji: '⚔️' },
-  { value: 'Dystopia',       label: 'Dystopia / Sci-Fi',     emoji: '🤖' },
-  { value: 'Romance',        label: 'Slow Burn Romance',     emoji: '💞' },
-  { value: 'Horror',         label: 'Horror / Supernatural', emoji: '👻' },
-  { value: 'Coming-of-Age',  label: 'Coming-of-Age',         emoji: '🌱' },
-  { value: 'Political Intrigue', label: 'Political Intrigue', emoji: '👑' },
-  { value: 'Satire',         label: 'Satire / Comedy',       emoji: '🎭' },
+  { value: 'Mystery',        label: 'Mystery / Whodunit' },
+  { value: 'Epic Quest',     label: 'Epic Quest / Adventure' },
+  { value: 'Dystopia',       label: 'Dystopia / Sci-Fi' },
+  { value: 'Romance',        label: 'Slow Burn Romance' },
+  { value: 'Horror',         label: 'Horror / Supernatural' },
+  { value: 'Coming-of-Age',  label: 'Coming-of-Age' },
+  { value: 'Political Intrigue', label: 'Political Intrigue' },
+  { value: 'Satire',         label: 'Satire / Comedy' },
 ];
 
 const LENGTHS = [
-  { value: 'Quick Read', label: 'Quick Read',  sub: 'Under 250 pages',  emoji: '📖' },
-  { value: 'Standard',   label: 'Standard',    sub: '250–500 pages',    emoji: '📗' },
-  { value: 'Epic',       label: 'Epic',        sub: '500+ pages',       emoji: '📚' },
+  { value: 'Quick Read', label: 'Quick Read',  sub: 'Under 250 pages' },
+  { value: 'Standard',   label: 'Standard',    sub: '250–500 pages' },
+  { value: 'Epic',       label: 'Epic',        sub: '500+ pages' },
 ];
 
 const STEP_TITLES = [
@@ -54,28 +54,25 @@ const STEP_TITLES = [
 interface OptionButtonProps {
   selected: boolean;
   onClick: () => void;
-  emoji: string;
   label: string;
   sub?: string;
 }
-function OptionButton({ selected, onClick, emoji, label, sub }: OptionButtonProps) {
+
+function OptionButton({ selected, onClick, label, sub }: OptionButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 p-4 rounded-xl text-center
-        transition-all duration-150 focus-visible:outline"
-      style={{
-        background: selected ? 'var(--indigo-500)22' : 'var(--bg-surface)',
-        border: `2px solid ${selected ? 'var(--indigo-500)' : 'var(--border-subtle)'}`,
-        color: selected ? 'var(--text-primary)' : 'var(--text-secondary)',
-        cursor: 'pointer',
-        transform: selected ? 'scale(1.03)' : 'scale(1)',
-      }}
+      className={`flex flex-col items-center justify-center gap-2 p-5 text-center
+        transition-all focus-visible:outline-none border-[3px] border-[#0a0a0a]
+        ${selected 
+          ? 'bg-[#f5e642] shadow-[4px_4px_0_#0a0a0a] translate-x-[-2px] translate-y-[-2px]' 
+          : 'bg-white hover:bg-[#f5f5f0] shadow-none hover:shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5 hover:-translate-x-0.5'
+        }
+      `}
     >
-      <span className="text-2xl" role="img" aria-hidden="true">{emoji}</span>
-      <span className="text-sm font-semibold">{label}</span>
-      {sub && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{sub}</span>}
+      <span className="text-sm font-black uppercase tracking-tight text-[#0a0a0a]">{label}</span>
+      {sub && <span className="text-xs font-bold text-[#555] uppercase tracking-wider">{sub}</span>}
     </button>
   );
 }
@@ -112,38 +109,16 @@ export default function FictionQuestionnaire() {
   };
 
   return (
-    <div
-      className="rounded-2xl p-6 sm:p-8 max-w-2xl mx-auto"
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)' }}
-    >
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-            Step {step} of 3
-          </span>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {Math.round(progress)}% done
-          </span>
+    <div className="max-w-3xl mx-auto px-2">
+      {/* Step Indicator & Title */}
+      <div className="text-center mb-10">
+        <div className="inline-block px-4 py-1 mb-4 text-xs font-black uppercase tracking-widest text-[#0a0a0a] bg-[#f5f5f0] border-[3px] border-[#0a0a0a] rounded-full shadow-[3px_3px_0_#0a0a0a]">
+          Step {step} of 3
         </div>
-        <div
-          className="h-1.5 rounded-full overflow-hidden"
-          style={{ background: 'var(--bg-surface)' }}
-        >
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${(step / 3) * 100}%`,
-              background: 'linear-gradient(90deg, var(--indigo-500), var(--gold-500))',
-            }}
-          />
-        </div>
+        <h2 className="font-black text-[#0a0a0a]" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(28px, 4vw, 48px)', letterSpacing: '0.02em' }}>
+          {STEP_TITLES[step - 1]}
+        </h2>
       </div>
-
-      {/* Step Title */}
-      <h2 className="text-xl font-bold mb-5" style={{ color: 'var(--text-primary)' }}>
-        {STEP_TITLES[step - 1]}
-      </h2>
 
       {/* Options Grid */}
       {step === 1 && (
@@ -153,7 +128,6 @@ export default function FictionQuestionnaire() {
               key={v.value}
               selected={answers.vibe === v.value}
               onClick={() => setAnswer('vibe', v.value)}
-              emoji={v.emoji}
               label={v.label}
             />
           ))}
@@ -167,7 +141,6 @@ export default function FictionQuestionnaire() {
               key={p.value}
               selected={answers.plot_type === p.value}
               onClick={() => setAnswer('plot_type', p.value)}
-              emoji={p.emoji}
               label={p.label}
             />
           ))}
@@ -181,7 +154,6 @@ export default function FictionQuestionnaire() {
               key={l.value}
               selected={answers.length_category === l.value}
               onClick={() => setAnswer('length_category', l.value)}
-              emoji={l.emoji}
               label={l.label}
               sub={l.sub}
             />
@@ -190,26 +162,25 @@ export default function FictionQuestionnaire() {
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex items-center justify-between mt-7 gap-3">
+      <div className="flex items-center justify-between mt-12 gap-3">
         <button
           type="button"
           onClick={handleBack}
-          className="btn-ghost text-sm"
+          className="inline-flex items-center px-6 py-3 font-bold text-sm transition-all bg-white text-[#0a0a0a] border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5"
           disabled={step === 1}
-          style={{ opacity: step === 1 ? 0.4 : 1 }}
+          style={{ opacity: step === 1 ? 0 : 1, pointerEvents: step === 1 ? 'none' : 'auto' }}
         >
           ← Back
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Step dots */}
           {[1, 2, 3].map((s) => (
             <span
               key={s}
-              className="w-2 h-2 rounded-full transition-colors"
-              style={{
-                background: s <= step ? 'var(--indigo-500)' : 'var(--border-default)',
-              }}
+              className={`w-3 h-3 rounded-full border-[2px] border-[#0a0a0a] transition-colors ${
+                s <= step ? 'bg-[#0a0a0a]' : 'bg-transparent'
+              }`}
             />
           ))}
         </div>
@@ -218,7 +189,7 @@ export default function FictionQuestionnaire() {
           <button
             type="button"
             onClick={handleNext}
-            className="btn-primary text-sm"
+            className="inline-flex items-center px-8 py-3 font-black uppercase tracking-wider text-sm transition-all bg-[#f5e642] text-[#0a0a0a] border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5"
           >
             Next →
           </button>
@@ -226,7 +197,7 @@ export default function FictionQuestionnaire() {
           <button
             type="button"
             onClick={handleSubmit}
-            className="btn-primary text-sm"
+            className="inline-flex items-center px-8 py-3 font-black uppercase tracking-wider text-sm transition-all bg-[#0a0a0a] text-[#f5e642] border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_rgba(0,0,0,0.2)] hover:-translate-y-0.5"
           >
             Find My Books
           </button>

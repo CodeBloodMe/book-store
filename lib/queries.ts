@@ -65,14 +65,27 @@ export const getAllGenres = unstable_cache(
   async (): Promise<Genre[]> => {
     const { data, error } = await supabase
       .from('genres')
-      // The `*` gets all columns from genres.
-      // The `, super_categories(*)` tells Supabase to also fetch the linked parent category!
-      .select('*, super_categories(*)')
+      // Fetch genres, their parent categories, AND a count of books in each genre
+      .select('*, super_categories(*), books(count)')
       .order('sort_order', { ascending: true });
       
-    return handleError(data, error) as Genre[];
+    const rawData = handleError(data, error) as any[];
+    
+    // Filter out genres that have absolutely zero books
+    const populatedGenres = rawData.filter(genre => {
+      // Depending on the Supabase/PostgREST version, count might be an array or object
+      let bookCount = 0;
+      if (Array.isArray(genre.books)) {
+        bookCount = genre.books[0]?.count ?? 0;
+      } else if (genre.books && typeof genre.books === 'object') {
+        bookCount = genre.books.count ?? 0;
+      }
+      return bookCount > 0;
+    });
+
+    return populatedGenres as Genre[];
   },
-  ['all_genres'],
+  ['all_genres_populated'], // Changed cache key so it forces a refresh
   { revalidate: 3600 }
 );
 

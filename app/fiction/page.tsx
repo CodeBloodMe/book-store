@@ -43,29 +43,22 @@ export default async function FictionPage({ searchParams }: PageProps) {
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
 
       {/* ── Page Header ──────────────────────────────────── */}
-      <div
-        className="relative overflow-hidden py-12"
-        style={{
-          background: 'linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-base) 100%)',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <span className="text-5xl block mb-4" role="img" aria-label="Drama masks">🎭</span>
-          <h1 className="font-extrabold mb-3" style={{ fontSize: 'clamp(28px, 4vw, 44px)' }}>
+      <div className="py-16 bg-[#f5f5f0] border-b-[3px] border-[#0a0a0a]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center flex flex-col items-center">
+          <h1 className="font-black mb-3 text-[#0a0a0a]" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(40px, 8vw, 72px)', letterSpacing: '0.02em' }}>
             Fiction Finder
           </h1>
-          <p className="text-base" style={{ color: 'var(--text-secondary)' }}>
-            Tell us your mood and we&apos;ll find the perfect novel — curated from the best
+          <p className="text-lg font-medium max-w-lg text-[#555]">
+            Tell us your mood and we'll find the perfect novel — curated from the best
             fiction books across all genres.
           </p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
 
         {/* ── Questionnaire ────────────────────────────────── */}
-        <div className="mb-12">
+        <div className="mb-16">
           <FictionQuestionnaire />
         </div>
 
@@ -73,38 +66,26 @@ export default async function FictionPage({ searchParams }: PageProps) {
         {hasFilters && (
           <div>
             {/* Active Filters Display */}
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex items-center gap-3 mb-8 flex-wrap">
+              <span className="text-sm font-black uppercase tracking-widest text-[#0a0a0a]">
                 Filtered by:
               </span>
               {filters.vibe && (
-                <span className="badge" style={{
-                  background: 'var(--indigo-500)22',
-                  color: 'var(--indigo-400)',
-                  border: '1px solid var(--indigo-500)44',
-                }}>
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 bg-[#f5e642] text-[#0a0a0a] border-[2px] border-[#0a0a0a]">
                   Vibe: {filters.vibe}
                 </span>
               )}
               {filters.plot_type && (
-                <span className="badge" style={{
-                  background: 'var(--indigo-500)22',
-                  color: 'var(--indigo-400)',
-                  border: '1px solid var(--indigo-500)44',
-                }}>
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 bg-[#f5e642] text-[#0a0a0a] border-[2px] border-[#0a0a0a]">
                   Plot: {filters.plot_type}
                 </span>
               )}
               {filters.length_category && (
-                <span className="badge" style={{
-                  background: 'var(--indigo-500)22',
-                  color: 'var(--indigo-400)',
-                  border: '1px solid var(--indigo-500)44',
-                }}>
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 bg-[#f5e642] text-[#0a0a0a] border-[2px] border-[#0a0a0a]">
                   Length: {filters.length_category}
                 </span>
               )}
-              <Link href="/fiction" className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <Link href="/fiction" className="text-xs font-bold uppercase tracking-widest ml-2 text-[#777] hover:text-[#0a0a0a]">
                 ✕ Clear all
               </Link>
             </div>
