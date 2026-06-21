@@ -181,13 +181,13 @@ export async function POST(request: Request) {
     const fallbackGenreId = genres?.[0]?.id ?? null;
 
     // ── Step 2: Ask AI to recommend SPECIFIC real books ──────
-    const aiPrompt = `You are a world-class book recommendation expert and review aggregator with encyclopedic knowledge of every book ever written.
+    const aiPrompt = `You are a world-class book recommendation expert, aesthetic curator, and review aggregator with encyclopedic knowledge of every book ever written.
 
-The user wants: "${userIntent}"
+The user wants a book matching this vibe/request: "${userIntent}"
 
 Available genres in the database: ${genreList}
 
-Your job: Recommend exactly 6 real, specific books that PERFECTLY match what the user wants. For each book, synthesize critical and community reception.
+Your job: Recommend exactly 6 real, specific books that PERFECTLY match the mood, tone, and atmospheric vibes the user wants. For each book, synthesize critical and community reception.
 
 Return ONLY a JSON array (no markdown, no explanation, just raw JSON). ALL FIELDS ARE STRICTLY REQUIRED for every book:
 [
@@ -200,7 +200,7 @@ Return ONLY a JSON array (no markdown, no explanation, just raw JSON). ALL FIELD
     "expert_name": "The New York Times", // REQUIRED: The source of the quote
     "expert_consensus": "1-2 sentences summarizing what professional critics praised or critiqued.",
     "community_consensus": "1-2 sentences summarizing everyday reader reactions from Goodreads/Amazon.",
-    "why": "1 sentence explaining directly to the reader why this book is perfect for them. Address them directly (e.g. 'This is perfect for you because...'). NEVER use the phrase 'the user' or 'the user's request'.",
+    "why": "1 sentence explaining directly to the reader why this book matches their exact aesthetic/vibe. Address them directly (e.g. 'This is perfect for you because...'). NEVER use the phrase 'the user' or 'the user's request'.",
     "genre_guess": "closest genre slug from the available list"
   }
 ]

@@ -3,16 +3,20 @@
 import { useState } from 'react';
 import { Bookmark, Plus, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import FlyingCover from '../ui/FlyingCover';
 
 interface SaveToBookshelfButtonProps {
   bookId: string;
+  coverUrl?: string;
   initialStatus: string | null;
   isAuthenticated: boolean;
 }
 
-export default function SaveToBookshelfButton({ bookId, initialStatus, isAuthenticated }: SaveToBookshelfButtonProps) {
+export default function SaveToBookshelfButton({ bookId, coverUrl, initialStatus, isAuthenticated }: SaveToBookshelfButtonProps) {
   const [isSaved, setIsSaved] = useState(!!initialStatus);
   const [loading, setLoading] = useState(false);
+  const [flyingRect, setFlyingRect] = useState<DOMRect | null>(null);
   const router = useRouter();
 
   const handleToggle = async () => {
@@ -40,6 +44,10 @@ export default function SaveToBookshelfButton({ bookId, initialStatus, isAuthent
           body: JSON.stringify({ bookId, status: 'want_to_read' }), // Default status under the hood
         });
         if (res.ok) {
+          const coverEl = document.getElementById('main-book-cover');
+          if (coverEl && coverUrl) {
+            setFlyingRect(coverEl.getBoundingClientRect());
+          }
           setIsSaved(true);
           router.refresh();
         }
@@ -50,20 +58,35 @@ export default function SaveToBookshelfButton({ bookId, initialStatus, isAuthent
   };
 
   return (
-    <div className="relative ml-auto sm:ml-0">
-      <button 
-        onClick={handleToggle}
-        disabled={loading}
-        className={`flex items-center gap-2 px-6 py-3 font-bold border-2 transition-all ${
-          isSaved 
-            ? 'bg-[#f5e642] border-[#0a0a0a] text-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0a0a0a]' 
-            : 'bg-white border-[#0a0a0a] text-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0a0a0a]'
-        }`}
-        style={{ borderRadius: '12px' }}
-      >
-        {loading ? <Loader2 size={18} className="animate-spin" /> : (isSaved ? <Bookmark size={18} /> : <Plus size={18} />)}
-        {isSaved ? 'Saved' : 'Save Book'}
-      </button>
-    </div>
+    <>
+      <div className="relative ml-auto sm:ml-0">
+        <motion.button 
+          whileHover={{ scale: 1.05, y: -4 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleToggle}
+          disabled={loading}
+          className={`flex items-center gap-2 px-6 py-3 font-bold border-2 transition-colors ${
+            isSaved 
+              ? 'bg-[#f5e642] border-[#0a0a0a] text-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a]' 
+              : 'bg-white border-[#0a0a0a] text-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a]'
+          }`}
+          style={{ borderRadius: '12px' }}
+        >
+          {loading ? <Loader2 size={18} className="animate-spin" /> : (isSaved ? <Bookmark size={18} /> : <Plus size={18} />)}
+          {isSaved ? 'Saved' : 'Save Book'}
+        </motion.button>
+      </div>
+      
+      <AnimatePresence>
+        {flyingRect && coverUrl && (
+          <FlyingCover
+            key={`flying-${bookId}`}
+            coverUrl={coverUrl}
+            startRect={flyingRect}
+            onAnimationComplete={() => setFlyingRect(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }

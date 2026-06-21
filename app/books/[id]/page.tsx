@@ -18,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
 import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
 import SimilarBooks from '@/components/features/SimilarBooks';
 import SeriesPanel from '@/components/features/SeriesPanel';
+import DynamicBackground from '@/components/ui/DynamicBackground';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,6 +31,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: `${book.title} by ${book.author}`,
       description: book.description?.slice(0, 155) ?? undefined,
+      openGraph: {
+        title: `${book.title} by ${book.author} | ChapterOne`,
+        description: book.description?.slice(0, 155) ?? 'Discover this book on ChapterOne.',
+        images: book.cover_image_url ? [book.cover_image_url] : [],
+      }
     };
   } catch {
     return { title: 'Book Not Found' };
@@ -81,8 +87,9 @@ export default async function BookDetailPage({ params }: PageProps) {
     ?? (cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg` : null);
 
   return (
-    <div style={{ background: 'var(--bg-base)', minHeight: '100vh', paddingBottom: '80px' }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+    <div className="relative min-h-screen pb-20">
+      <DynamicBackground coverUrl={coverUrl} />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 relative z-10">
         
         {/* ── Top Section: Cover & Info ──────────────────────── */}
         <div className="grid md:grid-cols-12 gap-12 mb-16 items-start">
@@ -90,6 +97,7 @@ export default async function BookDetailPage({ params }: PageProps) {
           {/* Cover */}
           <div className="md:col-span-4 flex justify-center md:justify-start">
             <div 
+              id="main-book-cover"
               className="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-[280px] aspect-[2/3] mx-auto md:mx-0"
             >
               <BookCover
@@ -228,6 +236,7 @@ export default async function BookDetailPage({ params }: PageProps) {
                 {/* Save for later */}
                 <SaveToBookshelfButton 
                   bookId={book.id} 
+                  coverUrl={coverUrl || ''}
                   initialStatus={initialShelfStatus as any} 
                   isAuthenticated={!!user} 
                 />

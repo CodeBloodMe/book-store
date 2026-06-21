@@ -26,6 +26,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description:
         `Expert-curated list of the best ${genre.name} books. ` +
         `Ranked by field experts and thousands of reader reviews.`,
+      openGraph: {
+        title: `Best ${genre.name} Books | ChapterOne`,
+        description: `Expert-curated list of the best ${genre.name} books. Ranked by field experts and thousands of reader reviews.`,
+      }
     };
   } catch {
     return { title: 'Genre Not Found' };

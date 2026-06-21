@@ -5,6 +5,7 @@
 // ============================================================
 
 import { supabase } from './supabase';
+import { unstable_cache } from 'next/cache';
 import type {
   Genre,
   Book,
@@ -29,23 +30,31 @@ function handleError<T>(data: T | null, error: unknown): T {
 
 // ── Super Categories ──────────────────────────────────────────
 /** Fetches all super-categories (Learning, Fiction, Personal Growth) for homepage tabs */
-export async function getAllSuperCategories(): Promise<SuperCategory[]> {
-  const { data, error } = await supabase
-    .from('super_categories')
-    .select('*')
-    .order('name');
-  return handleError(data, error) as SuperCategory[];
-}
+export const getAllSuperCategories = unstable_cache(
+  async (): Promise<SuperCategory[]> => {
+    const { data, error } = await supabase
+      .from('super_categories')
+      .select('*')
+      .order('name');
+    return handleError(data, error) as SuperCategory[];
+  },
+  ['super_categories'],
+  { revalidate: 3600 } // Cache for 1 hour
+);
 
 // ── Genres ────────────────────────────────────────────────────
 /** Fetches ALL genres with their super-category. Used in Navbar mega-menu. */
-export async function getAllGenres(): Promise<Genre[]> {
-  const { data, error } = await supabase
-    .from('genres')
-    .select('*, super_categories(*)')
-    .order('sort_order', { ascending: true });
-  return handleError(data, error) as Genre[];
-}
+export const getAllGenres = unstable_cache(
+  async (): Promise<Genre[]> => {
+    const { data, error } = await supabase
+      .from('genres')
+      .select('*, super_categories(*)')
+      .order('sort_order', { ascending: true });
+    return handleError(data, error) as Genre[];
+  },
+  ['all_genres'],
+  { revalidate: 3600 }
+);
 
 /** Fetches genres for a specific super-category slug. Used on homepage tabs. */
 export async function getGenresBySuperCategory(superSlug: string): Promise<Genre[]> {
@@ -128,18 +137,22 @@ export async function getBookById(id: string): Promise<Book> {
 }
 
 /** Fetches books marked as editors_pick for the homepage section */
-export async function getEditorsPicks(): Promise<Book[]> {
-  const { data, error } = await supabase
-    .from('books')
-    .select(`
-      *,
-      genres(id, name, slug, icon, color)
-    `)
-    .eq('is_editors_pick', true)
-    .order('expert_rating', { ascending: false })
-    .limit(6);
-  return handleError(data, error) as Book[];
-}
+export const getEditorsPicks = unstable_cache(
+  async (): Promise<Book[]> => {
+    const { data, error } = await supabase
+      .from('books')
+      .select(`
+        *,
+        genres(id, name, slug, icon, color)
+      `)
+      .eq('is_editors_pick', true)
+      .order('expert_rating', { ascending: false })
+      .limit(6);
+    return handleError(data, error) as Book[];
+  },
+  ['editors_picks'],
+  { revalidate: 3600 }
+);
 
 /** Fetches similar books in the same genre */
 export async function getSimilarBooks(genreId: string, currentBookId: string): Promise<Book[]> {
@@ -159,18 +172,22 @@ export async function getSimilarBooks(genreId: string, currentBookId: string): P
 }
 
 /** Fetches books marked as featured for the homepage hero */
-export async function getFeaturedBooks(): Promise<Book[]> {
-  const { data, error } = await supabase
-    .from('books')
-    .select(`
-      *,
-      genres(id, name, slug, icon, color)
-    `)
-    .eq('is_featured', true)
-    .order('expert_rating', { ascending: false })
-    .limit(3);
-  return handleError(data, error) as Book[];
-}
+export const getFeaturedBooks = unstable_cache(
+  async (): Promise<Book[]> => {
+    const { data, error } = await supabase
+      .from('books')
+      .select(`
+        *,
+        genres(id, name, slug, icon, color)
+      `)
+      .eq('is_featured', true)
+      .order('expert_rating', { ascending: false })
+      .limit(3);
+    return handleError(data, error) as Book[];
+  },
+  ['featured_books'],
+  { revalidate: 3600 }
+);
 
 // ── Fiction Taste-Maker ───────────────────────────────────────
 export async function getFictionBooks(filters: FictionFilters): Promise<Book[]> {
@@ -282,14 +299,18 @@ export async function searchBooks(query: string): Promise<Book[]> {
 
 // ── Trending / Highest Rated ──────────────────────────────────
 /** Returns the top N books by expert rating across all genres — for homepage trending */
-export async function getTopRatedBooks(limit = 8): Promise<Book[]> {
-  const { data, error } = await supabase
-    .from('books')
-    .select(`
-      *,
-      genres(id, name, slug, icon, color)
-    `)
-    .order('expert_rating', { ascending: false, nullsFirst: false })
-    .limit(limit);
-  return handleError(data, error) as Book[];
-}
+export const getTopRatedBooks = unstable_cache(
+  async (limit = 8): Promise<Book[]> => {
+    const { data, error } = await supabase
+      .from('books')
+      .select(`
+        *,
+        genres(id, name, slug, icon, color)
+      `)
+      .order('expert_rating', { ascending: false, nullsFirst: false })
+      .limit(limit);
+    return handleError(data, error) as Book[];
+  },
+  ['top_rated_books'],
+  { revalidate: 3600 }
+);

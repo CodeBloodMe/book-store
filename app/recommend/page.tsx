@@ -8,6 +8,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import AILoadingAnimation from '@/components/ui/AILoadingAnimation';
 
 interface RecommendedBook {
   id: string;
@@ -27,12 +28,12 @@ interface RecommendedBook {
 type SearchMode = 'books' | 'path';
 
 const EXAMPLES = [
-  "I want to learn Python for data science as a complete beginner",
-  "Looking for a gripping thriller that keeps me up at night",
-  "Best books to understand how the stock market works",
-  "I want to get into meditation and mindfulness",
-  "Epic fantasy with amazing world-building like Lord of the Rings",
-  "Books that explain machine learning without heavy math",
+  "A dark academia thriller set in winter",
+  "Cozy fantasy with a warm cup of tea vibe",
+  "A rainy Sunday in a Parisian cafe",
+  "Epic world-building but the protagonist is a bit chaotic",
+  "Heartbreaking romance that will destroy me emotionally",
+  "Books that feel like a Studio Ghibli movie",
 ];
 
 function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
@@ -141,6 +142,7 @@ export default function RecommendPage() {
   const [searchedQuery, setSearchedQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSearch = async (searchQuery?: string) => {
     const q = searchQuery ?? input;
@@ -185,7 +187,7 @@ export default function RecommendPage() {
             ← Back to ChapterOne
           </Link>
           <h1
-            className="font-black leading-tight mb-4"
+            className="font-black leading-tight mb-4 flex items-center justify-center gap-4"
             style={{
               fontFamily: 'var(--font-bebas)',
               fontSize: 'clamp(40px, 7vw, 72px)',
@@ -193,11 +195,11 @@ export default function RecommendPage() {
               color: '#ffffff',
             }}
           >
-            Find Your Perfect Book
+            <span className="text-[#f5e642]">✨</span> Vibe Check
           </h1>
           <p className="text-base max-w-xl mx-auto" style={{ color: '#aaa' }}>
-            Describe what you want in plain English. Our AI searches real books
-            to find the perfect match for exactly what you need right now.
+            Describe the mood, aesthetic, or specific trope you're craving. Our AI searches real books
+            to match your exact vibe right now.
           </p>
         </div>
       </div>
@@ -231,10 +233,11 @@ export default function RecommendPage() {
           }}
         >
           <textarea
+            ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); } }}
-            placeholder="e.g. I want to learn machine learning from scratch, I'm a Python developer with no ML experience..."
+            placeholder="e.g. A cozy sci-fi about a space cafe, or a book that feels like autumn in New York..."
             rows={3}
             className="w-full resize-none text-base outline-none"
             style={{
@@ -282,7 +285,10 @@ export default function RecommendPage() {
               {EXAMPLES.map(ex => (
                 <button
                   key={ex}
-                  onClick={() => { setInput(ex); handleSearch(ex); }}
+                  onClick={() => { 
+                    setInput(ex); 
+                    inputRef.current?.focus(); 
+                  }}
                   className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5"
                   style={{
                     background: '#ffffff',
@@ -296,6 +302,13 @@ export default function RecommendPage() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Loading Animation */}
+        {loading && (
+          <div className="mt-16" ref={resultsRef}>
+            <AILoadingAnimation />
           </div>
         )}
 
@@ -336,7 +349,10 @@ export default function RecommendPage() {
                   {['python', 'machine learning', 'fiction thriller', 'self help', 'business', 'fantasy'].map(s => (
                     <button
                       key={s}
-                      onClick={() => { setInput(s); handleSearch(s); }}
+                      onClick={() => { 
+                        setInput(s); 
+                        inputRef.current?.focus(); 
+                      }}
                       className="text-xs px-3 py-1 rounded-full"
                       style={{ background: '#f5f5f0', border: '2px solid #0a0a0a', boxShadow: '2px 2px 0 #0a0a0a', cursor: 'pointer', color: '#0a0a0a' }}
                     >
