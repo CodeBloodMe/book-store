@@ -2,20 +2,23 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { GoogleGenAI } from '@google/genai';
 
-// ── Types ────────────────────────────────────────────────────
+
+
+// Types
 
 interface RecommendRequest {
-  query?: string;
-  goal?: string;
-  area?: string;
-  style?: string;
+  query?: string; // The user's free-text search (e.g. "I want a sad book")
+  goal?: string;  // Used for the step-by-step questionnaire
+  area?: string;  
+  style?: string; 
 }
 
+// This is exactly the format we command the AI to reply in
 interface AIBook {
   title: string;
   author: string;
   why: string;
-  genre_guess: string; // AI's guess of the closest genre slug
+  genre_guess: string; 
   expert_rating: number;
   community_rating: number;
   expert_quote: string;
@@ -24,7 +27,8 @@ interface AIBook {
   community_consensus: string;
 }
 
-// ── AI Providers ─────────────────────────────────────────────
+// AI Provider Functions
+// We have 3 different AIs. If one is down or out of credits, we try the next one!
 
 async function callGemini(prompt: string): Promise<string> {
   if (!process.env.GEMINI_API_KEY) throw new Error('No Gemini API Key');
@@ -49,7 +53,7 @@ async function callGroq(prompt: string): Promise<string> {
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
+      temperature: 0.3, // Low temperature = more factual, less hallucinated books
     }),
   });
   if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
@@ -76,30 +80,38 @@ async function callOpenAI(prompt: string): Promise<string> {
   return data.choices[0].message.content;
 }
 
+/**
+ * Tries all AI providers one by one until one succeeds.
+ * This makes our AI Finder extremely resilient!
+ */
 async function callAnyAI(prompt: string): Promise<string> {
   const providers = [
     { name: 'Groq', fn: callGroq },
     { name: 'Gemini', fn: callGemini },
     { name: 'OpenAI', fn: callOpenAI },
   ];
+  
   let lastError: Error | null = null;
+  
   for (const provider of providers) {
     try {
-      console.log(`[Recommend] Trying ${provider.name}...`);
+      console.log(`[Recommend API] Trying ${provider.name}...`);
       const result = await provider.fn(prompt);
       if (result) {
-        console.log(`[Recommend] ✅ Success with ${provider.name}`);
-        return result;
+        console.log(`[Recommend API] ✅ Success with ${provider.name}`);
+        return result; // Stop trying, we got an answer!
       }
     } catch (err: unknown) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`[Recommend] ❌ ${provider.name} failed:`, lastError.message);
+      console.warn(`[Recommend API] ❌ ${provider.name} failed:`, lastError.message);
     }
   }
-  throw new Error(`All AI providers failed. Last: ${lastError?.message}`);
+  
+  // If we get here, ALL providers failed
+  throw new Error(`All AI providers failed. Last Error: ${lastError?.message}`);
 }
 
-// ── OpenLibrary Helper ───────────────────────────────────────
+// OpenLibrary Helper
 
 interface OLResult {
   description: string;
@@ -109,10 +121,14 @@ interface OLResult {
   isbn: string | null;
 }
 
+/**
+ * If the AI recommends a book we don't have, we ask the free OpenLibrary API
+ * for the cover image and summary description.
+ */
 async function fetchFromOpenLibrary(title: string, author: string): Promise<OLResult> {
   const params = new URLSearchParams({ title, author, limit: '5' });
   const res = await fetch(`https://openlibrary.org/search.json?${params}`, {
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(5000), // Give up if it takes longer than 5 seconds
   });
 
   if (!res.ok) {
@@ -133,6 +149,7 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
   const coverId = doc.cover_i;
   const isbn = doc.isbn?.[0] ?? null;
   
+  // Build the cover image URL
   let cover_url = null;
   if (coverId) {
     cover_url = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
@@ -141,6 +158,7 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
     cover_url = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
   }
 
+  // Extract the description (OpenLibrary sometimes puts this in different places)
   const description =
     typeof doc.first_sentence === 'string'
       ? doc.first_sentence
@@ -157,30 +175,36 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
   };
 }
 
-// ── Main Handler ─────────────────────────────────────────────
+// Main Route Handler
 
+// The `POST` function name tells Next.js to run this code for POST requests
 export async function POST(request: Request) {
   try {
+    // 1. Read what the user sent
     const body: RecommendRequest = await request.json();
     const { query, goal, area, style } = body;
 
+    // Check if they sent something valid
     if (!query && !goal) {
       return NextResponse.json({ error: 'Please provide a query.' }, { status: 400 });
     }
 
+    // Format their request into a single sentence for the AI
     const userIntent = query
       ? query.trim()
       : `I want to: ${goal}. About: ${area}. My level: ${style}.`;
 
     // ── Step 1: Fetch genre list for AI context ──────────────
+    // We send our database genres to the AI so it can categorize its recommendations properly
     const { data: genres } = await supabase.from('genres').select('id, name, slug');
     const genreList = (genres || []).map((g) => `${g.name} (slug: ${g.slug})`).join(', ');
     const genreMap = new Map((genres || []).map((g) => [g.slug, g.id]));
 
-    // Pick a fallback genre (the first one, or "Global Catalog")
+    // Pick a fallback genre if the AI guesses a bad genre
     const fallbackGenreId = genres?.[0]?.id ?? null;
 
     // ── Step 2: Ask AI to recommend SPECIFIC real books ──────
+    // This is called "Prompt Engineering". We give the AI a very strict format to follow.
     const aiPrompt = `You are a world-class book recommendation expert, aesthetic curator, and review aggregator with encyclopedic knowledge of every book ever written.
 
 The user wants a book matching this vibe/request: "${userIntent}"
@@ -207,30 +231,31 @@ Return ONLY a JSON array (no markdown, no explanation, just raw JSON). ALL FIELD
 
 Critical rules:
 - ONLY recommend REAL books that actually exist. No made-up titles.
-- Be SPECIFIC to what the user asked. If they say "indian books", recommend famous Indian literature like The White Tiger, Midnight's Children, The God of Small Things, etc.
-- If they say "python programming", recommend actual Python books like Automate the Boring Stuff, Python Crash Course, etc.
+- Be SPECIFIC to what the user asked.
 - The "why" must address the reader directly (using "you"). Do not talk about "the user".
 - genre_guess must be a slug from the available genres list.
 - Return EXACTLY 6 books.`;
 
+    // Send the prompt to the AI
     const rawText = await callAnyAI(aiPrompt);
 
-    // Parse the JSON array from AI response
+    // Parse the JSON array from AI response (in case the AI adds markdown like ```json)
     const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('AI returned invalid response');
+    if (!jsonMatch) throw new Error('AI returned invalid JSON response');
 
     const aiBooks: AIBook[] = JSON.parse(jsonMatch[0]);
-    console.log(`[Recommend] AI suggested ${aiBooks.length} books`);
+    console.log(`[Recommend API] AI suggested ${aiBooks.length} books`);
 
-    // ── Step 3: For each AI book, find or create in DB ───────
+    // ── Step 3: Check our Database for each AI book ──────────
     const selectFields =
       'id, title, author, cover_image_url, expert_rating, community_rating, description, difficulty_level, is_bestseller, genre_id, genres(name, color, icon, slug)';
 
     const resultBooks = [];
 
+    // Loop through the AI's recommendations
     for (const aiBook of aiBooks.slice(0, 8)) {
       try {
-        // A) Check if it already exists in DB (case-insensitive title + author match)
+        // A) Check if we already have it in the DB (case-insensitive title match)
         const { data: existing } = await supabase
           .from('books')
           .select(selectFields)
@@ -239,12 +264,12 @@ Critical rules:
           .limit(1);
 
         if (existing && existing.length > 0) {
-          console.log(`[Recommend] ✅ Found in DB: "${aiBook.title}"`);
+          console.log(`[Recommend API] ✅ Found in DB: "${aiBook.title}"`);
           const existingBook = existing[0];
           
-          // If the book in our DB is missing a cover, let's fix it on the fly!
+          // Fix: If the book in our DB is missing a cover, fetch it from OpenLibrary on the fly!
           if (!existingBook.cover_image_url) {
-            console.log(`[Recommend] 🔧 Fixing missing cover for "${aiBook.title}"`);
+            console.log(`[Recommend API] 🔧 Fixing missing cover for "${aiBook.title}"`);
             const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
             if (olData.cover_url) {
               await supabase
@@ -255,6 +280,7 @@ Critical rules:
             }
           }
           
+          // Merge our DB book with the AI's custom reviews/reasons
           resultBooks.push({
             ...existingBook,
             why: aiBook.why,
@@ -265,18 +291,18 @@ Critical rules:
             expert_consensus: aiBook.expert_consensus,
             community_consensus: aiBook.community_consensus,
           });
-          continue;
+          continue; // Move to the next book
         }
 
-        // B) Not in DB — fetch from OpenLibrary and insert
-        console.log(`[Recommend] 🔍 Fetching from OpenLibrary: "${aiBook.title}" by ${aiBook.author}`);
+        // B) Not in DB — Fetch from OpenLibrary and Insert it so we have it forever!
+        console.log(`[Recommend API] 🔍 Fetching from OpenLibrary: "${aiBook.title}" by ${aiBook.author}`);
         const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
 
-        // Determine genre_id: use AI's guess, fallback to first genre
+        // Determine which genre folder to put it in
         const genreId = genreMap.get(aiBook.genre_guess) ?? fallbackGenreId;
 
         if (!genreId) {
-          console.warn(`[Recommend] ⚠️ No genre found for "${aiBook.title}", skipping`);
+          console.warn(`[Recommend API] ⚠️ No genre found for "${aiBook.title}", skipping`);
           continue;
         }
 
@@ -303,15 +329,17 @@ Critical rules:
             is_bestseller: false,
             language: 'en',
           })
-          .select(selectFields)
+          .select(selectFields) // Ask Supabase to return the newly created row
           .single();
 
         if (insertError) {
-          console.error(`[Recommend] ❌ Insert failed for "${aiBook.title}":`, insertError.message);
+          console.error(`[Recommend API] ❌ Insert failed for "${aiBook.title}":`, insertError.message);
           continue;
         }
 
-        console.log(`[Recommend] ✅ Inserted into DB: "${aiBook.title}"`);
+        console.log(`[Recommend API] ✅ Inserted into DB: "${aiBook.title}"`);
+        
+        // Merge the newly created DB book with the AI's custom reasons
         resultBooks.push({
           ...inserted,
           why: aiBook.why,
@@ -322,13 +350,16 @@ Critical rules:
           expert_consensus: aiBook.expert_consensus,
           community_consensus: aiBook.community_consensus,
         });
+        
       } catch (bookErr) {
-        console.warn(`[Recommend] ⚠️ Error processing "${aiBook.title}":`, bookErr);
+        console.warn(`[Recommend API] ⚠️ Error processing "${aiBook.title}":`, bookErr);
         continue; // Skip this book, try the next one
       }
     }
 
-    // ── Step 4: Return results ───────────────────────────────
+    // ── Step 4: Send the results back to the frontend ────────
+    
+    // If absolutely everything failed
     if (resultBooks.length === 0) {
       return NextResponse.json({
         books: [],
@@ -336,14 +367,17 @@ Critical rules:
       });
     }
 
-    // Add rank labels
+    // Add a shiny "⭐ Top pick" label to the very first book
     const booksWithRank = resultBooks.map((book, i) => ({
       ...book,
       why: i === 0 ? `⭐ Top pick: ${book.why}` : book.why,
     }));
 
+    // Send the JSON payload back to the browser
     return NextResponse.json({ books: booksWithRank });
+    
   } catch (err: unknown) {
+    // If the entire API crashes (e.g. AI is completely down)
     console.error('[Recommend API Error]', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Something went wrong.' },

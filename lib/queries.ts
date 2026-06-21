@@ -1,8 +1,4 @@
-// ============================================================
-// ChapterOne — Centralized Query Functions
-// All Supabase data fetching lives here.
-// Import and call these in Server Components only.
-// ============================================================
+
 
 import { supabase } from './supabase';
 import { unstable_cache } from 'next/cache';
@@ -15,72 +11,102 @@ import type {
   FictionFilters,
 } from '@/types/database';
 
-// ── Helper: throw on Supabase error ──────────────────────────
+// Error Handling Helper
+
+/**
+ * A helper function to check if Supabase returned an error.
+ * If it did, we crash the function and print the error to the server console.
+ * This saves us from writing `if (error) throw error;` 50 times!
+ */
 function handleError<T>(data: T | null, error: unknown): T {
   if (error) {
-    console.error('[ChapterOne Query Error]', error);
-    throw new Error(typeof error === 'object' && error !== null && 'message' in error
+    console.error('[Database Error]', error);
+    // Extract the error message safely, or provide a default
+    const errorMessage = typeof error === 'object' && error !== null && 'message' in error
       ? String((error as { message: string }).message)
-      : 'Database query failed'
-    );
+      : 'Database query failed';
+    throw new Error(errorMessage);
   }
-  if (data === null) throw new Error('No data returned');
+  
+  if (data === null) {
+    throw new Error('Database returned empty data');
+  }
+  
   return data;
 }
 
-// ── Super Categories ──────────────────────────────────────────
-/** Fetches all super-categories (Learning, Fiction, Personal Growth) for homepage tabs */
+// Super Categories
+
+/** 
+ * Fetches all parent categories (Learning, Fiction, Personal Growth).
+ * Uses Next.js caching so we only hit the database once every hour (3600 seconds).
+ */
 export const getAllSuperCategories = unstable_cache(
   async (): Promise<SuperCategory[]> => {
+    // We select ALL columns (*) from the 'super_categories' table
     const { data, error } = await supabase
       .from('super_categories')
       .select('*')
-      .order('name');
+      .order('name'); // Alphabetical order
+      
     return handleError(data, error) as SuperCategory[];
   },
-  ['super_categories'],
-  { revalidate: 3600 } // Cache for 1 hour
+  ['super_categories'], // The unique ID for this cache
+  { revalidate: 3600 }  // Delete cache and fetch fresh data after 1 hour
 );
 
-// ── Genres ────────────────────────────────────────────────────
-/** Fetches ALL genres with their super-category. Used in Navbar mega-menu. */
+// Genres
+
+/** 
+ * Fetches ALL genres and joins them with their parent super-category.
+ * E.g., Returns "Sci-Fi" and attaches the "Fiction" super-category to it.
+ */
 export const getAllGenres = unstable_cache(
   async (): Promise<Genre[]> => {
     const { data, error } = await supabase
       .from('genres')
+      // The `*` gets all columns from genres.
+      // The `, super_categories(*)` tells Supabase to also fetch the linked parent category!
       .select('*, super_categories(*)')
       .order('sort_order', { ascending: true });
+      
     return handleError(data, error) as Genre[];
   },
   ['all_genres'],
   { revalidate: 3600 }
 );
 
-/** Fetches genres for a specific super-category slug. Used on homepage tabs. */
+/** 
+ * Fetches genres that belong to a specific super-category URL slug.
+ */
 export async function getGenresBySuperCategory(superSlug: string): Promise<Genre[]> {
   const { data, error } = await supabase
     .from('genres')
     .select('*, super_categories!inner(*)')
-    .eq('super_categories.slug', superSlug)
+    .eq('super_categories.slug', superSlug) // Filter where parent slug matches
     .order('sort_order');
+    
   return handleError(data, error) as Genre[];
 }
 
-/** Fetch a single genre by its URL slug. Used on genre page header. */
+/** 
+ * Fetch a single genre by its URL slug.
+ */
 export async function getGenreBySlug(slug: string): Promise<Genre> {
   const { data, error } = await supabase
     .from('genres')
     .select('*, super_categories(*)')
     .eq('slug', slug)
-    .single();
+    .single(); // We only expect ONE result, so return an object instead of an array
+    
   return handleError(data, error) as Genre;
 }
 
-// ── Books ─────────────────────────────────────────────────────
+// Books
+
 /**
- * Fetches books for a specific genre with optional filters.
- * Always returns sorted by expert_rating descending by default,
- * so the best books appear first (core promise of the platform).
+ * Fetches books for a specific genre.
+ * Includes optional filters for Difficulty Level and Tags.
  */
 export async function getBooksByGenre(
   genreId: string,
@@ -90,6 +116,7 @@ export async function getBooksByGenre(
     tags?: string[];
   }
 ): Promise<Book[]> {
+  // 1. Start building the database query
   let query = supabase
     .from('books')
     .select(`
@@ -98,28 +125,28 @@ export async function getBooksByGenre(
     `)
     .eq('genre_id', genreId);
 
-  // Filter by difficulty level if provided (Beginner/Intermediate/Advanced)
+  // 2. Add filters if the user requested them
   if (options?.level) {
     query = query.eq('difficulty_level', options.level);
   }
 
-  // Filter by tags if provided (e.g., ["Python", "Machine Learning"])
+  // If the user selected tags, check if the book's tags array overlaps with the requested tags
   if (options?.tags && options.tags.length > 0) {
     query = query.overlaps('tags', options.tags);
   }
 
-  // Sort: default is expert_rating (highest = best books shown first)
+  // 3. Sort the results (Default: Highest expert rating first)
   const sortField = options?.sort ?? 'expert_rating';
   query = query.order(sortField, { ascending: false, nullsFirst: false });
 
+  // 4. Actually execute the query against the database
   const { data, error } = await query;
   return handleError(data, error) as Book[];
 }
 
 /**
- * Fetches a single book with full detail, including:
- * - Its genre
- * - The next recommended book (for the "What to Read Next" panel)
+ * Fetches a single book by its ID.
+ * It also automatically fetches the "Next Book" to recommend!
  */
 export async function getBookById(id: string): Promise<Book> {
   const { data, error } = await supabase
@@ -133,117 +160,129 @@ export async function getBookById(id: string): Promise<Book> {
     `)
     .eq('id', id)
     .single();
+    
   return handleError(data, error) as Book;
 }
 
-/** Fetches books marked as editors_pick for the homepage section */
+/** 
+ * Fetches 6 books manually marked by admins as "Editor's Picks"
+ */
 export const getEditorsPicks = unstable_cache(
   async (): Promise<Book[]> => {
     const { data, error } = await supabase
       .from('books')
-      .select(`
-        *,
-        genres(id, name, slug, icon, color)
-      `)
+      .select(`*, genres(id, name, slug, icon, color)`)
       .eq('is_editors_pick', true)
       .order('expert_rating', { ascending: false })
       .limit(6);
+      
     return handleError(data, error) as Book[];
   },
   ['editors_picks'],
   { revalidate: 3600 }
 );
 
-/** Fetches similar books in the same genre */
+/** 
+ * Fetches 3 books from the same genre (excluding the book currently being viewed)
+ */
 export async function getSimilarBooks(genreId: string, currentBookId: string): Promise<Book[]> {
   if (!genreId) return [];
 
   const { data, error } = await supabase
     .from('books')
-    .select(`
-      *,
-      genres(id, name, slug, icon, color)
-    `)
+    .select(`*, genres(id, name, slug, icon, color)`)
     .eq('genre_id', genreId)
-    .neq('id', currentBookId)
+    .neq('id', currentBookId) // neq = Not Equal To (Exclude current book)
     .order('expert_rating', { ascending: false })
     .limit(3);
+    
   return handleError(data, error) as Book[];
 }
 
-/** Fetches books marked as featured for the homepage hero */
+/** 
+ * Fetches the top 3 featured books for the hero slider
+ */
 export const getFeaturedBooks = unstable_cache(
   async (): Promise<Book[]> => {
     const { data, error } = await supabase
       .from('books')
-      .select(`
-        *,
-        genres(id, name, slug, icon, color)
-      `)
+      .select(`*, genres(id, name, slug, icon, color)`)
       .eq('is_featured', true)
       .order('expert_rating', { ascending: false })
       .limit(3);
+      
     return handleError(data, error) as Book[];
   },
   ['featured_books'],
   { revalidate: 3600 }
 );
 
-// ── Fiction Taste-Maker ───────────────────────────────────────
+// Fiction Taste-Maker
+
+/**
+ * A custom algorithm to find fiction books based on Vibes, Plot Types, and Lengths.
+ * Instead of strictly requiring ALL filters to match (which often results in 0 books),
+ * this uses a scoring system to find the "best fit" books.
+ */
 export async function getFictionBooks(filters: FictionFilters): Promise<Book[]> {
-  // Fetch all fiction books
+  // 1. Fetch ALL fiction books
   const { data, error } = await supabase
     .from('books')
-    .select(`
-      *,
-      genres!inner(id, name, slug, icon, color, is_fiction)
-    `)
+    .select(`*, genres!inner(id, name, slug, icon, color, is_fiction)`)
     .eq('genres.is_fiction', true)
     .order('expert_rating', { ascending: false });
 
-  const books = handleError(data, error) as Book[];
+  const allFictionBooks = handleError(data, error) as Book[];
 
-  // If no filters are active, just return the top rated fiction books
+  // 2. If the user didn't pick any filters, just return the top 15 fiction books
   if (!filters.vibe && !filters.plot_type && !filters.length_category) {
-    return books.slice(0, 15);
+    return allFictionBooks.slice(0, 15);
   }
 
-  // Score each book based on how many filters it matches
-  const scoredBooks = books.map((book) => {
+  // 3. Score each book based on how many filters it matches!
+  const scoredBooks = allFictionBooks.map((book) => {
     let score = 0;
+    // Vibes and Plot Types are very important, so they grant +3 points
     if (filters.vibe && book.vibe === filters.vibe) score += 3;
     if (filters.plot_type && book.plot_type === filters.plot_type) score += 3;
+    
+    // Book length is nice to have, but less important, so it grants +1 point
     if (filters.length_category && book.length_category === filters.length_category) score += 1;
+    
     return { book, score };
   });
 
-  // Filter out books with 0 score (unless we want to always show something, but showing completely unrelated books is bad UX)
-  // Actually, if score is 0, it means it matches absolutely nothing. We should filter those out.
+  // 4. Sort the books so the highest scores are at the top
   const matchedBooks = scoredBooks
-    .filter((b) => b.score > 0)
-    .sort((a, b) => b.score - a.score || (b.book.expert_rating || 0) - (a.book.expert_rating || 0))
+    .filter((b) => b.score > 0) // Remove books that matched absolutely nothing
+    .sort((a, b) => {
+      // Primary sort: Our custom Score
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      // Tie-breaker: If scores are tied, the book with the higher expert rating wins!
+      return (b.book.expert_rating || 0) - (a.book.expert_rating || 0);
+    })
     .map((b) => b.book);
 
-  // If literally nothing matches any single filter, return empty so the UI shows "No matches found"
-  // but this makes it MUCH more forgiving than strict AND filtering.
+  // 5. Return the top 15 results
   return matchedBooks.slice(0, 15);
 }
 
-// ── Full-Text Search ──────────────────────────────────────────
+// Full-Text Search
+
 /**
- * Full-text search using PostgreSQL tsvector across title, author, description, tags.
- * The search_vector column is auto-updated by a DB trigger on insert/update.
+ * Performs a search across our local database AND external APIs (Google/OpenLibrary).
+ * This ensures that even if we don't have the book, the user still finds it!
  */
 export async function searchBooks(query: string): Promise<Book[]> {
   if (!query.trim()) return [];
 
-  // 1. Fetch from local Supabase DB
+  // 1. Search our local Supabase database
+  // `search_vector` is a special PostgreSQL feature that makes searching text incredibly fast
   const { data: localData, error } = await supabase
     .from('books')
-    .select(`
-      *,
-      genres(id, name, slug, icon, color)
-    `)
+    .select(`*, genres(id, name, slug, icon, color)`)
     .textSearch('search_vector', query, {
       type: 'websearch',
       config: 'english',
@@ -253,62 +292,64 @@ export async function searchBooks(query: string): Promise<Book[]> {
 
   const localBooks = error ? [] : (localData as Book[]);
 
-  // 2. Fetch from Google Books and OpenLibrary
-  // We need to import the new functions at the top of the file, but we can dynamic import here to avoid circular dep issues if any, or just import at the top. Let's just import here.
+  // 2. Search external APIs simultaneously for speed
   const { searchGoogleBooks, searchOpenLibrary } = await import('./external-books');
   
-  const [googleBooks, olBooks] = await Promise.all([
+  const [googleBooks, openLibraryBooks] = await Promise.all([
     searchGoogleBooks(query),
     searchOpenLibrary(query)
   ]);
 
-  // 3. Deduplicate and merge results
-  const allBooks: Book[] = [...localBooks];
+  // 3. Merge results and remove duplicate books
+  const allBooksToReturn: Book[] = [...localBooks];
   
-  // Track seen titles (lowercase, alphanumeric only) to avoid duplicates
+  // Create a tracking list of titles we've already seen (converted to lowercase, letters/numbers only)
+  // Example: "Harry Potter & The Sorcerer's Stone!" -> "harrypotterthesorcerersstone"
   const seenTitles = new Set(localBooks.map(b => b.title.toLowerCase().replace(/[^a-z0-9]/g, '')));
 
-  const addToResults = (extBooks: Partial<Book>[]) => {
-    for (const b of extBooks) {
-      const normalizedTitle = (b.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (!seenTitles.has(normalizedTitle) && allBooks.length < 30) {
-        seenTitles.add(normalizedTitle);
-        allBooks.push({
-          ...b,
-          // Provide defaults for UI compatibility
-          author: b.author || 'Unknown',
-          description: b.description || 'No description available.',
+  // Helper function to carefully add external books to our master list
+  const addExternalBooks = (externalBooks: Partial<Book>[]) => {
+    for (const externalBook of externalBooks) {
+      const normalizedTitle = (externalBook.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      // If we haven't seen this title yet, and we have fewer than 30 results total...
+      if (!seenTitles.has(normalizedTitle) && allBooksToReturn.length < 30) {
+        seenTitles.add(normalizedTitle); // Mark it as seen
+        
+        // Push a cleaned-up version of the book into our final array
+        allBooksToReturn.push({
+          ...externalBook,
+          author: externalBook.author || 'Unknown',
+          description: externalBook.description || 'No description available.',
           expert_rating: 0,
-          community_rating: b.community_rating || 0,
-          vibe: null,
-          plot_type: null,
-          length_category: null,
+          community_rating: externalBook.community_rating || 0,
           is_editors_pick: false,
           is_featured: false,
-          external_id: b.external_id || null,
+          external_id: externalBook.external_id || null,
         } as unknown as Book);
       }
     }
   };
 
-  addToResults(googleBooks);
-  addToResults(olBooks);
+  addExternalBooks(googleBooks);
+  addExternalBooks(openLibraryBooks);
 
-  return allBooks;
+  return allBooksToReturn;
 }
 
-// ── Trending / Highest Rated ──────────────────────────────────
-/** Returns the top N books by expert rating across all genres — for homepage trending */
+// Trending
+
+/** 
+ * Returns the top highest-rated books across ALL genres for the homepage.
+ */
 export const getTopRatedBooks = unstable_cache(
   async (limit = 8): Promise<Book[]> => {
     const { data, error } = await supabase
       .from('books')
-      .select(`
-        *,
-        genres(id, name, slug, icon, color)
-      `)
+      .select(`*, genres(id, name, slug, icon, color)`)
       .order('expert_rating', { ascending: false, nullsFirst: false })
       .limit(limit);
+      
     return handleError(data, error) as Book[];
   },
   ['top_rated_books'],
