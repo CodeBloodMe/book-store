@@ -1,0 +1,21 @@
+ChapterOne - Project Overview
+=============================
+
+"ChapterOne" is an AI-powered book recommendation platform designed to help users find exactly what to read next. Instead of just browsing categories, users can use an intelligent AI search to describe their mood, vibe, or learning goals, and the system curates personalized book matches.
+
+Key Features
+------------
+1. AI Recommendation Wizard: A multi-step interface where users select their reading goal (e.g., "Learn a skill," "Be entertained"), a specific area/topic, and their reading style (e.g., "Beginner," "Quick Read"). The system queries the AI to return perfectly matched books.
+2. "Vibe Check" Search: A natural language search box where users can type anything—like "A cozy sci-fi about a space cafe" or "Heartbreaking romance"—and the AI understands the context to recommend relevant books.
+3. Learning Paths: The AI can generate sequential "Learning Paths" where books are recommended step-by-step for users trying to master a new subject.
+4. Rich Book Data: Books include "Expert Ratings," "Community Ratings," why the book is perfect for the prompt, and specific expert quotes/consensus to validate the recommendation.
+
+Tech Stack
+----------
+- Frontend Framework: Next.js (React 19) utilizing the App Router.
+- Styling: Tailwind CSS v4, utilizing a custom "Deep Navy + Electric Indigo + Gold" theme with modern glassmorphism UI elements.
+- Animations: Framer Motion for smooth component transitions and custom CSS for things like the 3D flipping book loader.
+- Database & Backend: Supabase (PostgreSQL) is used to store the curated catalog of 1,200+ books, genres, authors, and user data.
+- AI Integration: Google GenAI (@google/genai) handles the semantic search and logic for the natural language recommendation engine.
+- Icons & UI: Lucide React for consistent, crisp SVG icons.
+- Testing: Vitest for unit testing and Playwright for End-to-End browser testing.

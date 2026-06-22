@@ -51,11 +51,10 @@ node_modules/
 # Scratch and test files
 test-*.js
 test-*.ts
-proxy.ts
-fix_database.sql
+check-*.js
+fix-*.js
+count-*.js
 scripts/clean_ai_reviews.ts
 scripts/update_covers.js
-check-dragon-tattoo.js
-fix-dragon-tattoo.js
-check-isbns.js
-count-missing-covers.js
+proxy.ts
+fix_database.sql

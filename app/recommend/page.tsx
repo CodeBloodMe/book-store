@@ -1,13 +1,10 @@
-'use client'; // This is a Client Component because it handles user input, typing, and state
+'use client';
 
-
-
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AILoadingAnimation from '@/components/ui/AILoadingAnimation';
-
-
+import { useSearchParams } from 'next/navigation';
 
 interface RecommendedBook {
   id: string;
@@ -20,8 +17,8 @@ interface RecommendedBook {
   difficulty_level: string | null;
   is_bestseller: boolean;
   genres?: { name: string; color: string; icon: string; slug: string } | null;
-  why: string; // The AI's explanation of why this book matches the user's prompt
-  path_level?: string; // Used if they selected "Learning Path" mode
+  why: string;
+  path_level?: string;
 }
 
 type SearchMode = 'books' | 'path';
@@ -42,17 +39,14 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
   const [imgError, setImgError] = useState(false);
   const rating = book.expert_rating ?? book.community_rating ?? 0;
 
-  // Determine the color of the rank bubble
-  let rankBubbleColor = '#f5f5f0'; // Default gray
-  if (rank === 1) rankBubbleColor = '#f5e642'; // #1 is Yellow
-  if (rank === 2) rankBubbleColor = '#e8e8e8'; // #2 is Light Gray
+  let rankBubbleColor = '#f5f5f0';
+  if (rank === 1) rankBubbleColor = '#f5e642';
+  if (rank === 2) rankBubbleColor = '#e8e8e8';
 
   return (
     <Link href={`/books/${book.id}`}>
-      {/* Container Card */}
       <div className="group flex gap-4 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 cursor-pointer bg-white border-2 border-[#0a0a0a] shadow-[5px_5px_0_#0a0a0a]">
         
-        {/* Number/Rank Bubble */}
         <div 
           className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-[#0a0a0a] border-2 border-[#0a0a0a]"
           style={{ background: rankBubbleColor }}
@@ -60,7 +54,6 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
           {rank}
         </div>
 
-        {/* Cover Image */}
         <div className="flex-shrink-0 rounded-lg overflow-hidden w-16 h-[92px] bg-[#f0f0ee] border-2 border-[#e5e5e5]">
           {book.cover_image_url && !imgError ? (
             <Image
@@ -70,14 +63,13 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
               height={92}
               className="w-full h-full object-cover"
               onError={() => setImgError(true)}
-              unoptimized={true} // Bypasses Next.js optimization for external OpenLibrary images
+              unoptimized={true}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-3xl">📚</div>
           )}
         </div>
 
-        {/* Info Text Area */}
         <div className="flex-1 min-w-0">
           <h3 className="font-black text-base leading-snug mb-1 group-hover:underline line-clamp-2 text-[#0a0a0a]">
             {book.title}
@@ -86,12 +78,10 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
             by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="hover:underline hover:text-[#0a0a0a]">{book.author}</Link>
           </p>
 
-          {/* The AI's explanation */}
           <p className="text-sm leading-relaxed mb-3 line-clamp-2 italic text-[#333] border-l-[3px] border-[#f5e642] pl-2">
             {book.why}
           </p>
 
-          {/* Tags row (Rating, Difficulty, Genre) */}
           <div className="flex flex-wrap gap-2 items-center">
             {rating > 0 && (
               <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#f5e642] text-[#0a0a0a] border-2 border-[#0a0a0a]">
@@ -118,33 +108,43 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
 
 
 export default function RecommendPage() {
+  return (
+    <Suspense fallback={<div className="p-16 text-center font-bold text-[#0a0a0a]">Loading vibe check...</div>}>
+      <RecommendPageContent />
+    </Suspense>
+  );
+}
 
-  const [input, setInput] = useState('');                           // What the user is typing
-  const [loading, setLoading] = useState(false);                    // Is the AI thinking?
-  const [results, setResults] = useState<RecommendedBook[] | null>(null); // The books returned by the API
-  const [noResultMsg, setNoResultMsg] = useState('');               // Message if no books found
-  const [mode, setMode] = useState<SearchMode>('books');            // "Single Books" or "Learning Path"
-  const [searchedQuery, setSearchedQuery] = useState('');           // The actual prompt that was sent to the API
-  const [error, setError] = useState<string | null>(null);          // Stores error messages if the API crashes
+function RecommendPageContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+
+  const [input, setInput] = useState(initialQuery);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<RecommendedBook[] | null>(null);
+  const [noResultMsg, setNoResultMsg] = useState('');
+  const [mode, setMode] = useState<SearchMode>('books');
+  const [searchedQuery, setSearchedQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
-
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  const hasSearched = useRef(false);
 
-  
-  /**
-   * Called when the user presses Enter or clicks the Search button.
-   * Sends the user's prompt to the Next.js API route.
-   */
+  useEffect(() => {
+    if (initialQuery && !hasSearched.current) {
+      hasSearched.current = true;
+      handleSearch(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
+
   const handleSearch = async (optionalSearchQuery?: string) => {
-    // Determine the query to use (either passed in directly, or from the text box)
     const finalQuery = optionalSearchQuery ?? input;
     
-    // Don't search if the box is empty
     if (finalQuery.trim() === '') return;
 
-    // Set loading state and clear out old data
     setLoading(true);
     setError(null);
     setResults(null);
@@ -152,43 +152,34 @@ export default function RecommendPage() {
     setSearchedQuery(finalQuery.trim());
 
     try {
-      // Choose which API endpoint to hit based on the selected mode
       const apiEndpoint = mode === 'path' ? '/api/recommend-path' : '/api/recommend';
       
-      // 1. Make the network request
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: finalQuery }),
       });
       
-      // 2. Parse the JSON response
       const data = await response.json();
       
-      // 3. Check for errors from the server
       if (!response.ok) {
         throw new Error(data.error || 'Failed to search');
       }
       
-      // 4. Handle success
       const booksArray = data.books ?? [];
       setResults(booksArray);
       
-      // If we got an empty array, save the "Why?" message provided by the server
       if (booksArray.length === 0 && data.message) {
         setNoResultMsg(data.message);
       }
       
-      // Tell the browser to smoothly scroll down to the results area
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
       
     } catch (err) {
-      // 5. Handle network crashes
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
-      // 6. Turn off loading state no matter what happens
       setLoading(false);
     }
   };
@@ -311,7 +302,7 @@ export default function RecommendPage() {
             
         {/* Loading Animation */}
         {loading && (
-          <div className="mt-16" ref={resultsRef}>
+          <div className="mt-16 border-[3px] border-[#0a0a0a] rounded-2xl bg-white" style={{ boxShadow: '6px 6px 0 #0a0a0a' }} ref={resultsRef}>
             <AILoadingAnimation />
           </div>
         )}

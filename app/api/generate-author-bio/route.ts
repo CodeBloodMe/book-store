@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { GoogleGenAI } from '@google/genai';
+import { fetchAuthorBioFromWikipedia } from '@/lib/external-books';
 
 async function callAnyAI(prompt: string): Promise<string> {
   const providers = [
@@ -90,8 +91,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: existingAuthor });
     }
 
-    // 2. If not, ask Gemini to generate the bio and style analysis
-    const prompt = `
+    // 2. If not, try Wikipedia first
+    let aiBio = await fetchAuthorBioFromWikipedia(authorName);
+    let aiStyle: string[] = [];
+
+    if (!aiBio) {
+      // 3. Fallback to Gemini to generate the bio and style analysis
+      const prompt = `
 You are an expert literary critic and biographer.
 Generate a fascinating, insightful profile for the author "${authorName}".
 
@@ -100,19 +106,22 @@ Return ONLY a structured JSON object with the following keys:
 - "ai_style": An array of exactly 3 strings describing their unique writing style or hallmarks (e.g., ["Lyrical prose", "Deep character psychology", "Non-linear timelines"]).
 
 Make it engaging and specific. If the author is extremely obscure or unknown, provide a best-effort generic profile noting their known works.
-    `;
+      `;
 
-    const resultText = await callAnyAI(prompt);
-    const aiData = JSON.parse(resultText);
+      const resultText = await callAnyAI(prompt);
+      const aiData = JSON.parse(resultText);
+      aiBio = aiData.ai_bio;
+      aiStyle = aiData.ai_style;
+    }
 
-    // 3. Upsert into database
+    // 4. Upsert into database
     const { data: upsertedAuthor, error: upsertError } = await supabase
       .from('authors')
       .upsert(
         {
           name: authorName, // Use the provided casing
-          ai_bio: aiData.ai_bio,
-          ai_style: aiData.ai_style,
+          ai_bio: aiBio,
+          ai_style: aiStyle,
           ai_last_updated: new Date().toISOString(),
           updated_at: new Date().toISOString()
         },

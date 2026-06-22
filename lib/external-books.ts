@@ -188,3 +188,29 @@ export async function fetchAuthorImage(authorName: string): Promise<string | nul
     return null;
   }
 }
+
+// ── 6. Fetch Author Bio (Wikipedia API) ──
+export async function fetchAuthorBioFromWikipedia(authorName: string): Promise<string | null> {
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(authorName)}&format=json`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const pages = data.query?.pages;
+    if (!pages) return null;
+    
+    const pageId = Object.keys(pages)[0];
+    if (pageId === '-1') return null; // Not found
+    
+    const extract = pages[pageId].extract;
+    // Check if it's a disambiguation page (often starts with "X may refer to:")
+    if (!extract || extract.includes('may refer to:')) {
+      return null;
+    }
+    
+    return extract;
+  } catch (err) {
+    console.warn('Wikipedia bio fetch failed:', err);
+    return null;
+  }
+}

@@ -9,6 +9,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import AILoadingAnimation from '@/components/ui/AILoadingAnimation';
 
 import { 
   Wrench, Telescope, Theater, Sprout, Brain, Sunset,
@@ -286,6 +287,8 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
   );
 }
 
+
+
 // ── Main Wizard ───────────────────────────────────────────────
 
 export default function RecommendWizard() {
@@ -337,6 +340,8 @@ export default function RecommendWizard() {
 
   return (
     <div className="w-full">
+
+      
       {/* ── Wizard Card ── */}
       <div
         className="rounded-3xl p-6 sm:p-8"
@@ -374,7 +379,7 @@ export default function RecommendWizard() {
               02 — Pick your area
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              {currentAreas.map(a => (
+               {currentAreas.map(a => (
                 <Chip
                   key={a.value}
                   selected={area === a.value}
@@ -433,7 +438,7 @@ export default function RecommendWizard() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  AI is finding your perfect books...
+                  Processing...
                 </>
               ) : (
                 <><Sparkles size={20} /> Find My Perfect Books</>
@@ -442,6 +447,13 @@ export default function RecommendWizard() {
           </div>
         )}
       </div>
+
+      {/* ── Loading Animation ── */}
+      {loading && (
+        <div ref={resultsRef} className="mt-8 border-[3px] border-[#0a0a0a] rounded-2xl bg-white" style={{ boxShadow: '6px 6px 0 #0a0a0a' }}>
+          <AILoadingAnimation />
+        </div>
+      )}
 
       {/* ── Error ── */}
       {error && (

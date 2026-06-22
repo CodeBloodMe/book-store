@@ -74,7 +74,7 @@ export default function SeriesPanel({ title, author }: SeriesPanelProps) {
       <div className="relative border-l-2 border-indigo-100 ml-3 space-y-6">
         {data.books.map((bookTitle, index) => {
           const isCurrentBook = bookTitle.toLowerCase() === title.toLowerCase() || 
-                                title.toLowerCase().includes(bookTitle.toLowerCase());
+                                new RegExp(`\\b${bookTitle.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i').test(title);
           
           return (
             <div key={index} className="relative pl-6">
