@@ -26,7 +26,7 @@ export default function FloatingCovers({ books }: { books: FloatingBook[] }) {
     transition: {
       duration: 5 + (index % 3) * 2,
       repeat: Infinity,
-      ease: "easeInOut",
+      ease: "easeInOut" as any,
       delay: index * 0.5,
     }
   });
