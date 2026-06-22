@@ -58,3 +58,8 @@ scripts/clean_ai_reviews.ts
 scripts/update_covers.js
 proxy.ts
 fix_database.sql
+get-book.ts
+project_explanation.txt
+update-*.js
+scripts/*.mjs
+scripts/*.ts

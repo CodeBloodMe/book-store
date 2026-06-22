@@ -46,8 +46,8 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
   return (
     <Link href={`/books/${book.id}`}>
       <div className="group flex gap-4 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 cursor-pointer bg-white border-2 border-[#0a0a0a] shadow-[5px_5px_0_#0a0a0a]">
-        
-        <div 
+
+        <div
           className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-[#0a0a0a] border-2 border-[#0a0a0a]"
           style={{ background: rankBubbleColor }}
         >
@@ -126,7 +126,7 @@ function RecommendPageContent() {
   const [mode, setMode] = useState<SearchMode>('books');
   const [searchedQuery, setSearchedQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
+
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -142,7 +142,7 @@ function RecommendPageContent() {
 
   const handleSearch = async (optionalSearchQuery?: string) => {
     const finalQuery = optionalSearchQuery ?? input;
-    
+
     if (finalQuery.trim() === '') return;
 
     setLoading(true);
@@ -153,30 +153,30 @@ function RecommendPageContent() {
 
     try {
       const apiEndpoint = mode === 'path' ? '/api/recommend-path' : '/api/recommend';
-      
+
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: finalQuery }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to search');
       }
-      
+
       const booksArray = data.books ?? [];
       setResults(booksArray);
-      
+
       if (booksArray.length === 0 && data.message) {
         setNoResultMsg(data.message);
       }
-      
+
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -192,15 +192,15 @@ function RecommendPageContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0]">
-      
+
       {/* Page Header */}
       <div className="py-12 px-4 bg-[#0a0a0a] border-b-[3px] border-[#0a0a0a]">
         <div className="max-w-3xl mx-auto text-center">
           <Link href="/" className="text-xs font-bold uppercase tracking-widest mb-4 inline-block text-[#888]">
             ← Back to ChapterOne
           </Link>
-          <h1 className="font-black leading-tight mb-4 flex items-center justify-center gap-4 text-white" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(40px, 7vw, 72px)', letterSpacing: '0.02em' }}>
-            <span className="text-[#f5e642]">✨</span> Vibe Check
+          <h1 className="font-black leading-tight mb-4 flex items-center justify-center gap-4" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(40px, 7vw, 72px)', letterSpacing: '0.02em', color: '#f5f5f0' }}>
+            <span className="text-[#f5e642]"> </span> Vibe Check
           </h1>
           <p className="text-base max-w-xl mx-auto text-[#aaa]">
             Describe the mood, aesthetic, or specific trope you're craving. Our AI searches real books
@@ -211,7 +211,7 @@ function RecommendPageContent() {
 
       {/* Search Area */}
       <div className="max-w-3xl mx-auto px-4 -mt-6">
-        
+
         {/* Toggle between Single Books and Learning Path */}
         <div className="flex justify-center mb-8">
           <div className="inline-flex rounded-full p-1 bg-[#f5f5f0] border-2 border-[#0a0a0a]">
@@ -237,20 +237,20 @@ function RecommendPageContent() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             // Submit if user presses "Enter" (without holding Shift)
-            onKeyDown={(e) => { 
-              if (e.key === 'Enter' && !e.shiftKey) { 
-                e.preventDefault(); 
-                handleSearch(); 
-              } 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSearch();
+              }
             }}
             placeholder="e.g. A cozy sci-fi about a space cafe, or a book that feels like autumn in New York..."
             rows={3}
             className="w-full resize-none text-base outline-none bg-transparent text-[#0a0a0a] border-none font-inherit leading-relaxed"
           />
-          
+
           <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-dashed border-[#e5e5e5]">
             <span className="text-xs text-[#aaa]">Press Enter or click the button</span>
-            
+
             <button
               onClick={() => handleSearch()}
               disabled={loading || input.trim() === ''}
@@ -285,9 +285,9 @@ function RecommendPageContent() {
               {EXAMPLES.map((exampleText) => (
                 <button
                   key={exampleText}
-                  onClick={() => { 
-                    setInput(exampleText); 
-                    inputRef.current?.focus(); 
+                  onClick={() => {
+                    setInput(exampleText);
+                    inputRef.current?.focus();
                   }}
                   className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-white text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[2px_2px_0_#0a0a0a] cursor-pointer"
                 >
@@ -299,7 +299,7 @@ function RecommendPageContent() {
         )}
 
         {/* Results Area */}
-            
+
         {/* Loading Animation */}
         {loading && (
           <div className="mt-16 border-[3px] border-[#0a0a0a] rounded-2xl bg-white" style={{ boxShadow: '6px 6px 0 #0a0a0a' }} ref={resultsRef}>
@@ -321,7 +321,7 @@ function RecommendPageContent() {
               <h2 className="text-3xl font-black text-[#0a0a0a]">
                 {mode === 'path' ? 'Your Learning Path' : 'Your Matches'}
               </h2>
-              <button 
+              <button
                 onClick={() => { setResults(null); setInput(''); }}
                 className="text-sm font-bold underline"
               >
@@ -337,7 +337,7 @@ function RecommendPageContent() {
                 <p className="text-sm mb-5 text-[#666] max-w-md mx-auto">
                   {noResultMsg || 'We couldn\'t find books matching your exact search in our library.'}
                 </p>
-                
+
                 {/* Fallback topic buttons */}
                 <div className="flex flex-wrap gap-2 justify-center">
                   <span className="text-xs font-bold text-[#888]">Try instead →</span>
@@ -353,7 +353,7 @@ function RecommendPageContent() {
                 </div>
               </div>
             )}
-            
+
             {/* Display Learning Path Format */}
             {showLearningPath && (
               <div className="relative border-l-4 border-[#0a0a0a] ml-4 pl-8 space-y-12">
@@ -361,20 +361,20 @@ function RecommendPageContent() {
                   <div key={book.id} className="relative">
                     {/* The yellow dot connecting to the timeline */}
                     <div className="absolute -left-[46px] top-4 w-6 h-6 rounded-full bg-[#f5e642] border-[3px] border-[#0a0a0a] z-10" />
-                    
+
                     {/* Step label */}
                     <div className="mb-3">
                       <span className="inline-block px-3 py-1 bg-[#0a0a0a] text-white text-[10px] font-black uppercase tracking-widest rounded-full">
                         Step {index + 1}: {book.path_level}
                       </span>
                     </div>
-                    
+
                     <BookResultCard book={book} rank={index + 1} />
                   </div>
                 ))}
               </div>
             )}
-            
+
             {/* Display Standard Grid Format */}
             {showBookGrid && (
               <div className="grid md:grid-cols-2 gap-6">
@@ -383,7 +383,7 @@ function RecommendPageContent() {
                 ))}
               </div>
             )}
-            
+
           </div>
         )}
       </div>

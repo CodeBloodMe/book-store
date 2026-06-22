@@ -202,19 +202,20 @@ export default async function HomePage() {
             Can&apos;t find what you want?
           </p>
 
-          <h2 className="font-black leading-tight mb-4 text-white" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(36px, 5vw, 60px)', letterSpacing: '0.02em' }}>
+          <h2 className="font-black leading-tight mb-4" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(36px, 5vw, 60px)', letterSpacing: '0.02em', color: '#f5f5f0' }}>
             Just Tell Us What You Want
           </h2>
 
-          <p className="text-base mb-8 max-w-lg mx-auto text-[#888]">
+          <p className="text-base mb-8 max-w-lg mx-auto text-[#aaa]">
             Type anything — "a beginner book on investing" or "something like Harry Potter but darker". Our AI understands.
           </p>
 
           <Link
             href="/recommend"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-black text-base transition-all hover:-translate-y-1 bg-[#f5e642] text-[#0a0a0a] border-[3px] border-[#f5e642] shadow-[5px_5px_0_rgba(245,230,66,0.3)]"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-black text-base transition-all hover:-translate-y-1 bg-[#f5e642] border-[3px] border-[#f5e642] shadow-[5px_5px_0_rgba(245,230,66,0.3)]"
+            style={{ color: '#0a0a0a' }}
           >
-            <Sparkles size={18} /> Start AI Book Search
+            <Sparkles size={18} color="#0a0a0a" /> Start AI Book Search
           </Link>
 
         </div>

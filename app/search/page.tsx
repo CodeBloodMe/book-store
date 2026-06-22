@@ -37,7 +37,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         <div className="mb-8">
           <h1 className="font-extrabold mb-4" style={{ fontSize: 'clamp(24px, 3.5vw, 36px)' }}>
             {query ? (
-              <>Results for <span className="gradient-text">&quot;{query}&quot;</span></>
+              <>Results for <span className="inline-block bg-[#f5e642] px-3 py-1 rounded-lg text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a] rotate-1 mx-2">&quot;{query}&quot;</span></>
             ) : (
               'Search Books'
             )}

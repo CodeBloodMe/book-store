@@ -55,6 +55,7 @@ export default function FloatingCovers({ books }: { books: FloatingBook[] }) {
                   className="object-cover"
                   sizes="128px"
                   unoptimized={true}
+                  priority
                 />
               </div>
             </Link>
@@ -81,6 +82,7 @@ export default function FloatingCovers({ books }: { books: FloatingBook[] }) {
                   className="object-cover"
                   sizes="128px"
                   unoptimized={true}
+                  priority
                 />
               </div>
             </Link>
