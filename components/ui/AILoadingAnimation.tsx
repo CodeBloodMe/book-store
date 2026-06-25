@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const messages = [
@@ -23,32 +24,35 @@ export default function AILoadingAnimation() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center p-16 text-center">
+    <div className="flex flex-col items-center justify-center w-full">
       <motion.div
-        animate={{ 
-          scale: [1, 1.1, 1],
-          rotate: [0, 90, 180, 270, 360],
-        }}
-        transition={{ 
-          duration: 3, 
+        animate={{ y: [-10, 5, -10] }}
+        transition={{
+          duration: 2.5,
           repeat: Infinity,
           ease: "easeInOut"
         }}
-        className="w-16 h-16 mb-8 border-4 border-[#0a0a0a] rounded-xl flex items-center justify-center bg-white"
-        style={{ boxShadow: '6px 6px 0 #0a0a0a' }}
+        className="mb-6 drop-shadow-lg"
       >
-        <span className="text-2xl block">✨</span>
+        <Image 
+          src="/logo-loading.png" 
+          alt="Loading books..." 
+          width={80} 
+          height={80} 
+          className="object-contain drop-shadow-xl mix-blend-multiply" 
+          priority
+        />
       </motion.div>
-      
-      <div className="h-8 relative flex items-center justify-center w-full">
+
+      <div className="h-8 relative flex items-center justify-center w-full max-w-md">
         <AnimatePresence mode="wait">
           <motion.p
             key={index}
-            initial={{ y: 20, opacity: 0, filter: 'blur(4px)' }}
-            animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-            exit={{ y: -20, opacity: 0, filter: 'blur(4px)' }}
-            transition={{ duration: 0.4 }}
-            className="absolute font-black text-xl text-[#0a0a0a] tracking-tight"
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -10, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute font-bold text-lg text-[#555] tracking-wide text-center w-full"
           >
             {messages[index]}
           </motion.p>

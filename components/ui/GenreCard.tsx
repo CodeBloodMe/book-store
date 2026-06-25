@@ -33,11 +33,10 @@ export default function GenreCard({ genre }: GenreCardProps) {
     >
       {/* ── Photo Header ── */}
       <div 
-        className="relative flex items-end overflow-hidden"
+        className="relative flex items-end overflow-hidden h-[100px] sm:h-[140px]"
         style={{ 
-          height: '140px', 
           background: accentColor,
-          borderBottom: '5px solid #0a0a0a'
+          borderBottom: '4px solid #0a0a0a'
         }}
       >
         {/* Halftone Pattern Overlay or Custom Image */}
@@ -65,16 +64,11 @@ export default function GenreCard({ genre }: GenreCardProps) {
 
         {/* Status Badge */}
         <div 
-          className="absolute top-3 right-3 z-10"
+          className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 border-[2px] sm:border-[3px] border-[#0a0a0a] text-[8px] sm:text-[9px] font-[800] uppercase tracking-[0.18em]"
           style={{
             background: '#00e060',
-            border: '3px solid #0a0a0a',
-            boxShadow: '3px 3px 0 #0a0a0a',
-            fontSize: '0.55rem',
-            fontWeight: 800,
-            letterSpacing: '0.18em',
-            padding: '3px 8px',
-            textTransform: 'uppercase',
+            boxShadow: '2px 2px 0 #0a0a0a',
+            padding: '3px 6px',
             color: '#0a0a0a'
           }}
         >
@@ -83,44 +77,26 @@ export default function GenreCard({ genre }: GenreCardProps) {
 
         {/* Avatar / Icon */}
         <div 
-          className="relative z-10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:rotate-6"
+          className="relative z-10 flex items-center justify-center flex-shrink-0 transition-transform group-hover:rotate-6 w-12 h-12 sm:w-16 sm:h-16 bg-[#0a0a0a] border-t-[3px] sm:border-t-[5px] border-r-[3px] sm:border-r-[5px] border-[#0a0a0a] ml-3 sm:ml-[20px]"
           style={{
-            width: '64px',
-            height: '64px',
-            background: '#0a0a0a',
-            borderTop: '5px solid #0a0a0a',
-            borderRight: '5px solid #0a0a0a',
-            marginLeft: '20px',
             color: accentColor,
           }}
         >
-          {getGenreIcon(genre.slug, "w-8 h-8")}
+          {getGenreIcon(genre.slug, "w-6 h-6 sm:w-8 sm:h-8")}
         </div>
       </div>
 
       {/* ── Body ── */}
-      <div style={{ padding: '16px 18px 0' }}>
-        <div 
-          style={{
-            fontSize: '0.55rem',
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            color: '#a8a49a',
-            textTransform: 'uppercase',
-            marginBottom: '2px'
-          }}
-        >
+      <div className="px-3 py-3 sm:px-[18px] sm:pt-[16px] sm:pb-0">
+        <div className="text-[9px] sm:text-[10px] font-bold tracking-[0.2em] text-[#a8a49a] uppercase mb-1">
           GENRE
         </div>
         <h3 
-          className="truncate"
+          className="truncate text-xl sm:text-[2.4rem] text-[#0a0a0a] mb-2 sm:mb-[10px]"
           style={{
             fontFamily: 'var(--font-bebas)',
-            fontSize: '2.4rem',
             lineHeight: '0.88',
-            color: '#0a0a0a',
             letterSpacing: '-0.01em',
-            marginBottom: '10px'
           }}
         >
           {genre.name}
@@ -128,56 +104,34 @@ export default function GenreCard({ genre }: GenreCardProps) {
         
         {genre.description ? (
           <p 
-            className="line-clamp-2"
+            className="line-clamp-2 text-[10px] sm:text-xs text-[#0a0a0a] font-medium mb-3 sm:mb-[14px]"
             style={{
-              fontSize: '0.72rem',
-              fontWeight: 500,
-              color: '#0a0a0a',
-              borderLeft: `5px solid ${accentColor}`,
-              paddingLeft: '10px',
-              lineHeight: '1.55',
-              marginBottom: '14px',
-              height: '2.2rem'
+              borderLeft: `4px solid ${accentColor}`,
+              paddingLeft: '8px',
+              lineHeight: '1.4',
+              height: '1.8rem',
             }}
           >
             {genre.description}
           </p>
         ) : (
-          <div style={{ height: '2.2rem', marginBottom: '14px' }} />
+          <div className="mb-3 sm:mb-[14px]" style={{ height: '1.8rem' }} />
         )}
       </div>
 
       {/* ── Stats Grid ── */}
-      <div 
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          borderTop: '3px solid #0a0a0a'
-        }}
-      >
-        <div style={{ padding: '12px 10px', textAlign: 'center' }}>
+      <div className="grid grid-cols-1 border-t-[3px] border-[#0a0a0a]">
+        <div className="py-2 sm:py-3 text-center">
           <span 
+            className="block text-lg sm:text-[1.8rem] text-[#0a0a0a]"
             style={{
               fontFamily: 'var(--font-bebas)',
-              fontSize: '1.8rem',
               lineHeight: '1',
-              color: '#0a0a0a',
-              display: 'block'
             }}
           >
             {genre.is_fiction ? 'FICTION' : 'NON-FICTION'}
           </span>
-          <span 
-            style={{
-              fontSize: '0.48rem',
-              fontWeight: 700,
-              letterSpacing: '0.15em',
-              color: '#a8a49a',
-              textTransform: 'uppercase',
-              display: 'block',
-              marginTop: '2px'
-            }}
-          >
+          <span className="block text-[8px] sm:text-[9px] font-bold tracking-[0.15em] text-[#a8a49a] uppercase mt-1">
             TYPE
           </span>
         </div>
@@ -185,23 +139,13 @@ export default function GenreCard({ genre }: GenreCardProps) {
 
       {/* ── Action Button ── */}
       <button 
-        className="group-hover:bg-[#0a0a0a] group-hover:text-white transition-colors"
+        className="block w-full py-2 sm:py-[13px] border-t-[3px] sm:border-t-[5px] border-[#0a0a0a] group-hover:bg-[#0a0a0a] group-hover:text-white transition-colors text-xs sm:text-[1.1rem] text-[#0a0a0a] cursor-pointer text-center tracking-[0.2em]"
         style={{
-          display: 'block',
-          width: '100%',
-          padding: '13px',
           background: accentColor,
-          color: '#0a0a0a',
-          border: 'none',
-          borderTop: '5px solid #0a0a0a',
           fontFamily: 'var(--font-bebas)',
-          fontSize: '1.1rem',
-          letterSpacing: '0.2em',
-          cursor: 'pointer',
-          textAlign: 'center',
         }}
       >
-        BROWSE COLLECTION
+        BROWSE
       </button>
     </Link>
   );

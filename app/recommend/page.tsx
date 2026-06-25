@@ -21,14 +21,21 @@ interface RecommendedBook {
   path_level?: string;
 }
 
+interface HistoryItem {
+  query: string;
+  books: RecommendedBook[];
+  mode: SearchMode;
+}
+
 type SearchMode = 'books' | 'path';
 
 // Pre-written examples a user can click on to auto-fill the search box
 const EXAMPLES = [
-  "A dark academia thriller set in winter",
+  "Sad story books for my for my friend",
+  "A dark action thriller set in winter ",
   "Cozy fantasy with a warm cup of tea vibe",
   "A rainy Sunday in a Parisian cafe",
-  "Epic world-building but the protagonist is a bit chaotic",
+  "Epic world building but the protagonist is a bit chaotic",
   "Heartbreaking romance that will destroy me emotionally",
   "Books that feel like a Studio Ghibli movie",
 ];
@@ -78,14 +85,14 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
             by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="hover:underline hover:text-[#0a0a0a]">{book.author}</Link>
           </p>
 
-          <p className="text-sm leading-relaxed mb-3 line-clamp-2 italic text-[#333] border-l-[3px] border-[#f5e642] pl-2">
+          <p className="text-sm leading-relaxed mb-3 italic text-[#333] border-l-[3px] border-[#f5e642] pl-2">
             {book.why}
           </p>
 
           <div className="flex flex-wrap gap-2 items-center">
             {rating > 0 && (
               <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#f5e642] text-[#0a0a0a] border-2 border-[#0a0a0a]">
-                ⭐ {rating.toFixed(1)}
+                {rating.toFixed(1)}
               </span>
             )}
             {book.difficulty_level && (
@@ -126,11 +133,26 @@ function RecommendPageContent() {
   const [mode, setMode] = useState<SearchMode>('books');
   const [searchedQuery, setSearchedQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const hasSearched = useRef(false);
+
+  useEffect(() => {
+    // Load search history from local storage
+    const history = localStorage.getItem('vibeCheckHistoryItems');
+    if (history) {
+      try {
+        setSearchHistory(JSON.parse(history));
+      } catch (e) {
+        console.error('Failed to parse search history', e);
+      }
+    } else {
+      localStorage.removeItem('vibeCheckHistory'); // clear old string-only history format
+    }
+  }, []);
 
   useEffect(() => {
     if (initialQuery && !hasSearched.current) {
@@ -145,11 +167,32 @@ function RecommendPageContent() {
 
     if (finalQuery.trim() === '') return;
 
+    const trimmedQuery = finalQuery.trim();
+
+    // Check cache first!
+    const existingHistory = searchHistory.find(item => item.query.toLowerCase() === trimmedQuery.toLowerCase() && (item.mode || 'books') === mode);
+    if (existingHistory) {
+      setSearchedQuery(existingHistory.query);
+      setResults(existingHistory.books);
+      setNoResultMsg('');
+      setError(null);
+      // Move to top of history
+      setSearchHistory(prev => {
+        const newHistory = [
+          existingHistory,
+          ...prev.filter(item => !(item.query.toLowerCase() === trimmedQuery.toLowerCase() && (item.mode || 'books') === mode))
+        ];
+        localStorage.setItem('vibeCheckHistoryItems', JSON.stringify(newHistory));
+        return newHistory;
+      });
+      return; // Stop here, no API call!
+    }
+
     setLoading(true);
     setError(null);
     setResults(null);
     setNoResultMsg('');
-    setSearchedQuery(finalQuery.trim());
+    setSearchedQuery(trimmedQuery);
 
     try {
       const apiEndpoint = mode === 'path' ? '/api/recommend-path' : '/api/recommend';
@@ -167,7 +210,31 @@ function RecommendPageContent() {
       }
 
       const booksArray = data.books ?? [];
+
+      // Preload the cover images in the background so they are ready
+      if (booksArray.length > 0) {
+        booksArray.forEach((book: RecommendedBook) => {
+          if (book.cover_image_url) {
+            const img = new window.Image();
+            img.src = book.cover_image_url;
+          }
+        });
+      }
+
+      // Wait 2.5 seconds to give the covers time to load
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
       setResults(booksArray);
+
+      // Update history with actual books
+      setSearchHistory(prev => {
+        const newHistory = [
+          { query: trimmedQuery, books: booksArray, mode },
+          ...prev.filter(item => !(item.query.toLowerCase() === trimmedQuery.toLowerCase() && (item.mode || 'books') === mode))
+        ].slice(0, 10);
+        localStorage.setItem('vibeCheckHistoryItems', JSON.stringify(newHistory));
+        return newHistory;
+      });
 
       if (booksArray.length === 0 && data.message) {
         setNoResultMsg(data.message);
@@ -194,18 +261,17 @@ function RecommendPageContent() {
     <div className="min-h-screen bg-[#f5f5f0]">
 
       {/* Page Header */}
-      <div className="py-12 px-4 bg-[#0a0a0a] border-b-[3px] border-[#0a0a0a]">
-        <div className="max-w-3xl mx-auto text-center">
-          <Link href="/" className="text-xs font-bold uppercase tracking-widest mb-4 inline-block text-[#888]">
+      <div className="pt-8 pb-6 px-4 bg-transparent">
+        <div className="max-w-3xl mx-auto">
+          <Link
+            href="/"
+            className="text-xs font-bold uppercase tracking-widest mb-4 inline-block text-[#555] hover:text-[#0a0a0a] transition-colors"
+          >
             ← Back to ChapterOne
           </Link>
-          <h1 className="font-black leading-tight mb-4 flex items-center justify-center gap-4" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(40px, 7vw, 72px)', letterSpacing: '0.02em', color: '#f5f5f0' }}>
-            <span className="text-[#f5e642]"> </span> Vibe Check
+          <h1 className="font-black leading-tight text-center text-[#0a0a0a]" style={{ fontFamily: 'var(--font-bebas)', fontSize: 'clamp(40px, 7vw, 72px)', letterSpacing: '0.02em', color: '#0a0a0a' }}>
+            Vibe Check
           </h1>
-          <p className="text-base max-w-xl mx-auto text-[#aaa]">
-            Describe the mood, aesthetic, or specific trope you're craving. Our AI searches real books
-            to match your exact vibe right now.
-          </p>
         </div>
       </div>
 
@@ -216,13 +282,25 @@ function RecommendPageContent() {
         <div className="flex justify-center mb-8">
           <div className="inline-flex rounded-full p-1 bg-[#f5f5f0] border-2 border-[#0a0a0a]">
             <button
-              onClick={() => setMode('books')}
+              onClick={() => {
+                if (mode !== 'books') {
+                  setMode('books');
+                  setResults(null);
+                  setSearchedQuery('');
+                }
+              }}
               className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${mode === 'books' ? 'bg-[#0a0a0a] text-white' : 'text-[#555] hover:text-[#0a0a0a]'}`}
             >
               Single Books
             </button>
             <button
-              onClick={() => setMode('path')}
+              onClick={() => {
+                if (mode !== 'path') {
+                  setMode('path');
+                  setResults(null);
+                  setSearchedQuery('');
+                }
+              }}
               className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${mode === 'path' ? 'bg-[#0a0a0a] text-white' : 'text-[#555] hover:text-[#0a0a0a]'}`}
             >
               Learning Path
@@ -275,9 +353,50 @@ function RecommendPageContent() {
           </div>
         </div>
 
+        {/* Display Recent Searches */}
+        {searchHistory.filter(item => (item.mode || 'books') === mode).length > 0 && !loading && (
+          <div className="mt-6 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#888]">
+                Recent Searches
+              </p>
+              <button
+                onClick={() => {
+                  setSearchHistory(prev => {
+                    const remaining = prev.filter(item => (item.mode || 'books') !== mode);
+                    localStorage.setItem('vibeCheckHistoryItems', JSON.stringify(remaining));
+                    return remaining;
+                  });
+                }}
+                className="text-xs text-[#aaa] hover:text-[#0a0a0a] underline"
+              >
+                Clear History
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.filter(item => (item.mode || 'books') === mode).map((historyItem) => (
+                <button
+                  key={historyItem.query}
+                  onClick={() => {
+                    if (searchedQuery.toLowerCase() === historyItem.query.toLowerCase() && results !== null) {
+                      setResults(null);
+                      setSearchedQuery('');
+                    } else {
+                      handleSearch(historyItem.query);
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-[#f0f0f0] text-[#0a0a0a] border border-[#ccc] cursor-pointer flex items-center gap-1"
+                >
+                  {historyItem.query}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Display the example prompt chips */}
         {showExamplePrompts && (
-          <div className="mt-6">
+          <div className={searchHistory.filter(item => (item.mode || 'books') === mode).length > 0 ? "mt-4 border-t border-[#e5e5e5] pt-4" : "mt-6"}>
             <p className="text-xs font-bold uppercase tracking-widest mb-3 text-[#888]">
               Try one of these →
             </p>
@@ -302,7 +421,7 @@ function RecommendPageContent() {
 
         {/* Loading Animation */}
         {loading && (
-          <div className="mt-16 border-[3px] border-[#0a0a0a] rounded-2xl bg-white" style={{ boxShadow: '6px 6px 0 #0a0a0a' }} ref={resultsRef}>
+          <div className="mt-16 w-full flex justify-center py-12" ref={resultsRef}>
             <AILoadingAnimation />
           </div>
         )}
@@ -310,7 +429,7 @@ function RecommendPageContent() {
         {/* Error Message */}
         {error && (
           <div className="mt-4 p-4 rounded-xl text-sm bg-[#fff0f0] border-2 border-[#ff4444] text-[#cc0000]">
-            ⚠️ {error}
+            Error {error}
           </div>
         )}
 
@@ -332,7 +451,7 @@ function RecommendPageContent() {
             {/* Display Empty State if no books found */}
             {showEmptyResultsMessage && (
               <div className="p-6 rounded-2xl text-center bg-white border-2 border-dashed border-[#ccc]">
-                <div className="text-4xl mb-3">🔍</div>
+                <div className="text-4xl mb-3"></div>
                 <h3 className="font-black text-lg mb-2 text-[#0a0a0a]">No books found for "{searchedQuery}"</h3>
                 <p className="text-sm mb-5 text-[#666] max-w-md mx-auto">
                   {noResultMsg || 'We couldn\'t find books matching your exact search in our library.'}

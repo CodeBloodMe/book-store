@@ -11,7 +11,7 @@ interface SeriesPanelProps {
 interface SeriesData {
   hasSeries: boolean;
   seriesName?: string;
-  books?: string[];
+  books?: { title: string; id: string | null }[] | string[];
 }
 
 export default function SeriesPanel({ title, author }: SeriesPanelProps) {
@@ -62,7 +62,7 @@ export default function SeriesPanel({ title, author }: SeriesPanelProps) {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2 mb-6">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
           <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
           <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
         </svg>
@@ -71,8 +71,11 @@ export default function SeriesPanel({ title, author }: SeriesPanelProps) {
         </h3>
       </div>
       
-      <div className="relative border-l-2 border-indigo-100 ml-3 space-y-6">
-        {data.books.map((bookTitle, index) => {
+      <div className="relative border-l-2 border-gray-100 ml-3 space-y-6">
+        {data.books.map((bookObj, index) => {
+          const bookTitle = typeof bookObj === 'string' ? bookObj : bookObj.title;
+          const bookId = typeof bookObj === 'string' ? null : bookObj.id;
+
           const isCurrentBook = bookTitle.toLowerCase() === title.toLowerCase() || 
                                 new RegExp(`\\b${bookTitle.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i').test(title);
           
@@ -81,7 +84,7 @@ export default function SeriesPanel({ title, author }: SeriesPanelProps) {
               {/* Timeline dot */}
               <div 
                 className={`absolute left-[-9px] top-1 w-4 h-4 rounded-full border-2 border-white ${
-                  isCurrentBook ? 'bg-indigo-600 ring-4 ring-indigo-50' : 'bg-gray-300'
+                  isCurrentBook ? 'bg-gray-600 ring-4 ring-gray-50' : 'bg-gray-300'
                 }`}
               ></div>
               
@@ -90,13 +93,13 @@ export default function SeriesPanel({ title, author }: SeriesPanelProps) {
                   Part {index + 1}
                 </span>
                 {isCurrentBook ? (
-                  <span className="text-indigo-900 font-bold bg-indigo-50 inline-block px-3 py-1 rounded-lg w-fit">
+                  <span className="text-gray-900 font-bold bg-gray-50 inline-block px-3 py-1 rounded-lg w-fit">
                     {bookTitle} (Current)
                   </span>
                 ) : (
                   <Link 
-                    href={`/search?q=${encodeURIComponent(bookTitle + ' ' + author)}`}
-                    className="text-gray-700 font-medium hover:text-indigo-600 hover:underline transition-colors w-fit"
+                    href={bookId ? `/books/${bookId}` : `/search?q=${encodeURIComponent(bookTitle + ' ' + author)}`}
+                    className="text-gray-700 font-medium hover:text-gray-600 hover:underline transition-colors w-fit"
                   >
                     {bookTitle}
                   </Link>

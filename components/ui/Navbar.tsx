@@ -12,6 +12,7 @@ import { getGenreIcon } from './GenreIcon';
 import { BookOpen, Sparkles, User, Bookmark } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import ProfileSidebar from './ProfileSidebar';
+import MobileNavSidebar from './MobileNavSidebar';
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -43,7 +44,7 @@ export default async function Navbar() {
       style={{ borderBottomColor: 'var(--border-default)' }}
     >
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="flex items-center justify-between h-24 gap-4">
+        <div className="flex items-center justify-between h-16 lg:h-24 gap-4">
 
           {/* ── Logo ─────────────────────────────────────────── */}
           <Link
@@ -51,7 +52,7 @@ export default async function Navbar() {
             className="flex items-center flex-shrink-0 z-10"
             aria-label="ChapterOne Home"
           >
-            <div className="h-20 w-20 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:scale-105" style={{ boxShadow: '3px 3px 0 #0a0a0a' }}>
+            <div className="h-12 w-12 lg:h-20 lg:w-20 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:scale-105" style={{ boxShadow: '3px 3px 0 #0a0a0a' }}>
               <img src="/logo.png" alt="ChapterOne Logo" className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
             </div>
             <span className="sr-only">ChapterOne</span>
@@ -101,6 +102,10 @@ export default async function Navbar() {
               </div>
             ))}
 
+            <Link href="/free-books" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+              <BookOpen size={16} />
+              Free Books
+            </Link>
             <Link href="/fiction" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
               <BookOpen size={16} />
               Fiction Finder
@@ -121,7 +126,7 @@ export default async function Navbar() {
 
           {/* ── Search + Mobile + Auth ────────────────────────── */}
           <div className="flex items-center gap-4">
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <SearchBar />
             </div>
 
@@ -133,9 +138,14 @@ export default async function Navbar() {
                 </Link>
               )}
 
-              {/* Universal Sidebar Toggle: Show on mobile always, show on desktop if logged in */}
+              {/* Mobile Hamburger Menu: Show only on mobile */}
+              <div className="flex lg:hidden">
+                <MobileNavSidebar groups={sortedGroups} />
+              </div>
+
+              {/* Profile Sidebar: Show on desktop if logged in, show on mobile always */}
               <div className={`${user ? 'flex' : 'flex lg:hidden'}`}>
-                <ProfileSidebar groups={sortedGroups} isAuthenticated={!!user} />
+                <ProfileSidebar isAuthenticated={!!user} />
               </div>
             </div>
           </div>

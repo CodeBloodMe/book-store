@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
         hostname: '*.supabase.co',
         pathname: '/storage/**',
       },
+      {
+        // Amazon CDN for fast original book covers
+        protocol: 'https',
+        hostname: 'images-na.ssl-images-amazon.com',
+        pathname: '/images/P/**',
+      },
     ],
   },
 };

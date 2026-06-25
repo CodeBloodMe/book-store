@@ -118,7 +118,7 @@ export default async function HomePage() {
             </div>
 
             {/* Grid of Book Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
               {/* We loop through the array of books and render a BookCard for each one */}
               {topRatedBooks.map((book) => (
                 <BookCard key={book.id} book={book} />
@@ -162,7 +162,7 @@ export default async function HomePage() {
               </h3>
 
               {/* Top 5 Genres Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {/* We only show the first 5 genres (index 0 to 5) so the page doesn't get overwhelmingly long */}
                 {groupedGenres[categoryName].slice(0, 5).map((genre) => (
                   <GenreCard key={genre.id} genre={genre} />
@@ -180,7 +180,7 @@ export default async function HomePage() {
                     </summary>
 
                     {/* This div is revealed when the user clicks */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 mt-4">
                       {/* We show the rest of the genres (everything after index 5) */}
                       {groupedGenres[categoryName].slice(5).map((genre) => (
                         <GenreCard key={genre.id} genre={genre} />

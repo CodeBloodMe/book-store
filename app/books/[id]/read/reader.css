@@ -1,0 +1,273 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   ChapterOne Reader — Dedicated Stylesheet
+   Covers: reader chrome overrides, animations, highlight colors, bookmark ribbon,
+   toolbar auto-hide, theme transitions, drawers, and popover.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Reset the react-reader default ugly chrome ─────────────────────────── */
+.reader-shell * {
+  box-sizing: border-box;
+}
+
+/* Hide the default react-reader header */
+.reader-shell [class*="titlebar"],
+.reader-shell [class*="TitleBar"],
+.reader-shell [class*="header"] {
+  display: none !important;
+}
+
+/* ── Theme Transition ────────────────────────────────────────────────────── */
+.reader-shell {
+  transition: background-color 0.4s ease, color 0.3s ease;
+}
+
+/* ── Toolbar Auto-Hide ───────────────────────────────────────────────────── */
+.reader-toolbar {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.reader-toolbar.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
+
+.reader-footer-bar {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.reader-footer-bar.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+/* ── Opening Animation ───────────────────────────────────────────────────── */
+@keyframes readerFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes coverRise {
+  0%   { opacity: 0; transform: scale(0.85) translateY(30px); }
+  60%  { opacity: 1; transform: scale(1.04) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes coverFade {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+@keyframes contentReveal {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.reader-opening-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: readerFadeIn 0.4s ease forwards;
+}
+
+.reader-opening-cover {
+  width: 200px;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  animation: coverRise 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+.reader-opening-cover.fading {
+  animation: coverFade 0.5s ease forwards;
+}
+
+/* ── TOC Drawer ──────────────────────────────────────────────────────────── */
+.toc-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 40;
+  animation: readerFadeIn 0.2s ease;
+}
+
+.toc-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 85vw;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.toc-drawer.open {
+  transform: translateX(0);
+}
+
+.toc-chapter-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 8px;
+  margin: 2px 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.toc-chapter-item.active {
+  font-weight: 600;
+}
+
+/* ── Settings Panel ──────────────────────────────────────────────────────── */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 90vw;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+.settings-panel.open {
+  transform: translateX(0);
+}
+
+/* ── Highlight Popover ───────────────────────────────────────────────────── */
+.highlight-popover {
+  position: fixed;
+  z-index: 60;
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.1);
+  animation: popoverIn 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: scale(0.8) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.highlight-popover button {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.highlight-popover button:hover {
+  transform: scale(1.15);
+  filter: brightness(1.1);
+}
+
+/* ── Highlight Colors ────────────────────────────────────────────────────── */
+.epub-highlight-yellow { background: rgba(255, 220, 0, 0.45); }
+.epub-highlight-green  { background: rgba(52, 211, 153, 0.40); }
+.epub-highlight-blue   { background: rgba(96, 165, 250, 0.40); }
+.epub-highlight-pink   { background: rgba(244, 114, 182, 0.40); }
+
+/* ── Progress Bar ────────────────────────────────────────────────────────── */
+.reader-progress-bar {
+  height: 3px;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Bookmark Ribbon ─────────────────────────────────────────────────────── */
+.bookmark-ribbon {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  width: 18px;
+  height: 30px;
+  background: #1f2937;
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* ── Keyboard Shortcut Hints ─────────────────────────────────────────────── */
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  border: 1px solid currentColor;
+  opacity: 0.5;
+}
+
+/* ── Font Family Classes ─────────────────────────────────────────────────── */
+.reader-font-serif  { font-family: "Playfair Display", Georgia, "Times New Roman", serif; }
+.reader-font-sans   { font-family: "Inter", system-ui, -apple-system, sans-serif; }
+.reader-font-mono   { font-family: "Courier New", Courier, monospace; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .toc-drawer {
+    width: 280px;
+  }
+
+  .settings-panel {
+    width: 100%;
+    max-width: 100%;
+    top: auto;
+    height: 70vh;
+    bottom: 0;
+    right: 0;
+    transform: translateY(100%);
+    border-radius: 20px 20px 0 0;
+  }
+
+  .settings-panel.open {
+    transform: translateY(0);
+  }
+
+  .reader-toolbar {
+    padding-inline: 8px !important;
+    gap: 4px !important;
+  }
+  .reader-toolbar .title-container {
+    display: none !important;
+  }
+  .reader-toolbar .exit-text {
+    display: none !important;
+  }
+  
+  .reader-footer-bar {
+    padding-inline: 12px !important;
+    gap: 8px !important;
+  }
+  .reader-footer-bar .page-info {
+    display: none !important;
+  }
+  .reader-footer-bar .time-info {
+    font-size: 10px !important;
+  }
+}

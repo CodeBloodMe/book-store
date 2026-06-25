@@ -69,8 +69,9 @@ export default async function BookDetailPage({ params }: PageProps) {
   try {
     book = await getBookById(id);
     allGenres = await getAllGenres();
-  } catch {
+  } catch (err) {
     // If the database query crashes (e.g., ID doesn't exist), show a 404 page
+    console.error('[BookDetailPage] Error for id:', id, err);
     notFound();
     return null;
   }
@@ -146,7 +147,7 @@ export default async function BookDetailPage({ params }: PageProps) {
               <BookCover
                 src={coverUrl}
                 alt={`Cover of ${book.title}`}
-                fallbackGradient={`linear-gradient(135deg, ${genre?.color ?? '#6366f1'} 0%, #cbd5e1 100%)`}
+                fallbackGradient={`linear-gradient(135deg, ${genre?.color ?? '#1f2937'} 0%, #cbd5e1 100%)`}
                 fallbackText={book.title}
               />
             </div>
@@ -158,19 +159,19 @@ export default async function BookDetailPage({ params }: PageProps) {
             {/* Tag Pills (Genre, Bestseller, Custom Tags) */}
             <div className="flex gap-2 flex-wrap mb-4">
               {genre && (
-                <Link href={`/genres/${genre.slug}`} className="px-3 py-1 rounded-full text-xs font-bold bg-[#eff6ff] text-indigo-600">
+                <Link href={`/genres/${genre.slug}`} className="px-3 py-1 rounded-full text-xs font-bold bg-[#f3f4f6] text-gray-600">
                   {genre.name}
                 </Link>
               )}
               
               {book.is_bestseller && (
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#eff6ff] text-indigo-600">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#f3f4f6] text-gray-600">
                   Bestseller
                 </span>
               )}
               
               {book.tags?.slice(0, 2).map((tag) => (
-                <Link key={tag} href={`/search?q=${encodeURIComponent(tag)}`} className="px-3 py-1 rounded-full text-xs font-bold bg-[#eff6ff] text-indigo-600">
+                <Link key={tag} href={`/search?q=${encodeURIComponent(tag)}`} className="px-3 py-1 rounded-full text-xs font-bold bg-[#f3f4f6] text-gray-600">
                   {tag}
                 </Link>
               ))}
@@ -178,7 +179,7 @@ export default async function BookDetailPage({ params }: PageProps) {
 
             {/* Title & Author */}
             {book.series_name && (
-              <p className="text-indigo-600 font-bold uppercase tracking-wider text-sm mb-1">
+              <p className="text-gray-600 font-bold uppercase tracking-wider text-sm mb-1">
                 {book.series_name} {book.series_number ? `#${book.series_number}` : ''}
               </p>
             )}
@@ -188,7 +189,7 @@ export default async function BookDetailPage({ params }: PageProps) {
             </h1>
             
             <p className="text-xl md:text-2xl text-gray-500 font-medium tracking-wide">
-              by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-semibold text-gray-700 hover:text-[#0a0a0a] hover:underline transition-colors">{book.author}</Link>
+              by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors">{book.author}</Link>
             </p>
 
             {/* Description Paragraph */}
@@ -220,6 +221,16 @@ export default async function BookDetailPage({ params }: PageProps) {
               <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Get this book</h4>
               
               <div className="flex flex-wrap items-center gap-3">
+                {book.free_reading_url && (
+                  <Link 
+                    href={`/books/${book.id}/read`}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow-md bg-[#1f2937]"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                    Read for Free
+                  </Link>
+                )}
+
                 {/* Amazon Button */}
                 <a 
                   href={amazonLink}

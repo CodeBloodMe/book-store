@@ -1,5 +1,3 @@
-
-
 import { supabase } from './supabase';
 import { unstable_cache } from 'next/cache';
 import type {
@@ -236,14 +234,20 @@ export async function searchBooks(query: string): Promise<Book[]> {
 
   const allBooksToReturn: Book[] = [...localBooks];
   
-  const seenTitles = new Set(localBooks.map(b => b.title.toLowerCase().replace(/[^a-z0-9]/g, '')));
+  const getDedupKey = (title: string, author: string) => {
+    const t = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const a = (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10);
+    return `${t}-${a}`;
+  };
+
+  const seenKeys = new Set(localBooks.map(b => getDedupKey(b.title, b.author || '')));
 
   const addExternalBooks = (externalBooks: Partial<Book>[]) => {
     for (const externalBook of externalBooks) {
-      const normalizedTitle = (externalBook.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const key = getDedupKey(externalBook.title || '', externalBook.author || '');
       
-      if (!seenTitles.has(normalizedTitle) && allBooksToReturn.length < 30) {
-        seenTitles.add(normalizedTitle);
+      if (!seenKeys.has(key) && allBooksToReturn.length < 30) {
+        seenKeys.add(key);
         
         allBooksToReturn.push({
           ...externalBook,
@@ -278,3 +282,14 @@ export const getTopRatedBooks = unstable_cache(
   ['top_rated_books'],
   { revalidate: 3600 }
 );
+
+export async function getFreeBooks(): Promise<Book[]> {
+  const { data, error } = await supabase
+    .from('books')
+    .select('*, genres(id, name, slug, icon, color)')
+    .not('free_reading_url', 'is', null)
+    .order('community_rating', { ascending: false })
+    .limit(40);
+    
+  return handleError(data, error) as Book[];
+}

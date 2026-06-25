@@ -122,55 +122,47 @@ interface OLResult {
 }
 
 /**
- * If the AI recommends a book we don't have, we ask the free OpenLibrary API
+ * If the AI recommends a book we don't have, we ask the free Apple Books API
  * for the cover image and summary description.
  */
-async function fetchFromOpenLibrary(title: string, author: string): Promise<OLResult> {
-  const params = new URLSearchParams({ title, author, limit: '5' });
-  const res = await fetch(`https://openlibrary.org/search.json?${params}`, {
-    signal: AbortSignal.timeout(5000), // Give up if it takes longer than 5 seconds
-  });
+async function fetchFromAppleBooks(title: string, author: string): Promise<OLResult> {
+  const params = new URLSearchParams({ term: `${title} ${author}`, entity: 'ebook', limit: '1' });
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?${params}`, {
+      signal: AbortSignal.timeout(5000), // Give up if it takes longer than 5 seconds
+    });
 
-  if (!res.ok) {
+    if (!res.ok) {
+      return { description: `A book by ${author}.`, cover_url: null, page_count: null, published_year: null, isbn: null };
+    }
+
+    const data = await res.json();
+    const results = data.results || [];
+    
+    if (results.length === 0) {
+      return { description: `A book by ${author}.`, cover_url: null, page_count: null, published_year: null, isbn: null };
+    }
+
+    const doc = results[0];
+    
+    // Apple provides artworkUrl100, we can replace 100x100 with 600x600 for high quality
+    const cover_url = doc.artworkUrl100 ? doc.artworkUrl100.replace('100x100bb', '600x600bb') : null;
+
+    // Strip HTML tags from description if present
+    let description = doc.description || `A book by ${author}.`;
+    description = description.replace(/<[^>]*>?/gm, '');
+
+    return {
+      description: description,
+      cover_url,
+      page_count: doc.trackCount ?? null,
+      published_year: doc.releaseDate ? parseInt(doc.releaseDate.substring(0, 4)) : null,
+      isbn: null, // Apple doesn't cleanly expose ISBN in search
+    };
+  } catch (error) {
+    console.warn(`[AppleBooks] Timeout or error fetching "${title}":`, error);
     return { description: `A book by ${author}.`, cover_url: null, page_count: null, published_year: null, isbn: null };
   }
-
-  const data = await res.json();
-  const docs = data.docs || [];
-  
-  if (docs.length === 0) {
-    return { description: `A book by ${author}.`, cover_url: null, page_count: null, published_year: null, isbn: null };
-  }
-
-  // Try to find a document that actually has a cover image
-  const docWithCover = docs.find((d: any) => d.cover_i);
-  const doc = docWithCover || docs[0];
-
-  // ISBN is usually an array. Grab the first one if it exists.
-  const isbn = doc.isbn && doc.isbn.length > 0 ? doc.isbn[0] : null;
-
-  // Favor ISBN cover if available (much more reliable), fallback to cover_i
-  const cover_url = isbn 
-    ? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`
-    : doc.cover_i 
-      ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg?default=false` 
-      : null;
-
-  // Extract the description (OpenLibrary sometimes puts this in different places)
-  const description =
-    typeof doc.first_sentence === 'string'
-      ? doc.first_sentence
-      : Array.isArray(doc.first_sentence)
-        ? doc.first_sentence[0]
-        : `A book about ${doc.subject?.[0] ?? 'various topics'} by ${author}.`;
-
-  return {
-    description: description || `A book by ${author}.`,
-    cover_url,
-    page_count: doc.number_of_pages_median ?? null,
-    published_year: doc.first_publish_year ?? null,
-    isbn,
-  };
 }
 
 // Main Route Handler
@@ -192,46 +184,56 @@ export async function POST(request: Request) {
       ? query.trim()
       : `I want to: ${goal}. About: ${area}. My level: ${style}.`;
 
-    // ── Step 1: Fetch genre list for AI context ──────────────
-    // We send our database genres to the AI so it can categorize its recommendations properly
+    // ── Step 1: Fetch genre list + curated book titles for AI grounding ──
     const { data: genres } = await supabase.from('genres').select('id, name, slug');
     const genreList = (genres || []).map((g) => `${g.name} (slug: ${g.slug})`).join(', ');
     const genreMap = new Map((genres || []).map((g) => [g.slug, g.id]));
-
-    // Pick a fallback genre if the AI guesses a bad genre
     const fallbackGenreId = genres?.[0]?.id ?? null;
 
+    // Fetch a representative sample of our curated books so the AI prefers recommending them
+    const { data: curatedTitles } = await supabase
+      .from('books')
+      .select('title, author')
+      .order('expert_rating', { ascending: false })
+      .limit(80);
+    const curatedList = (curatedTitles || [])
+      .map((b: { title: string; author: string }) => `"${b.title}" by ${b.author}`)
+      .join(', ');
+
     // ── Step 2: Ask AI to recommend SPECIFIC real books ──────
-    // This is called "Prompt Engineering". We give the AI a very strict format to follow.
-    const aiPrompt = `You are a world-class book recommendation expert, aesthetic curator, and review aggregator with encyclopedic knowledge of every book ever written.
+    const aiPrompt = `You are a world-class book recommendation expert with encyclopedic knowledge of literature.
 
-The user wants a book matching this vibe/request: "${userIntent}"
+The user wants: "${userIntent}"
 
-Available genres in the database: ${genreList}
+Available genres: ${genreList}
 
-Your job: Recommend exactly 6 real, specific books that PERFECTLY match the mood, tone, and atmospheric vibes the user wants. For each book, synthesize critical and community reception.
+Our curated library includes books like: ${curatedList}
 
-Return ONLY a JSON array (no markdown, no explanation, just raw JSON). ALL FIELDS ARE STRICTLY REQUIRED for every book:
+Your job: Recommend exactly 6 real books that PERFECTLY match the mood, tone, and vibes the user wants.
+STRONGLY PREFER books from our curated library list above when they are a good match — the user can navigate directly to those.
+Only suggest books outside the curated list if no curated books fit the request.
+
+Return ONLY a JSON array (no markdown, no explanation, just raw JSON):
 [
   {
     "title": "exact book title",
     "author": "exact author name",
-    "expert_rating": 4.8, // Float out of 5 based on critic consensus
-    "community_rating": 4.5, // Float out of 5 based on Goodreads/Amazon
-    "expert_quote": "A brilliant masterpiece of our time.", // REQUIRED: Short real or highly realistic synthesized quote from a major publication
-    "expert_name": "The New York Times", // REQUIRED: The source of the quote
-    "expert_consensus": "1-2 sentences summarizing what professional critics praised or critiqued.",
-    "community_consensus": "1-2 sentences summarizing everyday reader reactions from Goodreads/Amazon.",
-    "why": "1 sentence explaining directly to the reader why this book matches their exact aesthetic/vibe. Address them directly (e.g. 'This is perfect for you because...'). NEVER use the phrase 'the user' or 'the user's request'.",
+    "expert_rating": 4.8,
+    "community_rating": 4.5,
+    "expert_quote": "Short quote from a major publication.",
+    "expert_name": "The New York Times",
+    "expert_consensus": "1-2 sentences on what critics praised.",
+    "community_consensus": "1-2 sentences on reader reactions.",
+    "why": "1 sentence addressed directly to YOU (the reader) explaining why this matches their request. Never say 'the user'.",
     "genre_guess": "closest genre slug from the available list"
   }
 ]
 
-Critical rules:
-- ONLY recommend REAL books that actually exist. No made-up titles.
-- Be SPECIFIC to what the user asked.
-- The "why" must address the reader directly (using "you"). Do not talk about "the user".
-- genre_guess must be a slug from the available genres list.
+Rules:
+- ONLY recommend REAL books that actually exist.
+- The "why" must use "you" and be specific to their request. Never say "the user".
+- genre_guess must be a valid slug from the genres list.
+- HIGHLY IMPORTANT: Vary your sentence structures and writing style for the 'expert_consensus' and 'community_consensus' fields. Do not use repetitive phrasing like "Readers found the book to be..." or "Critics praised..." for every book. Make them sound organically written by a human.
 - Return EXACTLY 6 books.`;
 
     // Send the prompt to the AI
@@ -248,27 +250,56 @@ Critical rules:
     const selectFields =
       'id, title, author, cover_image_url, expert_rating, community_rating, description, difficulty_level, is_bestseller, genre_id, genres(name, color, icon, slug)';
 
-    const resultBooks = [];
+    const resultBooks: any[] = [];
+    const seenTitles = new Set<string>();
+    const seenBookIds = new Set<string>();
 
     // Loop through the AI's recommendations
     for (const aiBook of aiBooks.slice(0, 8)) {
       try {
-        // A) Check if we already have it in the DB (case-insensitive title match)
-        const { data: existing } = await supabase
+        const lowerTitle = aiBook.title.toLowerCase().trim();
+        if (seenTitles.has(lowerTitle)) {
+          console.log(`[Recommend API] ⚠️ Skipping duplicate AI title: "${aiBook.title}"`);
+          continue;
+        }
+        seenTitles.add(lowerTitle);
+
+        // A) Check if we already have it in the DB — try two passes
+        // Pass 1: Exact title + author match
+        let { data: existing } = await supabase
           .from('books')
           .select(selectFields)
           .ilike('title', aiBook.title)
-          .ilike('author', `%${aiBook.author.split(' ').pop()}%`) // match on last name
+          .ilike('author', `%${aiBook.author.split(' ').pop()}%`)
           .limit(1);
+
+        // Pass 2: Looser title search (handles slight title variations)
+        if (!existing || existing.length === 0) {
+          const titleWords = aiBook.title.split(/\s+/).filter((w: string) => w.length > 3).slice(0, 3).join(' ');
+          if (titleWords) {
+            const { data: fuzzyMatch } = await supabase
+              .from('books')
+              .select(selectFields)
+              .ilike('title', `%${titleWords}%`)
+              .limit(1);
+            existing = fuzzyMatch;
+          }
+        }
 
         if (existing && existing.length > 0) {
           console.log(`[Recommend API] ✅ Found in DB: "${aiBook.title}"`);
           const existingBook = existing[0];
           
+          if (seenBookIds.has(existingBook.id)) {
+            console.log(`[Recommend API] ⚠️ Skipping duplicate book ID: ${existingBook.id}`);
+            continue;
+          }
+          seenBookIds.add(existingBook.id);
+
           // Fix: If the book in our DB is missing a cover, fetch it from OpenLibrary on the fly!
           if (!existingBook.cover_image_url) {
             console.log(`[Recommend API] 🔧 Fixing missing cover for "${aiBook.title}"`);
-            const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
+            const olData = await fetchFromAppleBooks(aiBook.title, aiBook.author);
             if (olData.cover_url) {
               await supabase
                 .from('books')
@@ -293,8 +324,8 @@ Critical rules:
         }
 
         // B) Not in DB — Fetch from OpenLibrary and Insert it so we have it forever!
-        console.log(`[Recommend API] 🔍 Fetching from OpenLibrary: "${aiBook.title}" by ${aiBook.author}`);
-        const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
+        console.log(`[Recommend API] 🔍 Fetching from AppleBooks: "${aiBook.title}" by ${aiBook.author}`);
+        const olData = await fetchFromAppleBooks(aiBook.title, aiBook.author);
 
         // Determine which genre folder to put it in
         const genreId = genreMap.get(aiBook.genre_guess) ?? fallbackGenreId;
@@ -336,6 +367,11 @@ Critical rules:
         }
 
         console.log(`[Recommend API] ✅ Inserted into DB: "${aiBook.title}"`);
+
+        if (seenBookIds.has(inserted.id)) {
+          continue;
+        }
+        seenBookIds.add(inserted.id);
         
         // Merge the newly created DB book with the AI's custom reasons
         resultBooks.push({

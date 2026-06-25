@@ -30,7 +30,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
             <span className="text-xl font-bold text-gray-900">
               {avgRating.toFixed(1)} <span className="text-gray-400 text-sm font-normal">/ 5.0</span>
             </span>
-            <div className="flex text-indigo-500">
+            <div className="flex text-gray-500">
               <RatingStars rating={Math.round(avgRating)} size="sm" />
             </div>
           </div>
@@ -41,7 +41,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
         <div className="mb-8 flex justify-end">
           <button 
             onClick={() => setIsFormOpen(true)}
-            className="bg-indigo-50 text-indigo-700 font-semibold rounded-xl px-5 py-2.5 hover:bg-indigo-100 transition-colors flex items-center gap-2"
+            className="bg-gray-50 text-gray-700 font-semibold rounded-xl px-5 py-2.5 hover:bg-gray-100 transition-colors flex items-center gap-2"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
             Write a Review
@@ -80,7 +80,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
                   name="reviewerName" 
                   required 
                   placeholder="e.g. Alex"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none"
                 />
               </div>
               <div>
@@ -88,7 +88,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
                 <select 
                   name="rating" 
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none bg-white"
                 >
                   <option value="5">5 - Excellent</option>
                   <option value="4">4 - Very Good</option>
@@ -106,7 +106,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
                 required 
                 rows={4}
                 placeholder="What did you think about this book?"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none resize-none"
               ></textarea>
             </div>
 
@@ -123,7 +123,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
               <button 
                 type="submit" 
                 disabled={isPending}
-                className="bg-indigo-600 text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                className="bg-gray-600 text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
                 {isPending ? 'Submitting...' : 'Submit Review'}
               </button>
@@ -143,7 +143,7 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
             <div key={review.id} className="pb-6 border-b border-gray-50 last:border-0 last:pb-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs uppercase">
                     {review.reviewer_name.slice(0, 2)}
                   </div>
                   <span className="font-bold text-gray-900">{review.reviewer_name}</span>

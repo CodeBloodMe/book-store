@@ -8,7 +8,7 @@ interface SimilarBooksProps {
   genreColor?: string;
 }
 
-export default async function SimilarBooks({ genreId, currentBookId, genreColor = '#6366f1' }: SimilarBooksProps) {
+export default async function SimilarBooks({ genreId, currentBookId, genreColor = '#1f2937' }: SimilarBooksProps) {
   const books = await getSimilarBooks(genreId, currentBookId);
 
   if (books.length === 0) {
@@ -45,7 +45,7 @@ export default async function SimilarBooks({ genreId, currentBookId, genreColor 
             </div>
             
             <div className="flex flex-col justify-center">
-              <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2">
+              <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2">
                 {book.title}
               </h4>
               <p className="text-sm text-gray-500">{book.author}</p>

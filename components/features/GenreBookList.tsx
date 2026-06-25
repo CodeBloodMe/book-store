@@ -131,12 +131,17 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
 
         {/* Tag Filter Chips */}
         {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-2 overflow-x-auto pb-2 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <style jsx>{`
+              div::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
             {allTags.map((tag) => (
               <button
                 key={tag}
                 onClick={() => toggleTag(tag)}
-                className="text-xs px-2.5 py-1 rounded-full transition-colors"
+                className="text-xs px-3 py-1.5 rounded-full transition-colors flex-shrink-0 font-medium"
                 style={{
                   background: activeTags.has(tag) ? 'var(--indigo-500)22' : 'var(--bg-surface)',
                   color: activeTags.has(tag) ? 'var(--indigo-400)' : 'var(--text-muted)',
@@ -171,7 +176,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 stagger-children">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 stagger-children">
             {filtered.slice(0, visibleCount).map((book) => (
               <BookCard key={book.id} book={book} />
             ))}

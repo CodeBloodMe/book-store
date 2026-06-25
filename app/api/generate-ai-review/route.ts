@@ -22,6 +22,44 @@ async function fetchOpenLibraryData(query: string): Promise<string> {
   }
 }
 
+// ── Source 2: Wikipedia API ──
+async function fetchWikipediaBookData(title: string, author: string): Promise<string> {
+  try {
+    // Search for the book page. We include "novel" or "book" to help disambiguate, 
+    // but the author's name is usually the best disambiguator.
+    const searchQuery = `${title} ${author} book`;
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchQuery)}&utf8=&format=json&origin=*`;
+    
+    const searchRes = await fetch(searchUrl, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
+    if (!searchRes.ok) return '';
+    const searchData = await searchRes.json();
+    
+    // Get the first search result title
+    const bestMatch = searchData.query?.search?.[0]?.title;
+    if (!bestMatch) return '';
+
+    // Fetch the extract (intro paragraphs) of that specific page
+    const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(bestMatch)}&format=json&origin=*`;
+    const extractRes = await fetch(extractUrl, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
+    if (!extractRes.ok) return '';
+    const extractData = await extractRes.json();
+    
+    const pages = extractData.query?.pages;
+    if (!pages) return '';
+    
+    const pageId = Object.keys(pages)[0];
+    const extract = pages[pageId]?.extract;
+    
+    if (!extract || extract.length < 50) return '';
+    
+    // Limit to ~2000 characters to save tokens, usually the intro is enough
+    return `Wikipedia Summary for "${bestMatch}":\n${extract.substring(0, 2000)}`;
+  } catch (err) {
+    console.warn('Wikipedia fetch failed:', err);
+    return '';
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -46,16 +84,22 @@ export async function POST(request: Request) {
 
     // 2. Scrape Multi-Source Data
     const searchString = `${book.title} ${book.author}`;
-    const openLibraryData = await fetchOpenLibraryData(searchString);
+    const [openLibraryData, wikipediaData] = await Promise.all([
+      fetchOpenLibraryData(searchString),
+      fetchWikipediaBookData(book.title, book.author)
+    ]);
 
     // 3. Call Gemini with Omni-Prompt
     const prompt = `
 You are an expert book critic. Your goal is to generate a definitive, highly specific "Master Review" for the book "${book.title}" by ${book.author}.
 
-Here is the data scraped from the internet:
+Here is the data scraped from the internet to help you:
 
 --- OPEN LIBRARY METADATA ---
 ${openLibraryData || 'No metadata found.'}
+
+--- WIKIPEDIA CONTEXT ---
+${wikipediaData || 'No Wikipedia context found.'}
 
 --- END OF DATA ---
 

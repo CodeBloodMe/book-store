@@ -73,7 +73,8 @@ CREATE TABLE books (
   is_editors_pick   BOOLEAN DEFAULT false,
   is_bestseller     BOOLEAN DEFAULT false,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ DEFAULT NOW()
+  updated_at        TIMESTAMPTZ DEFAULT NOW(),
+  external_id       VARCHAR UNIQUE
 );
 
 -- ── Full-Text Search ──────────────────────────────────────────
@@ -110,26 +111,27 @@ CREATE INDEX idx_genres_category   ON genres(super_category_id);
 
 -- ── Super Categories ──────────────────────────────────────────
 INSERT INTO super_categories (name, slug, icon, color) VALUES
-  ('Learning',        'learning',        '🎓', '#6366f1'),
+  ('Learning',        'learning',        '🎓', '#1f2937'),
   ('Fiction',         'fiction',         '🎭', '#ec4899'),
-  ('Personal Growth', 'personal-growth', '🌱', '#10b981');
+  ('Personal Growth', 'personal-growth', '🌱', '#10b981'),
+  ('Global',          'global',          '🌍', '#94a3b8');
 
 -- ── Genres ────────────────────────────────────────────────────
 -- Learning genres
 INSERT INTO genres (super_category_id, name, slug, icon, description, color, is_learning, sort_order)
 SELECT sc.id, g.name, g.slug, g.icon, g.description, g.color, true, g.sort_order
 FROM super_categories sc, (VALUES
-  ('Data Science',              'data-science',         '📊', 'Learn to analyze, visualize, and draw insights from data. From pandas to statistics.',    '#6366f1', 1),
-  ('Machine Learning & AI',     'machine-learning',     '🤖', 'Understand how machines learn from data. Covers ML algorithms, deep learning, and AI.',   '#8b5cf6', 2),
-  ('Programming',               'programming',          '💻', 'Master the craft of writing clean, efficient code. From first scripts to system design.', '#3b82f6', 3),
-  ('Web Development',           'web-development',      '🌐', 'Build modern websites and apps. HTML, CSS, JavaScript, React, and beyond.',               '#06b6d4', 4),
-  ('Cybersecurity',             'cybersecurity',        '🔐', 'Understand threats, defenses, and ethical hacking. Essential for every developer.',      '#ef4444', 5),
-  ('Cloud & DevOps',            'cloud-devops',         '☁️', 'Deploy, scale, and automate. Docker, Kubernetes, AWS, and CI/CD pipelines.',             '#f59e0b', 6),
-  ('Mathematics',               'mathematics',          '∑',  'Pure and applied math — from calculus to linear algebra and number theory.',             '#a78bfa', 7),
-  ('Physics',                   'physics',              '⚛️', 'From Newtonian mechanics to quantum theory and relativity.',                            '#60a5fa', 8),
-  ('Biology',                   'biology',              '🧬', 'Life sciences from genetics to evolution, ecology, and neurobiology.',                   '#34d399', 9),
-  ('Neuroscience',              'neuroscience',         '🧠', 'Understand the brain, consciousness, and the science of the mind.',                     '#f472b6', 10),
-  ('Economics',                 'economics',            '📈', 'Micro and macroeconomics, behavioral economics, and economic policy.',                   '#fbbf24', 11),
+  ('Data Science',              'data-science',         '', 'Learn to analyze, visualize, and draw insights from data. From pandas to statistics.',    '#1f2937', 1),
+  ('Machine Learning & AI',     'machine-learning',     '', 'Understand how machines learn from data. Covers ML algorithms, deep learning, and AI.',   '#8b5cf6', 2),
+  ('Programming',               'programming',          '', 'Master the craft of writing clean, efficient code. From first scripts to system design.', '#3b82f6', 3),
+  ('Web Development',           'web-development',      '', 'Build modern websites and apps. HTML, CSS, JavaScript, React, and beyond.',               '#06b6d4', 4),
+  ('Cybersecurity',             'cybersecurity',        '', 'Understand threats, defenses, and ethical hacking. Essential for every developer.',      '#ef4444', 5),
+  ('Cloud & DevOps',            'cloud-devops',         '', 'Deploy, scale, and automate. Docker, Kubernetes, AWS, and CI/CD pipelines.',             '#f59e0b', 6),
+  ('Mathematics',               'mathematics',          '',  'Pure and applied math — from calculus to linear algebra and number theory.',             '#a78bfa', 7),
+  ('Physics',                   'physics',              '', 'From Newtonian mechanics to quantum theory and relativity.',                            '#60a5fa', 8),
+  ('Biology',                   'biology',              '', 'Life sciences from genetics to evolution, ecology, and neurobiology.',                   '#34d399', 9),
+  ('Neuroscience',              'neuroscience',         '', 'Understand the brain, consciousness, and the science of the mind.',                     '#f472b6', 10),
+  ('Economics',                 'economics',            '', 'Micro and macroeconomics, behavioral economics, and economic policy.',                   '#fbbf24', 11),
   ('Finance & Investing',       'finance',              '💰', 'Personal finance, investing, stock markets, and wealth building.',                       '#10b981', 12),
   ('Business & Entrepreneurship','business',            '🚀', 'Build startups, manage companies, and understand business strategy.',                    '#f97316', 13),
   ('Marketing',                 'marketing',            '📣', 'Brand building, digital marketing, copywriting, and consumer psychology.',               '#fb7185', 14),
@@ -145,15 +147,15 @@ WHERE sc.slug = 'learning';
 INSERT INTO genres (super_category_id, name, slug, icon, description, color, is_fiction, sort_order)
 SELECT sc.id, g.name, g.slug, g.icon, g.description, g.color, true, g.sort_order
 FROM super_categories sc, (VALUES
-  ('Science Fiction',   'science-fiction',   '🚀', 'Explore futures, space, technology, and what it means to be human.',              '#6366f1', 20),
-  ('Fantasy',           'fantasy',           '⚔️', 'Magic, epic worlds, mythical creatures, and legendary quests.',                  '#8b5cf6', 21),
-  ('Mystery & Thriller','mystery-thriller',  '🔍', 'Suspense, puzzles, and twists that keep you guessing until the last page.',       '#ef4444', 22),
-  ('Literary Fiction',  'literary-fiction',  '📝', 'Character-driven stories that illuminate the human condition.',                   '#94a3b8', 23),
-  ('Romance',           'romance',           '💕', 'Love stories from sweet to steamy, contemporary to historical.',                  '#f472b6', 24),
-  ('Horror',            'horror',            '👻', 'Fear, dread, and the supernatural — not for the faint of heart.',                '#dc2626', 25),
-  ('Comedy & Humor',    'comedy-humor',      '😂', 'Books that make you laugh out loud, from absurdist to satirical.',               '#fbbf24', 26),
-  ('Historical Fiction','historical-fiction','🏰', 'Vivid stories set in the past that bring history to life.',                     '#d97706', 27),
-  ('Graphic Novels',    'graphic-novels',    '🎨', 'Visual storytelling at its finest — comics and illustrated narratives.',         '#ec4899', 28)
+  ('Science Fiction',   'science-fiction',   '', 'Explore futures, space, technology, and what it means to be human.',              '#1f2937', 20),
+  ('Fantasy',           'fantasy',           '', 'Magic, epic worlds, mythical creatures, and legendary quests.',                  '#8b5cf6', 21),
+  ('Mystery & Thriller','mystery-thriller',  '', 'Suspense, puzzles, and twists that keep you guessing until the last page.',       '#ef4444', 22),
+  ('Literary Fiction',  'literary-fiction',  '', 'Character-driven stories that illuminate the human condition.',                   '#94a3b8', 23),
+  ('Romance',           'romance',           '', 'Love stories from sweet to steamy, contemporary to historical.',                  '#f472b6', 24),
+  ('Horror',            'horror',            '', 'Fear, dread, and the supernatural — not for the faint of heart.',                '#dc2626', 25),
+  ('Comedy & Humor',    'comedy-humor',      '', 'Books that make you laugh out loud, from absurdist to satirical.',               '#fbbf24', 26),
+  ('Historical Fiction','historical-fiction','', 'Vivid stories set in the past that bring history to life.',                     '#d97706', 27),
+  ('Graphic Novels',    'graphic-novels',    '', 'Visual storytelling at its finest — comics and illustrated narratives.',         '#ec4899', 28)
 ) AS g(name, slug, icon, description, color, sort_order)
 WHERE sc.slug = 'fiction';
 
@@ -161,13 +163,21 @@ WHERE sc.slug = 'fiction';
 INSERT INTO genres (super_category_id, name, slug, icon, description, color, is_learning, sort_order)
 SELECT sc.id, g.name, g.slug, g.icon, g.description, g.color, true, g.sort_order
 FROM super_categories sc, (VALUES
-  ('Self-Help',                  'self-help',    '✨', 'Practical frameworks to improve confidence, relationships, and life outcomes.',  '#22d3ee', 29),
-  ('Mental Health',              'mental-health','💚', 'Understand and care for your psychological wellbeing and emotional resilience.', '#10b981', 30),
-  ('Spirituality & Mindfulness', 'spirituality', '🌿', 'Inner peace, meditation, mindfulness, and spiritual growth.',                  '#a78bfa', 31),
-  ('Health & Fitness',           'health-fitness','💪', 'Nutrition, exercise science, and evidence-based health optimization.',         '#34d399', 32),
-  ('Relationships',              'relationships', '🤝', 'Communication, emotional intelligence, and building meaningful connections.',  '#fb7185', 33)
+  ('Self-Help',                  'self-help',    '', 'Practical frameworks to improve confidence, relationships, and life outcomes.',  '#22d3ee', 29),
+  ('Mental Health',              'mental-health','', 'Understand and care for your psychological wellbeing and emotional resilience.', '#10b981', 30),
+  ('Spirituality & Mindfulness', 'spirituality', '', 'Inner peace, meditation, mindfulness, and spiritual growth.',                  '#a78bfa', 31),
+  ('Health & Fitness',           'health-fitness','', 'Nutrition, exercise science, and evidence-based health optimization.',         '#34d399', 32),
+  ('Relationships',              'relationships', '', 'Communication, emotional intelligence, and building meaningful connections.',  '#fb7185', 33)
 ) AS g(name, slug, icon, description, color, sort_order)
 WHERE sc.slug = 'personal-growth';
+
+-- Global Catalog genre
+INSERT INTO genres (super_category_id, name, slug, icon, description, color, is_learning, sort_order)
+SELECT sc.id, g.name, g.slug, g.icon, g.description, g.color, false, g.sort_order
+FROM super_categories sc, (VALUES
+  ('Global Catalog', 'global-catalog', '🌍', 'A massive, dynamically fetched catalog containing almost every book available online.', '#94a3b8', 99)
+) AS g(name, slug, icon, description, color, sort_order)
+WHERE sc.slug = 'global';
 
 -- ══════════════════════════════════════════════════════════════
 -- BOOKS SEED DATA

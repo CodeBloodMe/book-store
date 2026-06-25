@@ -27,11 +27,11 @@
   --text-inverse:   #ffffff;
 
   /* ── Brand Colors ────────────────────────────────────────── */
-  --indigo-300: #a5b4fc;
-  --indigo-400: #818cf8;
-  --indigo-500: #6366f1;
-  --indigo-600: #4f46e5;
-  --indigo-700: #4338ca;
+  --indigo-300: #d1d5db; /* gray-300 */
+  --indigo-400: #9ca3af; /* gray-400 */
+  --indigo-500: #4b5563; /* gray-600 */
+  --indigo-600: #1f2937; /* gray-800 */
+  --indigo-700: #111827; /* gray-900 */
 
   --gold-300: #fde68a;
   --gold-400: #fbbf24;
@@ -64,8 +64,8 @@
   --color-text-primary:   #111827;
   --color-text-secondary: #4b5563;
   --color-text-muted:     #6b7280;
-  --color-indigo:         #6366f1;
-  --color-indigo-light:   #818cf8;
+  --color-indigo:         #1f2937;
+  --color-indigo-light:   #4b5563;
   --color-gold:           #f59e0b;
   --color-gold-light:     #fbbf24;
   --color-white:          #ffffff;
@@ -107,11 +107,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 a {
-  color: var(--indigo-400);
   text-decoration: none;
   transition: color 0.15s ease;
 }
-a:hover { color: var(--indigo-300); }
 
 /* ── Glass Card ──────────────────────────────────────────── */
 .glass-card {
@@ -368,5 +366,11 @@ a:hover { color: var(--indigo-300); }
     background: #e5e7eb;
     z-index: -1;
   }
+}
+
+/* ── Search Progress Bar ─────────────────────────────────── */
+@keyframes search-progress {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(350%); }
 }
 

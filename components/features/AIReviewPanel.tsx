@@ -63,7 +63,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
             <span className="text-xl font-bold text-gray-900">
               {aiData.rating?.toFixed(1)} <span className="text-gray-400 text-sm font-normal">/ 5.0</span>
             </span>
-            <div className="flex text-indigo-500">
+            <div className="flex text-gray-500">
               <RatingStars rating={aiData.rating ?? 0} size="sm" />
             </div>
           </div>
@@ -77,7 +77,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
           </p>
           <button 
             onClick={generateReview} 
-            className="bg-indigo-600 text-white font-semibold rounded-xl px-6 py-3 hover:bg-indigo-700 transition-colors"
+            className="bg-gray-600 text-white font-semibold rounded-xl px-6 py-3 hover:bg-gray-700 transition-colors"
           >
             Generate AI Consensus
           </button>
@@ -87,7 +87,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
 
       {loading && (
         <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-          <div className="w-10 h-10 border-4 border-gray-100 border-t-indigo-600 rounded-full animate-spin mb-6" />
+          <div className="w-10 h-10 border-4 border-gray-100 border-t-gray-600 rounded-full animate-spin mb-6" />
           <p className="font-semibold text-gray-900 animate-pulse">
             Analyzing reader consensus...
           </p>
@@ -140,7 +140,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
               <ul className="flex flex-col gap-3">
                 {aiData.pros?.map((pro, i) => (
                   <li key={i} className="text-sm text-gray-600 flex gap-3 items-start">
-                    <span className="mt-0.5 flex-shrink-0 text-indigo-600">
+                    <span className="mt-0.5 flex-shrink-0 text-gray-600">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </span>
                     <span className="leading-snug">{pro}</span>
@@ -169,7 +169,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
           
           <button 
             onClick={generateReview} 
-            className="text-xs text-center mt-8 text-gray-400 hover:text-indigo-600 transition-colors"
+            className="text-xs text-center mt-8 text-gray-400 hover:text-gray-600 transition-colors"
           >
             Refresh Analysis
           </button>

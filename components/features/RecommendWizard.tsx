@@ -11,7 +11,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AILoadingAnimation from '@/components/ui/AILoadingAnimation';
 
-import { 
+import {
   Wrench, Telescope, Theater, Sprout, Brain, Sunset,
   Terminal, BarChart, Globe, Bot, Lock, BadgeDollarSign,
   Megaphone, Users, Atom, Dna, BrainCircuit, Scroll,
@@ -23,83 +23,83 @@ import {
 // ── Data ─────────────────────────────────────────────────────
 
 const GOALS = [
-  { value: 'Learn a skill',      icon: <Wrench size={18} />,  label: 'Learn a Skill' },
-  { value: 'Explore a topic',    icon: <Telescope size={18} />,  label: 'Explore a Topic' },
-  { value: 'Be entertained',     icon: <Theater size={18} />,  label: 'Be Entertained' },
-  { value: 'Grow as a person',   icon: <Sprout size={18} />,  label: 'Personal Growth' },
-  { value: 'Be challenged',      icon: <Brain size={18} />,  label: 'Be Challenged' },
-  { value: 'Relax and escape',   icon: <Sunset size={18} />,  label: 'Relax & Escape' },
+  { value: 'Learn a skill', icon: <Wrench size={18} />, label: 'Learn a Skill' },
+  { value: 'Explore a topic', icon: <Telescope size={18} />, label: 'Explore a Topic' },
+  { value: 'Be entertained', icon: <Theater size={18} />, label: 'Be Entertained' },
+  { value: 'Grow as a person', icon: <Sprout size={18} />, label: 'Personal Growth' },
+  { value: 'Be challenged', icon: <Brain size={18} />, label: 'Be Challenged' },
+  { value: 'Relax and escape', icon: <Sunset size={18} />, label: 'Relax & Escape' },
 ];
 
 const AREAS: Record<string, { value: string; icon: React.ReactNode; label: string }[]> = {
   'Learn a skill': [
-    { value: 'Programming',          icon: <Terminal size={18}/>, label: 'Programming' },
-    { value: 'Data Science',         icon: <BarChart size={18}/>, label: 'Data Science' },
-    { value: 'Web Development',      icon: <Globe size={18}/>, label: 'Web Dev' },
-    { value: 'Machine Learning & AI',icon: <Bot size={18}/>, label: 'AI & ML' },
-    { value: 'Cybersecurity',        icon: <Lock size={18}/>, label: 'Cybersecurity' },
-    { value: 'Finance & Investing',  icon: <BadgeDollarSign size={18}/>, label: 'Finance' },
-    { value: 'Marketing',            icon: <Megaphone size={18}/>, label: 'Marketing' },
-    { value: 'Leadership & Management',icon:<Users size={18}/>, label: 'Leadership' },
+    { value: 'Programming', icon: <Terminal size={18} />, label: 'Programming' },
+    { value: 'Data Science', icon: <BarChart size={18} />, label: 'Data Science' },
+    { value: 'Web Development', icon: <Globe size={18} />, label: 'Web Dev' },
+    { value: 'Machine Learning & AI', icon: <Bot size={18} />, label: 'AI & ML' },
+    { value: 'Cybersecurity', icon: <Lock size={18} />, label: 'Cybersecurity' },
+    { value: 'Finance & Investing', icon: <BadgeDollarSign size={18} />, label: 'Finance' },
+    { value: 'Marketing', icon: <Megaphone size={18} />, label: 'Marketing' },
+    { value: 'Leadership & Management', icon: <Users size={18} />, label: 'Leadership' },
   ],
   'Explore a topic': [
-    { value: 'Physics',        icon: <Atom size={18}/>,  label: 'Physics' },
-    { value: 'Biology',        icon: <Dna size={18}/>,  label: 'Biology' },
-    { value: 'Neuroscience',   icon: <BrainCircuit size={18}/>,  label: 'Neuroscience' },
-    { value: 'History',        icon: <Scroll size={18}/>,  label: 'History' },
-    { value: 'Philosophy',     icon: <Landmark size={18}/>,  label: 'Philosophy' },
-    { value: 'Economics',      icon: <TrendingUp size={18}/>,  label: 'Economics' },
-    { value: 'Mathematics',    icon: <Sigma size={18}/>,   label: 'Mathematics' },
-    { value: 'Psychology',     icon: <Microscope size={18}/>,  label: 'Psychology' },
+    { value: 'Physics', icon: <Atom size={18} />, label: 'Physics' },
+    { value: 'Biology', icon: <Dna size={18} />, label: 'Biology' },
+    { value: 'Neuroscience', icon: <BrainCircuit size={18} />, label: 'Neuroscience' },
+    { value: 'History', icon: <Scroll size={18} />, label: 'History' },
+    { value: 'Philosophy', icon: <Landmark size={18} />, label: 'Philosophy' },
+    { value: 'Economics', icon: <TrendingUp size={18} />, label: 'Economics' },
+    { value: 'Mathematics', icon: <Sigma size={18} />, label: 'Mathematics' },
+    { value: 'Psychology', icon: <Microscope size={18} />, label: 'Psychology' },
   ],
   'Be entertained': [
-    { value: 'Science Fiction',    icon: <Rocket size={18}/>, label: 'Sci-Fi' },
-    { value: 'Fantasy',            icon: <Wand size={18}/>, label: 'Fantasy' },
-    { value: 'Mystery & Thriller', icon: <Search size={18}/>, label: 'Mystery' },
-    { value: 'Romance',            icon: <Heart size={18}/>, label: 'Romance' },
-    { value: 'Horror',             icon: <Ghost size={18}/>, label: 'Horror' },
-    { value: 'Historical Fiction', icon: <Castle size={18}/>, label: 'Historical' },
-    { value: 'Literary Fiction',   icon: <BookOpen size={18}/>, label: 'Literary' },
-    { value: 'Graphic Novels',     icon: <Palette size={18}/>, label: 'Graphic Novels' },
+    { value: 'Science Fiction', icon: <Rocket size={18} />, label: 'Sci-Fi' },
+    { value: 'Fantasy', icon: <Wand size={18} />, label: 'Fantasy' },
+    { value: 'Mystery & Thriller', icon: <Search size={18} />, label: 'Mystery' },
+    { value: 'Romance', icon: <Heart size={18} />, label: 'Romance' },
+    { value: 'Horror', icon: <Ghost size={18} />, label: 'Horror' },
+    { value: 'Historical Fiction', icon: <Castle size={18} />, label: 'Historical' },
+    { value: 'Literary Fiction', icon: <BookOpen size={18} />, label: 'Literary' },
+    { value: 'Graphic Novels', icon: <Palette size={18} />, label: 'Graphic Novels' },
   ],
   'Grow as a person': [
-    { value: 'Self-Help',                icon: <Sparkles size={18}/>, label: 'Self-Help' },
-    { value: 'Productivity & Habits',    icon: <Clock size={18}/>, label: 'Productivity' },
-    { value: 'Spirituality & Mindfulness',icon:<Smile size={18}/>,label: 'Mindfulness' },
-    { value: 'Mental Health',           icon: <Heart size={18}/>, label: 'Mental Health' },
-    { value: 'Relationships',           icon: <Users size={18}/>, label: 'Relationships' },
-    { value: 'Health & Fitness',        icon: <Sprout size={18}/>, label: 'Health' },
-    { value: 'Philosophy',             icon: <Landmark size={18}/>, label: 'Philosophy' },
-    { value: 'Psychology',             icon: <Microscope size={18}/>, label: 'Psychology' },
+    { value: 'Self-Help', icon: <Sparkles size={18} />, label: 'Self-Help' },
+    { value: 'Productivity & Habits', icon: <Clock size={18} />, label: 'Productivity' },
+    { value: 'Spirituality & Mindfulness', icon: <Smile size={18} />, label: 'Mindfulness' },
+    { value: 'Mental Health', icon: <Heart size={18} />, label: 'Mental Health' },
+    { value: 'Relationships', icon: <Users size={18} />, label: 'Relationships' },
+    { value: 'Health & Fitness', icon: <Sprout size={18} />, label: 'Health' },
+    { value: 'Philosophy', icon: <Landmark size={18} />, label: 'Philosophy' },
+    { value: 'Psychology', icon: <Microscope size={18} />, label: 'Psychology' },
   ],
   'Be challenged': [
-    { value: 'Mathematics',    icon: <Sigma size={18}/>,   label: 'Mathematics' },
-    { value: 'Physics',        icon: <Atom size={18}/>,  label: 'Physics' },
-    { value: 'Philosophy',     icon: <Landmark size={18}/>,  label: 'Philosophy' },
-    { value: 'Economics',      icon: <TrendingUp size={18}/>,  label: 'Economics' },
-    { value: 'Neuroscience',   icon: <BrainCircuit size={18}/>,  label: 'Neuroscience' },
-    { value: 'Literary Fiction',icon:<BookOpen size={18}/>,  label: 'Literary Fiction' },
-    { value: 'Machine Learning & AI',icon:<Bot size={18}/>,label:'AI & ML' },
-    { value: 'Cloud & DevOps', icon: <Cloud size={18}/>, label: 'Cloud & DevOps' },
+    { value: 'Mathematics', icon: <Sigma size={18} />, label: 'Mathematics' },
+    { value: 'Physics', icon: <Atom size={18} />, label: 'Physics' },
+    { value: 'Philosophy', icon: <Landmark size={18} />, label: 'Philosophy' },
+    { value: 'Economics', icon: <TrendingUp size={18} />, label: 'Economics' },
+    { value: 'Neuroscience', icon: <BrainCircuit size={18} />, label: 'Neuroscience' },
+    { value: 'Literary Fiction', icon: <BookOpen size={18} />, label: 'Literary Fiction' },
+    { value: 'Machine Learning & AI', icon: <Bot size={18} />, label: 'AI & ML' },
+    { value: 'Cloud & DevOps', icon: <Cloud size={18} />, label: 'Cloud & DevOps' },
   ],
   'Relax and escape': [
-    { value: 'Fantasy',            icon: <Wand size={18}/>, label: 'Fantasy' },
-    { value: 'Romance',            icon: <Heart size={18}/>, label: 'Romance' },
-    { value: 'Comedy & Humor',     icon: <Smile size={18}/>, label: 'Humor' },
-    { value: 'Historical Fiction', icon: <Castle size={18}/>, label: 'Historical' },
-    { value: 'Science Fiction',    icon: <Rocket size={18}/>, label: 'Sci-Fi' },
-    { value: 'Mystery & Thriller', icon: <Search size={18}/>, label: 'Mystery' },
-    { value: 'Graphic Novels',     icon: <Palette size={18}/>, label: 'Graphic Novels' },
-    { value: 'Spirituality & Mindfulness',icon:<Sparkles size={18}/>,label:'Mindfulness' },
+    { value: 'Fantasy', icon: <Wand size={18} />, label: 'Fantasy' },
+    { value: 'Romance', icon: <Heart size={18} />, label: 'Romance' },
+    { value: 'Comedy & Humor', icon: <Smile size={18} />, label: 'Humor' },
+    { value: 'Historical Fiction', icon: <Castle size={18} />, label: 'Historical' },
+    { value: 'Science Fiction', icon: <Rocket size={18} />, label: 'Sci-Fi' },
+    { value: 'Mystery & Thriller', icon: <Search size={18} />, label: 'Mystery' },
+    { value: 'Graphic Novels', icon: <Palette size={18} />, label: 'Graphic Novels' },
+    { value: 'Spirituality & Mindfulness', icon: <Sparkles size={18} />, label: 'Mindfulness' },
   ],
 };
 
 const STYLES = [
-  { value: 'Beginner',        icon: <Sprout size={18}/>, label: 'Complete Beginner',   sub: 'No prior knowledge needed' },
-  { value: 'Intermediate',    icon: <BookOpen size={18}/>, label: 'Some Background',     sub: 'I know the basics' },
-  { value: 'Advanced',        icon: <Rocket size={18}/>, label: 'Deep Dive',           sub: 'I want expert-level content' },
-  { value: 'Highly rated only',icon:<Star size={18}/>, label: 'Highest Rated Only',  sub: 'Only the absolute best' },
-  { value: 'Quick Read',      icon: <Zap size={18}/>, label: 'Quick Read',          sub: 'Under 250 pages' },
+  { value: 'Beginner', icon: <Sprout size={18} />, label: 'Complete Beginner', sub: 'No prior knowledge needed' },
+  { value: 'Intermediate', icon: <BookOpen size={18} />, label: 'Some Background', sub: 'I know the basics' },
+  { value: 'Advanced', icon: <Rocket size={18} />, label: 'Deep Dive', sub: 'I want expert-level content' },
+  { value: 'Highly rated only', icon: <Star size={18} />, label: 'Highest Rated Only', sub: 'Only the absolute best' },
+  { value: 'Quick Read', icon: <Zap size={18} />, label: 'Quick Read', sub: 'Under 250 pages' },
 ];
 
 // ── Types ─────────────────────────────────────────────────────
@@ -240,7 +240,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {book.difficulty_level && (
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#f5f5f0', color: '#666' }}>
@@ -260,13 +260,13 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
       <div className="p-4 bg-gray-50 flex flex-col gap-3">
         {book.why && (
           <p className="text-sm leading-relaxed" style={{ color: '#333' }}>
-            <strong className="text-indigo-600">Why it&apos;s perfect:</strong> {book.why}
+            <strong className="text-gray-600">Why it&apos;s perfect:</strong> {book.why}
           </p>
         )}
-        
+
         {book.expert_quote && (
           <div className="bg-white p-3 rounded-xl border border-gray-200 text-sm italic text-gray-700 shadow-sm relative">
-            &quot;{book.expert_quote}&quot; 
+            &quot;{book.expert_quote}&quot;
             {book.expert_name && <span className="block mt-1 text-xs font-semibold text-gray-500 not-italic">— {book.expert_name}</span>}
           </div>
         )}
@@ -276,7 +276,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
             <span className="font-bold text-gray-900">Expert Consensus:</span> {book.expert_consensus}
           </p>
         )}
-        
+
         {book.community_consensus && (
           <p className="text-xs leading-relaxed" style={{ color: '#555' }}>
             <span className="font-bold text-gray-900">Reader Consensus:</span> {book.community_consensus}
@@ -292,12 +292,13 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
 // ── Main Wizard ───────────────────────────────────────────────
 
 export default function RecommendWizard() {
-  const [goal, setGoal]   = useState<string | null>(null);
-  const [area, setArea]   = useState<string | null>(null);
+  const [goal, setGoal] = useState<string | null>(null);
+
+  const [area, setArea] = useState<string | null>(null);
   const [style, setStyle] = useState<string | null>(null);
-  const [loading, setLoading]   = useState(false);
-  const [results, setResults]   = useState<RecommendedBook[] | null>(null);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<RecommendedBook[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   const currentAreas = goal ? (AREAS[goal] ?? []) : [];
@@ -341,7 +342,7 @@ export default function RecommendWizard() {
   return (
     <div className="w-full">
 
-      
+
       {/* ── Wizard Card ── */}
       <div
         className="rounded-3xl p-6 sm:p-8"
@@ -379,7 +380,7 @@ export default function RecommendWizard() {
               02 — Pick your area
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-               {currentAreas.map(a => (
+              {currentAreas.map(a => (
                 <Chip
                   key={a.value}
                   selected={area === a.value}
@@ -455,13 +456,25 @@ export default function RecommendWizard() {
         </div>
       )}
 
-      {/* ── Error ── */}
+      {/* ── Friendly Fallback / Busy State ── */}
       {error && (
         <div
-          className="mt-4 p-4 rounded-xl text-sm"
-          style={{ background: '#fff0f0', border: '2px solid #ff4444', color: '#cc0000' }}
+          className="mt-8 p-6 rounded-2xl text-center transition-all animate-in fade-in zoom-in duration-300"
+          style={{ background: '#f5f5f0', border: '2px solid #0a0a0a', boxShadow: '4px 4px 0 #0a0a0a', color: '#0a0a0a' }}
         >
-          Error: {error}
+          <div className="flex justify-center mb-3 text-4xl"></div>
+          <p className="font-black text-xl mb-2" style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '0.02em' }}>
+            Our AI Librarians Are Currently Overwhelmed!
+          </p>
+          <p className="text-sm font-medium opacity-80 mb-4 max-w-md mx-auto">
+            Too many readers are asking for recommendations right now. Please wait a moment and try again, or explore our collections below!
+          </p>
+          <button
+            onClick={() => setError(null)}
+            className="px-6 py-2 rounded-xl text-sm font-bold bg-[#0a0a0a] text-white hover:bg-gray-800 transition-colors"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -492,7 +505,7 @@ export default function RecommendWizard() {
               <Link href="/recommend" className="underline font-medium">AI search page</Link> to describe what you want in your own words.
             </p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
               {results.map((book, i) => (
                 <ResultCard key={book.id} book={book} rank={i + 1} />
               ))}

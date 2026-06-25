@@ -87,7 +87,11 @@ export interface Book {
   // Tags for filtering and search
   tags: string[];
 
-  // Fiction Taste-Maker Filters
+  // Fiction Taste-Maker Multi-Genres
+  // The new AI-powered engine assigns multiple genre slugs to a book.
+  fiction_genres: string[] | null;
+
+  // Obsolete (kept for backwards compatibility for now)
   vibe: string | null;
   plot_type: string | null;
   length_category: LengthCategory | null;
@@ -102,6 +106,9 @@ export interface Book {
 
   // External Book Import
   external_id: string | null;
+
+  // Free public domain book EPUB/PDF storage URL
+  free_reading_url: string | null;
 
   // Joined genre (optional — only when selected with *)
   genres?: Genre;
@@ -146,9 +153,11 @@ export interface UserShelf {
 
 /** Filters for the Fiction Taste-Maker questionnaire */
 export interface FictionFilters {
-  vibe: string | null;
-  plot_type: string | null;
+  /** Array of genre slugs the user selected (e.g. ['horror', 'comedy-humor']). Multi-select. */
+  genre_slugs: string[];
   length_category: LengthCategory | null;
+  vibe?: string | null;
+  plot_type?: string | null;
 }
 
 /** Filters for the Genre Book List (Learning genres) */

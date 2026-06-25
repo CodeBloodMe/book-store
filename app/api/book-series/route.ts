@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
   try {
@@ -55,6 +56,33 @@ Include the queried book in the "books" array in its correct chronological readi
     }
 
     const data = JSON.parse(jsonMatch[0]);
+
+    // Enrich books with database IDs if they exist
+    if (data.hasSeries && Array.isArray(data.books)) {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const enrichedBooks = await Promise.all(
+        data.books.map(async (bTitle: string) => {
+          // Remove any characters that could mess up the ILIKE query
+          const safeTitle = bTitle.replace(/[%_]/g, '');
+          const { data: matches } = await supabase
+            .from('books')
+            .select('id, title')
+            .ilike('title', `%${safeTitle}%`)
+            .limit(1);
+
+          return {
+            title: bTitle,
+            id: matches && matches.length > 0 ? matches[0].id : null
+          };
+        })
+      );
+      data.books = enrichedBooks;
+    }
+
     return NextResponse.json(data);
 
   } catch (err: any) {
