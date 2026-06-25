@@ -63,3 +63,4 @@ project_explanation.txt
 update-*.js
 scripts/*.mjs
 scripts/*.ts
+scripts/*.js
