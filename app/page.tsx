@@ -52,7 +52,7 @@ export default async function HomePage() {
       {/* Hero & AI Wizard */}
       <section className="relative py-16 px-4 bg-[#f5f5f0] overflow-hidden">
 
-        {/* Decorative Floating Books */}
+        {/* Floating Book Covers */}
         <FloatingCovers books={topRatedBooks} />
 
         <div className="relative z-10 max-w-5xl mx-auto text-center flex flex-col items-center">

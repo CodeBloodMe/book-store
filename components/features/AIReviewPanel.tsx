@@ -167,12 +167,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
             </div>
           </div>
           
-          <button 
-            onClick={generateReview} 
-            className="text-xs text-center mt-8 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Refresh Analysis
-          </button>
+          {/* Public Users cannot refresh consensus to prevent API drain */}
         </div>
       )}
     </div>

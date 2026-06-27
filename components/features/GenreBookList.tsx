@@ -18,20 +18,27 @@ interface GenreBookListProps {
 const LEVELS: DifficultyLevel[] = ['Beginner', 'Intermediate', 'Advanced'];
 const SORTS: { label: string; value: SortOption }[] = [
   { label: 'Best Expert Rating', value: 'expert_rating' },
-  { label: 'Most Reviews',       value: 'community_rating' },
-  { label: 'Newest',             value: 'published_year' },
+  { label: 'Most Reviews', value: 'community_rating' },
+  { label: 'Newest', value: 'published_year' },
 ];
 
 export default function GenreBookList({ books, isLearning }: GenreBookListProps) {
   const [activeLevel, setActiveLevel] = useState<DifficultyLevel | 'All'>('All');
-  const [sort, setSort]               = useState<SortOption>('expert_rating');
-  const [activeTags, setActiveTags]   = useState<Set<string>>(new Set());
+  const [sort, setSort] = useState<SortOption>('expert_rating');
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [visibleCount, setVisibleCount] = useState<number>(4);
 
   // Collect all unique tags from the books for the filter chips
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
-    books.forEach((b) => b.tags?.forEach((t) => tagSet.add(t)));
+    books.forEach((b) => {
+      b.tags?.forEach((t) => {
+        // Filter out ugly system tags (like New York Times lists)
+        if (!t.startsWith('nyt:') && !t.includes('=')) {
+          tagSet.add(t);
+        }
+      });
+    });
     return Array.from(tagSet).sort();
   }, [books]);
 
@@ -79,8 +86,8 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
     <div>
       {/* ── Filter Toolbar ──────────────────────────────────── */}
       <div
-        className="flex flex-col gap-4 p-4 rounded-xl mb-6"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}
+        className="flex flex-col gap-4 p-4 mb-6"
+        style={{ background: 'transparent' }}
       >
         <div className="flex flex-wrap gap-3 items-center justify-between">
           {/* Level Filter (Learning genres only) */}
@@ -137,6 +144,22 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
                 display: none;
               }
             `}</style>
+            {activeTags.size > 0 && (
+              <button
+                onClick={() => setActiveTags(new Set())}
+                className="text-xs px-3 py-1.5 rounded-full transition-colors flex-shrink-0 font-bold sticky left-0 z-10"
+                style={{
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-secondary)',
+                  border: '1px dashed var(--border-default)',
+                  cursor: 'pointer',
+                  boxShadow: '4px 0 10px rgba(0, 0, 0, 0.05)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                Clear All ✕
+              </button>
+            )}
             {allTags.map((tag) => (
               <button
                 key={tag}
@@ -165,7 +188,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
       {/* ── Books Grid ──────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
-          <p className="text-4xl mb-3">📭</p>
+          <p className="text-4xl mb-3"></p>
           <p className="font-semibold">No books match your filters.</p>
           <button
             className="btn-ghost mt-4 text-sm"
@@ -181,11 +204,11 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
               <BookCard key={book.id} book={book} />
             ))}
           </div>
-          
+
           {/* Load More Button */}
           {visibleCount < filtered.length && (
             <div className="py-12 flex justify-center items-center w-full">
-              <button 
+              <button
                 onClick={() => setVisibleCount(prev => prev + 4)}
                 className="px-6 py-3 font-bold text-sm tracking-widest uppercase transition-transform hover:-translate-y-1"
                 style={{

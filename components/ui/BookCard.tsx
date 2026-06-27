@@ -10,35 +10,65 @@ interface BookCardProps {
   featured?: boolean;
 }
 
-function getCoverUrl(book: Book): string {
+function getCoverUrls(book: Book) {
+  const urls = { primary: '', fallback: '' };
+  
   if (book.cover_image_url) {
-    return book.cover_image_url;
+    if (book.cover_image_url.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
+      const match = book.cover_image_url.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
+      if (match) {
+        let [_, type, id, size] = match;
+        const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
+        if (type === 'id' && cleanIsbn) {
+            type = 'isbn';
+            id = cleanIsbn;
+        }
+        urls.primary = `${serverBase}/covers/${type}/${id}/${size}`;
+        urls.fallback = book.cover_image_url;
+        return urls;
+      }
+    }
+    
+    urls.primary = book.cover_image_url;
+    return urls;
   }
   
   if (book.isbn) {
     const cleanIsbn = book.isbn.replace(/[-\s]/g, '');
-    return `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+    const olUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+    
+    // If PC server is configured, try it first so it can archive the image.
+    // If it fails (PC asleep), fallback to Open Library.
+    if (process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
+      urls.primary = `${serverBase}/covers/isbn/${cleanIsbn}/L`;
+      urls.fallback = olUrl;
+    } else {
+      urls.primary = olUrl;
+    }
   }
   
-  return '';
+  return urls;
 }
 
 export default function BookCard({ book, featured = false }: BookCardProps) {
-  const [hasImageError, setHasImageError] = useState(false);
+  // 0: trying primary, 1: trying fallback, 2: both failed (show placeholder)
+  const [imageErrorLevel, setImageErrorLevel] = useState(0);
   const [dominantColor, setDominantColor] = useState('transparent');
 
-  const coverUrl = getCoverUrl(book);
-  const shouldShowCover = coverUrl !== '' && !hasImageError;
-  const genre = book.genres;
+  const { primary, fallback } = getCoverUrls(book);
+  const currentCoverUrl = imageErrorLevel === 0 ? primary : (imageErrorLevel === 1 ? fallback : '');
+  const shouldShowCover = currentCoverUrl !== '' && imageErrorLevel < 2;
 
   useEffect(() => {
-    if (!shouldShowCover) return;
+    if (!shouldShowCover || !currentCoverUrl) return;
     
     import('fast-average-color').then(({ FastAverageColor }) => {
       const colorExtractor = new FastAverageColor();
       const hiddenImage = new window.Image();
       hiddenImage.crossOrigin = 'anonymous';
-      hiddenImage.src = coverUrl;
+      hiddenImage.src = currentCoverUrl;
       
       hiddenImage.onload = () => {
         colorExtractor.getColorAsync(hiddenImage, { algorithm: 'dominant' })
@@ -48,7 +78,22 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
           .catch(() => {});
       };
     });
-  }, [coverUrl, shouldShowCover]);
+  }, [currentCoverUrl, shouldShowCover]);
+
+  const handleImageError = () => {
+    if (imageErrorLevel === 0 && fallback) {
+      setImageErrorLevel(1); // Try fallback
+    } else {
+      setImageErrorLevel(2); // Show placeholder
+    }
+  };
+
+  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const imageElement = event.currentTarget;
+    if (imageElement.naturalWidth <= 1) {
+      handleImageError();
+    }
+  };
 
   const cardHeightClass = featured ? 'h-[320px] sm:h-[460px]' : 'h-[280px] sm:h-[420px]';
   const cardClasses = `relative overflow-hidden group rounded-[20px] sm:rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 ${cardHeightClass}`;
@@ -64,17 +109,12 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
       <div className="absolute inset-0 bg-gray-900 pointer-events-none">
         {shouldShowCover ? (
           <Image
-            src={coverUrl}
+            src={currentCoverUrl}
             alt={`Cover of ${book.title}`}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={() => setHasImageError(true)}
-            onLoad={(event) => {
-              const imageElement = event.currentTarget;
-              if (imageElement.naturalWidth <= 1) {
-                setHasImageError(true);
-              }
-            }}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
             unoptimized={true}
           />
         ) : (
@@ -116,10 +156,10 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
         </p>
 
         <div className="flex flex-wrap gap-1 sm:gap-2 mb-3 sm:mb-5">
-          {genre && (
+          {book.genres && (
             <div className="bg-[#222]/80 backdrop-blur-sm text-gray-200 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5 border border-white/10">
               <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
-              <span className="truncate max-w-[80px] sm:max-w-none">{genre.name}</span>
+              <span className="truncate max-w-[80px] sm:max-w-none">{book.genres.name}</span>
             </div>
           )}
           

@@ -1,7 +1,15 @@
+// components/reader/ReaderSettingsPanel.tsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Slide-in settings panel (right side).
+// Original was an empty stub — this is the full implementation.
+
 "use client";
 
 import React from 'react';
-import { ReaderTheme, ReaderPrefs, FONT_FAMILIES, READER_THEMES, ThemeId } from '@/lib/reader-themes';
+import {
+  ReaderTheme, ReaderPrefs, ThemeId,
+  READER_THEMES, FontFamily, MarginSize,
+} from '@/lib/reader-themes';
 
 interface ReaderSettingsPanelProps {
   open: boolean;
@@ -9,218 +17,330 @@ interface ReaderSettingsPanelProps {
   prefs: ReaderPrefs;
   onPrefsChange: (p: ReaderPrefs) => void;
   theme: ReaderTheme;
+  currentPage?: number;
+  totalPages?: number;
 }
 
-const FONT_OPTIONS: { value: ReaderPrefs['fontFamily']; label: string; preview: string }[] = [
-  { value: 'serif', label: 'Serif',       preview: 'Playfair Display' },
-  { value: 'sans',  label: 'Sans-serif',  preview: 'Inter' },
-  { value: 'mono',  label: 'Mono',        preview: 'Courier New' },
+const THEMES: { id: ThemeId; label: string; icon: string; bg: string; text: string }[] = [
+  { id: 'light', label: 'Light', icon: '☀️', bg: '#ffffff', text: '#1a1a2e' },
+  { id: 'sepia', label: 'Sepia', icon: '📜', bg: '#f4ecd8', text: '#3b2a1a' },
+  { id: 'dark', label: 'Dark', icon: '🌙', bg: '#1e1e2e', text: '#e0ddd5' },
+  { id: 'amoled', label: 'AMOLED', icon: '⬛', bg: '#000000', text: '#cccccc' },
 ];
 
-const LINE_HEIGHTS: { value: number; label: string }[] = [
-  { value: 1.4, label: 'Compact' },
-  { value: 1.6, label: 'Normal' },
-  { value: 1.8, label: 'Relaxed' },
-  { value: 2.2, label: 'Spacious' },
+const FONT_OPTIONS: { value: FontFamily; label: string; sample: string }[] = [
+  { value: 'serif', label: 'Serif', sample: 'Playfair' },
+  { value: 'sans', label: 'Sans-serif', sample: 'Inter' },
+  { value: 'mono', label: 'Mono', sample: 'Courier' },
 ];
 
-const MARGINS: { value: ReaderPrefs['margin']; label: string }[] = [
+const FONT_SIZES = [75, 85, 100, 115, 130, 150];
+const LINE_HEIGHTS = [1.4, 1.6, 1.8, 2.0, 2.4];
+const MARGINS: { value: MarginSize; label: string }[] = [
   { value: 'narrow', label: 'Narrow' },
   { value: 'normal', label: 'Normal' },
-  { value: 'wide',   label: 'Wide' },
+  { value: 'wide', label: 'Wide' },
 ];
 
-const THEME_ORDER: ThemeId[] = ['light', 'sepia', 'dark', 'amoled'];
-
-const THEME_SWATCHES: Record<ThemeId, { bg: string; dot: string }> = {
-  light:  { bg: '#ffffff', dot: '#1a1a2e' },
-  sepia:  { bg: '#f4ecd8', dot: '#3b2a1a' },
-  dark:   { bg: '#1e1e2e', dot: '#e0ddd5' },
-  amoled: { bg: '#000000', dot: '#cccccc' },
-};
-
-export default function ReaderSettingsPanel({ open, onClose, prefs, onPrefsChange, theme }: ReaderSettingsPanelProps) {
+export default function ReaderSettingsPanel({
+  open, onClose, prefs, onPrefsChange, theme, currentPage = 0, totalPages = 0
+}: ReaderSettingsPanelProps) {
   const t = theme.chrome;
   const update = (patch: Partial<ReaderPrefs>) => onPrefsChange({ ...prefs, ...patch });
+
+  const progress = totalPages > 0 ? Math.min(100, Math.max(0, (currentPage / totalPages) * 100)) : 0;
+
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: t.text,
+    marginBottom: 10,
+    display: 'block',
+    fontFamily: 'system-ui, sans-serif'
+  };
+
+  const pillBtn = (active: boolean): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: active ? 600 : 400,
+    color: t.text,
+    background: 'transparent',
+    border: 'none',
+    fontFamily: 'system-ui, sans-serif',
+    padding: 0,
+  });
+
+  const RadioDot = ({ active }: { active: boolean }) => (
+    <div style={{
+      width: 16, height: 16, borderRadius: '50%',
+      border: `2px solid ${active ? '#b89c72' : t.border}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: active ? '#fdfbf7' : 'transparent',
+    }}>
+      {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#b89c72' }} />}
+    </div>
+  );
 
   return (
     <>
       {/* Backdrop */}
       {open && (
         <div
-          className="toc-drawer-backdrop"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
           onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 40,
+            background: 'rgba(0,0,0,0.2)',
+          }}
         />
       )}
 
       {/* Panel */}
       <div
-        className={`settings-panel${open ? ' open' : ''}`}
-        style={{ background: t.drawerBg, borderLeft: `1px solid ${t.border}` }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: 340,
+          maxWidth: '90vw',
+          zIndex: 50,
+          background: prefs.themeId === 'dark' || prefs.themeId === 'amoled' ? t.drawerBg : '#fdfbf7',
+          borderLeft: `1px solid ${t.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          transform: open ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          boxShadow: open ? '-10px 0 30px rgba(0,0,0,0.1)' : 'none',
+          overflowY: 'auto',
+        }}
       >
-        {/* Header */}
-        <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: t.text }}>Reading Settings</span>
-          <button
-            onClick={onClose}
-            style={{ width: 28, height: 28, borderRadius: 6, background: 'transparent', border: `1px solid ${t.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.textMuted }}
-          >
-            ✕
-          </button>
-        </div>
+        {/* Subtle Paper Texture Overlay */}
+        {(prefs.themeId === 'light' || prefs.themeId === 'sepia') && (
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.4,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            mixBlendMode: 'multiply'
+          }} />
+        )}
 
-        <div style={{ padding: '20px 20px max(40px, env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ position: 'relative', zIndex: 1, padding: '24px' }}>
 
-          {/* Theme */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textMuted, display: 'block', marginBottom: 12 }}>
-              Theme
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              {THEME_ORDER.map(id => {
-                const s = THEME_SWATCHES[id];
-                const selected = prefs.themeId === id;
-                return (
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+            <h2 style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 22,
+              color: t.text,
+              margin: 0,
+              fontWeight: 400
+            }}>
+              Setting
+            </h2>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#b89c72',
+                cursor: 'pointer',
+                fontSize: 24,
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={{ height: 1, background: t.border, marginBottom: 24, opacity: 0.5 }} />
+
+          {/* Book Progress */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: t.text, fontFamily: 'system-ui, sans-serif' }}>Book Progress</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.text, fontFamily: 'system-ui, sans-serif' }}>{progress.toFixed(0)}% Completed</span>
+            </div>
+            <div style={{ height: 4, background: t.progressTrack, borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
+              <div style={{ width: `${progress}%`, height: '100%', background: '#b89c72', borderRadius: 2 }} />
+            </div>
+          </div>
+
+          {/* Controls Container */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+            {/* ── Theme ─────────────────────────────────────────────────────────── */}
+            <div>
+              <span style={sectionLabel}>Theme</span>
+              <div style={{ display: 'flex', gap: 16, justifyContent: 'space-between' }}>
+                {THEMES.map(th => {
+                  const isActive = prefs.themeId === th.id;
+                  return (
+                    <div key={th.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <button
+                        onClick={() => update({ themeId: th.id })}
+                        style={{
+                          width: 44, height: 44,
+                          borderRadius: '50%',
+                          background: th.bg,
+                          border: `1px solid ${th.id === 'light' ? '#ddd' : 'transparent'}`,
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: isActive ? `0 0 0 2px ${prefs.themeId === 'dark' || prefs.themeId === 'amoled' ? '#222' : '#fdfbf7'}, 0 0 0 4px #b89c72` : 'none',
+                          transition: 'box-shadow 0.2s',
+                          fontSize: 20
+                        }}
+                      >
+                        {th.id === 'amoled' ? '' : th.icon}
+                      </button>
+                      <span style={{ fontSize: 11, color: t.text, fontWeight: 500, fontFamily: 'system-ui, sans-serif' }}>{th.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Font style ───────────────────────────────────────────────────── */}
+            <div>
+              <span style={sectionLabel}>Font style</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {FONT_OPTIONS.map(f => {
+                  const isActive = prefs.fontFamily === f.value;
+                  return (
+                    <button
+                      key={f.value}
+                      onClick={() => update({ fontFamily: f.value })}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        background: 'transparent', border: 'none', cursor: 'pointer', padding: 0,
+                        color: isActive ? t.text : t.textMuted,
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 18,
+                        fontFamily: f.value === 'serif' ? 'Georgia, serif' : f.value === 'mono' ? 'Courier New, monospace' : 'system-ui, sans-serif',
+                        fontWeight: f.value === 'sans' ? 600 : 400
+                      }}>
+                        The Quick Brown Fox
+                      </span>
+                      <span style={{
+                        fontSize: 11,
+                        border: isActive ? `1px solid ${t.text}` : 'none',
+                        padding: isActive ? '2px 8px' : 0,
+                        borderRadius: 12,
+                        fontFamily: 'system-ui, sans-serif'
+                      }}>
+                        {f.value === 'serif' ? 'Regular' : f.value === 'sans' ? 'Bold' : 'Light'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Font size ─────────────────────────────────────────────────────── */}
+            <div>
+              <span style={sectionLabel}>
+                Font size ({prefs.fontSize}%)
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  onClick={() => {
+                    const idx = FONT_SIZES.indexOf(prefs.fontSize);
+                    if (idx > 0) update({ fontSize: FONT_SIZES[idx - 1] });
+                  }}
+                  disabled={prefs.fontSize <= FONT_SIZES[0]}
+                  style={{
+                    background: 'transparent', border: 'none', color: '#b89c72', fontSize: 24, cursor: 'pointer', opacity: prefs.fontSize <= FONT_SIZES[0] ? 0.3 : 1, padding: 0, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  −
+                </button>
+                <div style={{ flex: 1, position: 'relative', height: 2, background: t.border }}>
+                  <div style={{
+                    position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                    left: `${((FONT_SIZES.indexOf(prefs.fontSize)) / (FONT_SIZES.length - 1)) * 100}%`,
+                    width: 14, height: 14, borderRadius: '50%', background: '#2c3e50',
+                    marginLeft: -7, cursor: 'pointer',
+                  }} />
+                </div>
+                <button
+                  onClick={() => {
+                    const idx = FONT_SIZES.indexOf(prefs.fontSize);
+                    if (idx < FONT_SIZES.length - 1) update({ fontSize: FONT_SIZES[idx + 1] });
+                  }}
+                  disabled={prefs.fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                  style={{
+                    background: 'transparent', border: 'none', color: '#b89c72', fontSize: 20, cursor: 'pointer', opacity: prefs.fontSize >= FONT_SIZES[FONT_SIZES.length - 1] ? 0.3 : 1, padding: 0, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {/* ── Line height ───────────────────────────────────────────────────── */}
+            <div>
+              <span style={sectionLabel}>
+                Line spacing ({prefs.lineHeight}x)
+              </span>
+              <div style={{ display: 'flex', gap: 20 }}>
+                {[1.4, 1.8, 2.4].map(lh => (
                   <button
-                    key={id}
-                    onClick={() => update({ themeId: id })}
-                    title={READER_THEMES[id].label}
-                    style={{
-                      background: s.bg,
-                      border: selected ? '2px solid #1f2937' : `2px solid ${t.border}`,
-                      borderRadius: 10,
-                      height: 48,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      transition: 'border-color 0.15s ease',
-                      position: 'relative',
-                    }}
+                    key={lh}
+                    onClick={() => update({ lineHeight: lh })}
+                    style={pillBtn(prefs.lineHeight === lh)}
                   >
-                    <div style={{ width: 12, height: 12, borderRadius: '50%', background: s.dot }} />
-                    <span style={{ fontSize: 9, color: s.dot, fontWeight: 600 }}>{READER_THEMES[id].label}</span>
-                    {selected && (
-                      <div style={{ position: 'absolute', top: 3, right: 3, width: 8, height: 8, borderRadius: '50%', background: '#1f2937' }} />
-                    )}
+                    <RadioDot active={prefs.lineHeight === lh} />
+                    {lh}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Font Size */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textMuted, display: 'block', marginBottom: 12 }}>
-              Font Size — {prefs.fontSize}%
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button onClick={() => update({ fontSize: Math.max(80, prefs.fontSize - 10) })}
-                style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.text, cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>
-                A-
-              </button>
-              <input
-                type="range" min={80} max={200} step={10}
-                value={prefs.fontSize}
-                onChange={e => update({ fontSize: Number(e.target.value) })}
-                style={{ flex: 1, accentColor: '#1f2937' }}
-              />
-              <button onClick={() => update({ fontSize: Math.min(200, prefs.fontSize + 10) })}
-                style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${t.border}`, background: 'transparent', color: t.text, cursor: 'pointer', fontSize: 16, fontWeight: 700 }}>
-                A+
-              </button>
+            {/* ── Margins ───────────────────────────────────────────────────────── */}
+            <div>
+              <span style={sectionLabel}>Margins</span>
+              <div style={{ display: 'flex', gap: 20 }}>
+                {MARGINS.map(m => (
+                  <button
+                    key={m.value}
+                    onClick={() => update({ margin: m.value })}
+                    style={pillBtn(prefs.margin === m.value)}
+                  >
+                    <RadioDot active={prefs.margin === m.value} />
+                    <span style={{ textTransform: 'capitalize' }}>{m.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Font Family */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textMuted, display: 'block', marginBottom: 12 }}>
-              Font Style
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {FONT_OPTIONS.map(f => (
-                <button
-                  key={f.value}
-                  onClick={() => update({ fontFamily: f.value })}
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${prefs.fontFamily === f.value ? '#1f2937' : t.border}`,
-                    background: prefs.fontFamily === f.value ? 'rgba(99,102,241,0.1)' : 'transparent',
-                    color: prefs.fontFamily === f.value ? '#1f2937' : t.text,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    fontFamily: FONT_FAMILIES[f.value],
-                    fontSize: 14,
-                    fontWeight: prefs.fontFamily === f.value ? 600 : 400,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {f.preview}
-                </button>
-              ))}
-            </div>
+            {/* ── Reset ─────────────────────────────────────────────────────────── */}
+            <button
+              onClick={() => update({ fontSize: 100, fontFamily: 'serif', lineHeight: 1.8, margin: 'normal' })}
+              style={{
+                background: 'transparent',
+                border: `1px solid #b89c72`,
+                color: '#b89c72',
+                padding: '12px 0',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 13,
+                fontFamily: 'system-ui, sans-serif',
+                width: '100%',
+                marginTop: 8,
+                fontWeight: 500
+              }}
+            >
+              Reset to defaults
+            </button>
           </div>
-
-          {/* Line Height */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textMuted, display: 'block', marginBottom: 12 }}>
-              Line Spacing
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-              {LINE_HEIGHTS.map(lh => (
-                <button
-                  key={lh.value}
-                  onClick={() => update({ lineHeight: lh.value })}
-                  style={{
-                    padding: '8px 6px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${prefs.lineHeight === lh.value ? '#1f2937' : t.border}`,
-                    background: prefs.lineHeight === lh.value ? 'rgba(99,102,241,0.1)' : 'transparent',
-                    color: prefs.lineHeight === lh.value ? '#1f2937' : t.text,
-                    cursor: 'pointer',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {lh.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Margins */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: t.textMuted, display: 'block', marginBottom: 12 }}>
-              Page Margins
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-              {MARGINS.map(m => (
-                <button
-                  key={m.value}
-                  onClick={() => update({ margin: m.value })}
-                  style={{
-                    padding: '8px 6px',
-                    borderRadius: 8,
-                    border: `1.5px solid ${prefs.margin === m.value ? '#1f2937' : t.border}`,
-                    background: prefs.margin === m.value ? 'rgba(99,102,241,0.1)' : 'transparent',
-                    color: prefs.margin === m.value ? '#1f2937' : t.text,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
         </div>
       </div>
     </>

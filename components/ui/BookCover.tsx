@@ -1,6 +1,6 @@
 'use client'; // This component uses React state (useState), so it must run on the client side
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 
@@ -19,6 +19,19 @@ interface BookCoverProps {
 
 export default function BookCover({ src, alt, fallbackGradient, fallbackText }: BookCoverProps) {
 
+  // Rewrite Open Library URLs to proxy via PC Server if configured
+  const [currentUrl, setCurrentUrl] = useState<string | null>(() => {
+    if (!src) return null;
+    if (src.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
+      const match = src.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
+      if (match) {
+        const [_, type, id, size] = match;
+        return `${serverBase}/covers/${type}/${id}/${size}`;
+      }
+    }
+    return src;
+  });
   
   // Tracks if the image link is broken (e.g. 404 error)
   const [hasImageError, setHasImageError] = useState(false);
@@ -27,11 +40,32 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
   const [isFullyLoaded, setIsFullyLoaded] = useState(false);
   
   // We should try to show the cover ONLY if we have a URL and it hasn't errored out
-  const shouldShowCover = src !== null && hasImageError === false;
+  const shouldShowCover = currentUrl !== null && hasImageError === false;
+
+  const handleError = () => {
+    if (currentUrl !== src) {
+      // PC server failed (e.g., PC asleep), fallback to original URL
+      setCurrentUrl(src);
+    } else {
+      setHasImageError(true);
+    }
+  };
+
+  // Prevent infinite loading skeletons by enforcing a strict 15-second timeout
+  // (We need 15 seconds because the PC proxy server might take up to 10 seconds to fallback across Open Library -> Apple Books -> Google Books)
+  useEffect(() => {
+    if (!shouldShowCover || !currentUrl || isFullyLoaded) return;
+    
+    const timer = setTimeout(() => {
+      handleError();
+    }, 15000);
+    
+    return () => clearTimeout(timer);
+  }, [currentUrl, shouldShowCover, isFullyLoaded, src]);
 
 
   
-  if (shouldShowCover && src) {
+  if (shouldShowCover && currentUrl) {
     return (
       <div className="relative w-full h-full bg-gray-200">
         
@@ -45,17 +79,14 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
             </svg>
           </div>
         )}
-        
         {/* The Actual Image */}
         <Image
-          src={src}
+          src={currentUrl}
           alt={alt}
           fill // Tells Next.js to stretch this image to exactly fit the parent <div>
           
           // Triggered if the server returns a 404 or connection error
-          onError={() => {
-            setHasImageError(true);
-          }}
+          onError={handleError}
           
           // Triggered when the image successfully downloads
           onLoad={(event) => {
@@ -63,7 +94,7 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
             // Sometimes external APIs return a tiny 1x1 blank pixel instead of a 404 error.
             // We check the width to catch this fake "success" and mark it as an error.
             if (imageElement.naturalWidth <= 1) {
-              setHasImageError(true);
+              handleError();
             } else {
               setIsFullyLoaded(true); // Image is real and ready!
             }

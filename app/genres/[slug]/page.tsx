@@ -39,21 +39,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function GenrePage({ params }: PageProps) {
   const { slug } = await params;
 
-// Fetch genre and books in parallel — abort with 404 if genre not found
-let genre, books;
-try {
-  genre = await getGenreBySlug(slug);
-  books = await getBooksByGenre(genre.id);
-} catch {
-  notFound();
-  return null;
-}
+  // Fetch genre and books in parallel — abort with 404 if genre not found
+  let genre, books;
+  try {
+    genre = await getGenreBySlug(slug);
+    books = await getBooksByGenre(genre.id);
+  } catch {
+    notFound();
+    return null;
+  }
 
   // Separate books by difficulty for summary stats
-  const beginnerCount     = books.filter((b) => b.difficulty_level === 'Beginner').length;
+  const beginnerCount = books.filter((b) => b.difficulty_level === 'Beginner').length;
   const intermediateCount = books.filter((b) => b.difficulty_level === 'Intermediate').length;
-  const advancedCount     = books.filter((b) => b.difficulty_level === 'Advanced').length;
-  const avgRating         = books.reduce((s, b) => s + (b.expert_rating ?? 0), 0) / (books.length || 1);
+  const advancedCount = books.filter((b) => b.difficulty_level === 'Advanced').length;
+  const avgRating = books.reduce((s, b) => s + (b.expert_rating ?? 0), 0) / (books.length || 1);
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>
@@ -68,11 +68,7 @@ try {
           paddingBottom: 48,
         }}
       >
-        {/* Color accent line */}
-        <div
-          className="absolute top-0 left-0 right-0 h-1"
-          style={{ background: genre.color || 'var(--indigo-500)' }}
-        />
+        {/* Color accent line removed */}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
@@ -88,7 +84,6 @@ try {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <span className="text-4xl" role="img" aria-hidden="true">{genre.icon}</span>
                 <h1 className="font-extrabold" style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
                   Best {genre.name} Books
                 </h1>
@@ -109,7 +104,7 @@ try {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {books.length === 0 ? (
           <div className="text-center py-24" style={{ color: 'var(--text-muted)' }}>
-            <p className="text-5xl mb-4">📭</p>
+            <p className="text-5xl mb-4"></p>
             <h2 className="text-xl font-bold mb-2">No books yet in this genre.</h2>
             <p className="text-sm">We&apos;re adding new titles regularly — check back soon!</p>
           </div>

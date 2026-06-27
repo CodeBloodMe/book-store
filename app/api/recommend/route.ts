@@ -165,253 +165,374 @@ async function fetchFromAppleBooks(title: string, author: string): Promise<OLRes
   }
 }
 
+/**
+ * Fetches an extended plot description from Wikipedia.
+ */
+async function fetchFromWikipedia(title: string): Promise<string | null> {
+  try {
+    // Try with "(novel)" first to avoid movies
+    let res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(title + " (novel)")}&format=json`);
+    let data = await res.json();
+    let pages = data.query?.pages;
+    let pageId = Object.keys(pages || {})[0];
+
+    if (!pageId || pageId === '-1') {
+      // Fallback to just title
+      res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(title)}&format=json`);
+      data = await res.json();
+      pages = data.query?.pages;
+      pageId = Object.keys(pages || {})[0];
+    }
+
+    if (pageId && pageId !== '-1') {
+      const extract = pages[pageId].extract;
+      if (extract && extract.length > 50) {
+        return extract;
+      }
+    }
+  } catch (err) {
+    console.warn(`[Wikipedia] Failed to fetch for "${title}"`, err);
+  }
+  return null;
+}
+
 // Main Route Handler
 
 // The `POST` function name tells Next.js to run this code for POST requests
 export async function POST(request: Request) {
   try {
-    // 1. Read what the user sent
     const body: RecommendRequest = await request.json();
     const { query, goal, area, style } = body;
 
-    // Check if they sent something valid
     if (!query && !goal) {
       return NextResponse.json({ error: 'Please provide a query.' }, { status: 400 });
     }
 
-    // Format their request into a single sentence for the AI
-    const userIntent = query
-      ? query.trim()
-      : `I want to: ${goal}. About: ${area}. My level: ${style}.`;
+    // ── Phase 1: Input Normalization Agent ──
+    let extractedVibe = query ? query.trim() : `A book focused on ${goal || 'anything'}, perfectly suited for ${style || 'anyone'}.`;
+    let explicitGenres: string[] = [];
+    let hardGenreFilter = "";
+    let threatTags: string[] = [];
+    let excludedKeywords: string[] = [];
+    let excludedAuthors: string[] = [];
 
-    // ── Step 1: Fetch genre list + curated book titles for AI grounding ──
-    const { data: genres } = await supabase.from('genres').select('id, name, slug');
-    const genreList = (genres || []).map((g) => `${g.name} (slug: ${g.slug})`).join(', ');
-    const genreMap = new Map((genres || []).map((g) => [g.slug, g.id]));
-    const fallbackGenreId = genres?.[0]?.id ?? null;
+    if (query) {
+       const extractionPrompt = `
+# ROLE & CORE SYSTEM OBJECTIVE
+You are the central orchestration brain of an Agentic RAG Book Recommendation Engine. Your primary objective is to intercept raw, messy, emotional, or abstract user prompts and normalize them into a strict machine-readable JSON search profile. This profile guarantees that subsequent database searches (vector and keyword) return accurate industry-standard book genres, preventing vector drift and hallucinations.
 
-    // Fetch a representative sample of our curated books so the AI prefers recommending them
-    const { data: curatedTitles } = await supabase
-      .from('books')
-      .select('title, author')
-      .order('expert_rating', { ascending: false })
-      .limit(80);
-    const curatedList = (curatedTitles || [])
-      .map((b: { title: string; author: string }) => `"${b.title}" by ${b.author}`)
-      .join(', ');
+---
 
-    // ── Step 2: Ask AI to recommend SPECIFIC real books ──────
-    const aiPrompt = `You are a world-class book recommendation expert with encyclopedic knowledge of literature.
+# ARCHITECTURE CONSTRAINTS & BEHAVIOR
+1. DO NOT rely on the user's literal vocabulary. Translate emotional imagery into physical plot elements, genres, and specific tropes.
+2. REVERSE NEGATIVE CONSTRAINTS: If a user states "no gore" or "not by Stephen King", you must extract these parameters into the \`excluded_keywords\` or \`excluded_authors\` fields. Do not pass negative terms into the \`cleaned_vector_search_string\`.
+3. STRICT GENRE LOCKING: Identify the single best primary publishing genre. If abstract elements describe eerie, haunting, or spooky feelings, lock the genre to "Horror" or "Thriller" to bypass generic fiction matches.
 
-The user wants: "${userIntent}"
 
-Available genres: ${genreList}
 
-Our curated library includes books like: ${curatedList}
+# OUTPUT FORMAT
+You must respond strictly with a valid JSON object. Do not include markdown code blocks, text wrappers, or explanations outside the JSON payload.
 
-Your job: Recommend exactly 6 real books that PERFECTLY match the mood, tone, and vibes the user wants.
-STRONGLY PREFER books from our curated library list above when they are a good match — the user can navigate directly to those.
-Only suggest books outside the curated list if no curated books fit the request.
+{
+  "cleaned_vector_search_string": "A highly descriptive, literal sentence summarizing the physical setting, core plot tropes, and specific aesthetic elements for vector embedding generation.",
+  "hard_genre_filter": "The definitive, capitalized industry genre string used to execute a strict SQL WHERE filter (e.g., Horror, Gothic Thriller, Fantasy, Sci-Fi, Mystery).",
+  "threat_tags": [
+    "An array of explicit plot elements, character archetypes, or creature/monster tags extracted from the prompt text context."
+  ],
+  "excluded_keywords": [
+    "A clean array of themes, stylistic elements, or genres the user explicitly asked to avoid."
+  ],
+  "excluded_authors": [
+    "An array of individual author names specified to be locked out of the results."
+  ]
+}
 
-Return ONLY a JSON array (no markdown, no explanation, just raw JSON):
-[
-  {
-    "title": "exact book title",
-    "author": "exact author name",
-    "expert_rating": 4.8,
-    "community_rating": 4.5,
-    "expert_quote": "Short quote from a major publication.",
-    "expert_name": "The New York Times",
-    "expert_consensus": "1-2 sentences on what critics praised.",
-    "community_consensus": "1-2 sentences on reader reactions.",
-    "why": "1 sentence addressed directly to YOU (the reader) explaining why this matches their request. Never say 'the user'.",
-    "genre_guess": "closest genre slug from the available list"
-  }
-]
+USER RAW INPUT:
+"""
+${extractedVibe}
+"""
+       `;
+       
+       try {
+         const extractionResult = await callAnyAI(extractionPrompt);
+         const cleanJson = extractionResult.replace(/```json/g, '').replace(/```/g, '').trim();
+         const parsed = JSON.parse(cleanJson);
+         
+         extractedVibe = parsed.cleaned_vector_search_string || extractedVibe;
+         hardGenreFilter = parsed.hard_genre_filter || "";
+         threatTags = parsed.threat_tags || [];
+         excludedKeywords = parsed.excluded_keywords || [];
+         excludedAuthors = parsed.excluded_authors || [];
+         
+         if (hardGenreFilter) explicitGenres.push(hardGenreFilter);
 
-Rules:
-- ONLY recommend REAL books that actually exist.
-- The "why" must use "you" and be specific to their request. Never say "the user".
-- genre_guess must be a valid slug from the genres list.
-- HIGHLY IMPORTANT: Vary your sentence structures and writing style for the 'expert_consensus' and 'community_consensus' fields. Do not use repetitive phrasing like "Readers found the book to be..." or "Critics praised..." for every book. Make them sound organically written by a human.
-- Return EXACTLY 6 books.`;
+         console.log("[Recommend API] Input Normalizer Extracted:", parsed);
+       } catch (err) {
+         console.warn("[Recommend API] Input Normalizer failed, falling back to raw query", err);
+       }
+    }
 
-    // Send the prompt to the AI
-    const rawText = await callAnyAI(aiPrompt);
+    if (area && !explicitGenres.includes(area)) {
+       explicitGenres.push(area);
+    }
 
-    // Parse the JSON array from AI response (in case the AI adds markdown like ```json)
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) throw new Error('AI returned invalid JSON response');
+    const userIntent = `Genre: ${hardGenreFilter}\nDescription: ${extractedVibe}`;
+    console.log(`[Recommend API] Hybrid Search for: "${userIntent}"`);
 
-    const aiBooks: AIBook[] = JSON.parse(jsonMatch[0]);
-    console.log(`[Recommend API] AI suggested ${aiBooks.length} books`);
+    // ── Phase 3 Prep: Start JIT Fallback Concurrently ──
+    // If the query is highly specific, we ask the LLM to just name 3 perfect books right now.
+    // We run this at the same time as the DB vector search to save time!
+    let fallbackPromise: Promise<{title: string, author: string}[]> | null = null;
+    if (query) {
+       const fallbackPrompt = `
+Recommend up to 3 real-world books that PERFECTLY match this exact atmosphere and request: "${query}".
+Are these 3 books explicitly classified in the primary genre requested by the user (e.g. horror, thriller, dark suspense)? If no, discard and regenerate.
+Return ONLY a raw JSON array of objects with 'title' and 'author'. No other text.
+       `;
+       fallbackPromise = callAnyAI(fallbackPrompt).then(res => {
+         const clean = res.replace(/```json/g, '').replace(/```/g, '').trim();
+         return JSON.parse(clean);
+       }).catch(() => []);
+    }
 
-    // ── Step 3: Check our Database for each AI book ──────────
-    const selectFields =
-      'id, title, author, cover_image_url, expert_rating, community_rating, description, difficulty_level, is_bestseller, genre_id, genres(name, color, icon, slug)';
+    // ── Step 1: Embed the User's Query ──
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await ai.models.embedContent({
+      model: 'gemini-embedding-001',
+      contents: userIntent,
+    });
+    
+    // Slice to 768 dimensions to match our database schema
+    const query_embedding = response.embeddings?.[0]?.values?.slice(0, 768);
+    if (!query_embedding) throw new Error("No embedding returned from AI model");
 
-    const resultBooks: any[] = [];
-    const seenTitles = new Set<string>();
-    const seenBookIds = new Set<string>();
+    // ── Step 2: Search the Database using pgvector ──
+    const { data: matchedBooks, error } = await supabase.rpc('match_books', {
+      query_embedding,
+      match_threshold: 0.05, 
+      match_count: 300 // Increased pool for Hard Filter application
+    });
 
-    // Loop through the AI's recommendations
-    for (const aiBook of aiBooks.slice(0, 8)) {
-      try {
-        const lowerTitle = aiBook.title.toLowerCase().trim();
-        if (seenTitles.has(lowerTitle)) {
-          console.log(`[Recommend API] ⚠️ Skipping duplicate AI title: "${aiBook.title}"`);
-          continue;
-        }
-        seenTitles.add(lowerTitle);
+    if (error) {
+      console.error("[Recommend API] Supabase RPC Error:", error);
+      throw new Error("Failed to search books database");
+    }
 
-        // A) Check if we already have it in the DB — try two passes
-        // Pass 1: Exact title + author match
-        let { data: existing } = await supabase
-          .from('books')
-          .select(selectFields)
-          .ilike('title', aiBook.title)
-          .ilike('author', `%${aiBook.author.split(' ').pop()}%`)
-          .limit(1);
+    let candidateBooks = matchedBooks || [];
 
-        // Pass 2: Looser title search (handles slight title variations)
-        if (!existing || existing.length === 0) {
-          const titleWords = aiBook.title.split(/\s+/).filter((w: string) => w.length > 3).slice(0, 3).join(' ');
-          if (titleWords) {
-            const { data: fuzzyMatch } = await supabase
-              .from('books')
-              .select(selectFields)
-              .ilike('title', `%${titleWords}%`)
-              .limit(1);
-            existing = fuzzyMatch;
-          }
-        }
+    // ── Step 2.5: Genre Injection ──
+    const targetFilterAreas = explicitGenres.flat().filter(g => typeof g === 'string').map(g => g.toLowerCase());
 
-        if (existing && existing.length > 0) {
-          console.log(`[Recommend API] ✅ Found in DB: "${aiBook.title}"`);
-          const existingBook = existing[0];
-          
-          if (seenBookIds.has(existingBook.id)) {
-            console.log(`[Recommend API] ⚠️ Skipping duplicate book ID: ${existingBook.id}`);
-            continue;
-          }
-          seenBookIds.add(existingBook.id);
-
-          // Fix: If the book in our DB is missing a cover, fetch it from OpenLibrary on the fly!
-          if (!existingBook.cover_image_url) {
-            console.log(`[Recommend API] 🔧 Fixing missing cover for "${aiBook.title}"`);
-            const olData = await fetchFromAppleBooks(aiBook.title, aiBook.author);
-            if (olData.cover_url) {
-              await supabase
-                .from('books')
-                .update({ cover_image_url: olData.cover_url })
-                .eq('id', existingBook.id);
-              existingBook.cover_image_url = olData.cover_url;
-            }
-          }
-          
-          // Merge our DB book with the AI's custom reviews/reasons
-          resultBooks.push({
-            ...existingBook,
-            why: aiBook.why,
-            expert_rating: aiBook.expert_rating,
-            community_rating: aiBook.community_rating,
-            expert_quote: aiBook.expert_quote,
-            expert_name: aiBook.expert_name,
-            expert_consensus: aiBook.expert_consensus,
-            community_consensus: aiBook.community_consensus,
-          });
-          continue; // Move to the next book
-        }
-
-        // B) Not in DB — Fetch from OpenLibrary and Insert it so we have it forever!
-        console.log(`[Recommend API] 🔍 Fetching from AppleBooks: "${aiBook.title}" by ${aiBook.author}`);
-        const olData = await fetchFromAppleBooks(aiBook.title, aiBook.author);
-
-        // Determine which genre folder to put it in
-        const genreId = genreMap.get(aiBook.genre_guess) ?? fallbackGenreId;
-
-        if (!genreId) {
-          console.warn(`[Recommend API] ⚠️ No genre found for "${aiBook.title}", skipping`);
-          continue;
-        }
-
-        // Insert into database
-        const { data: inserted, error: insertError } = await supabase
-          .from('books')
-          .insert({
-            genre_id: genreId,
-            title: aiBook.title,
-            author: aiBook.author,
-            description: olData.description,
-            cover_image_url: olData.cover_url,
-            page_count: olData.page_count,
-            published_year: olData.published_year,
-            isbn: olData.isbn,
-            expert_rating: aiBook.expert_rating,
-            community_rating: aiBook.community_rating,
-            expert_quote: aiBook.expert_quote,
-            expert_name: aiBook.expert_name,
-            total_reviews: Math.floor(Math.random() * 5000) + 500,
-            tags: [],
-            is_featured: false,
-            is_editors_pick: false,
-            is_bestseller: false,
-            language: 'en',
-          })
-          .select(selectFields) // Ask Supabase to return the newly created row
-          .single();
-
-        if (insertError) {
-          console.error(`[Recommend API] ❌ Insert failed for "${aiBook.title}":`, insertError.message);
-          continue;
-        }
-
-        console.log(`[Recommend API] ✅ Inserted into DB: "${aiBook.title}"`);
-
-        if (seenBookIds.has(inserted.id)) {
-          continue;
-        }
-        seenBookIds.add(inserted.id);
+    if (targetFilterAreas.length > 0) {
+      const { data: allGenres } = await supabase.from('genres').select('id, name');
+      
+      for (const targetFilterArea of targetFilterAreas) {
+        const matchedGenre = allGenres?.find(g => g.name.toLowerCase() === targetFilterArea || targetFilterArea.includes(g.name.toLowerCase()));
         
-        // Merge the newly created DB book with the AI's custom reasons
-        resultBooks.push({
-          ...inserted,
-          why: aiBook.why,
-          expert_rating: aiBook.expert_rating,
-          community_rating: aiBook.community_rating,
-          expert_quote: aiBook.expert_quote,
-          expert_name: aiBook.expert_name,
-          expert_consensus: aiBook.expert_consensus,
-          community_consensus: aiBook.community_consensus,
-        });
-        
-      } catch (bookErr) {
-        console.warn(`[Recommend API] ⚠️ Error processing "${aiBook.title}":`, bookErr);
-        continue; // Skip this book, try the next one
+        if (matchedGenre) {
+          const { data: genreBooks } = await supabase
+             .from('books')
+             .select('id')
+             .eq('genre_id', matchedGenre.id)
+             .order('expert_rating', { ascending: false })
+             .limit(20);
+             
+          if (genreBooks) {
+             genreBooks.forEach(gb => {
+               const existing = candidateBooks.find((m: any) => m.id === gb.id);
+               if (!existing) {
+                  candidateBooks.push({ id: gb.id, similarity: 0.8 });
+               } else {
+                  existing.similarity += 0.5; 
+               }
+             });
+          }
+        }
       }
     }
 
-    // ── Step 4: Send the results back to the frontend ────────
+    // ── Step 3: Fetch Full Book Data (including genres) and Filter ──
+    let bookIds = candidateBooks.map((b: any) => b.id);
     
-    // If absolutely everything failed
-    if (resultBooks.length === 0) {
-      return NextResponse.json({
-        books: [],
-        message: `We couldn't find or fetch books for "${userIntent}". Try a different query.`,
+    let { data: fullBooks } = await supabase
+      .from('books')
+      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)')
+      .in('id', bookIds);
+
+    let filteredBooks: any[] = fullBooks || [];
+
+    filteredBooks = filteredBooks.map(fb => {
+      const match = candidateBooks.find((mb: any) => mb.id === fb.id);
+      return { ...fb, similarity: match?.similarity || 0 };
+    });
+
+    // ── Hard Filtering (Two-Tier Vector Simulation) ──
+    // Step 1 (Hard Filter): Instantly isolate candidate books where genre matches
+    if (targetFilterAreas.length > 0) {
+      filteredBooks = filteredBooks.filter(book => {
+        const genreName = Array.isArray(book.genres) ? book.genres[0]?.name : (book.genres as any)?.name;
+        return genreName && targetFilterAreas.some(area => genreName.toLowerCase().includes(area) || area.includes(genreName.toLowerCase()));
       });
     }
 
-    // Add a shiny "⭐ Top pick" label to the very first book
-    const booksWithRank = resultBooks.map((book, i) => ({
-      ...book,
-      why: i === 0 ? `⭐ Top pick: ${book.why}` : book.why,
-    }));
+    // Step 2: Ensure it matches threat_tags if any exist
+    if (threatTags.length > 0) {
+      filteredBooks = filteredBooks.filter(book => {
+        return threatTags.some(threat => 
+           (book.description && book.description.toLowerCase().includes(threat.toLowerCase())) ||
+           (book.title && book.title.toLowerCase().includes(threat.toLowerCase()))
+        );
+      });
+    }
 
-    // Send the JSON payload back to the browser
-    return NextResponse.json({ books: booksWithRank });
+    // Excluded Keywords Post-Filter
+    if (excludedKeywords.length > 0) {
+       filteredBooks = filteredBooks.filter(book => {
+          const hasExcluded = excludedKeywords.some(keyword => {
+             const lowerKw = keyword.toLowerCase();
+             const inTitle = book.title && book.title.toLowerCase().includes(lowerKw);
+             const inDesc = book.description && book.description.toLowerCase().includes(lowerKw);
+             const inAuthor = book.author && book.author.toLowerCase().includes(lowerKw);
+             return inTitle || inDesc || inAuthor;
+          });
+          return !hasExcluded;
+       });
+    }
+
+    // Excluded Authors Post-Filter
+    if (excludedAuthors.length > 0) {
+       filteredBooks = filteredBooks.filter(book => {
+          const hasExcluded = excludedAuthors.some(author => {
+             const lowerAuthor = author.toLowerCase();
+             return book.author && book.author.toLowerCase().includes(lowerAuthor);
+          });
+          return !hasExcluded;
+       });
+    }
+
+    filteredBooks.sort((a, b) => b.similarity - a.similarity);
+    let finalTop6 = filteredBooks.slice(0, 6) as any[];
+
+    // ── Phase 3: JIT Database Expansion Resolution ──
+    if (fallbackPromise) {
+       const fallbackBooks = await fallbackPromise;
+       console.log("[Recommend API] JIT Fallback Books generated by LLM:", fallbackBooks);
+
+       // Process the fallback books in reverse order so that when we unshift them,
+       // the first one generated by the LLM ends up at index 0.
+       for (const fbook of [...fallbackBooks].reverse()) {
+          // Check if we already have this book in final top 6
+          const existingIdx = finalTop6.findIndex(b => b.title.toLowerCase() === fbook.title.toLowerCase());
+          if (existingIdx !== -1) {
+             const [b] = finalTop6.splice(existingIdx, 1);
+             finalTop6.unshift({ ...b, similarity: 1.0 });
+             continue;
+          }
+
+          // Check if we have it in DB at all
+          const { data: existingInDb } = await supabase.from('books').select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)').ilike('title', fbook.title).limit(1);
+          
+          if (existingInDb && existingInDb.length > 0) {
+             finalTop6.unshift({ ...existingInDb[0], similarity: 1.0 });
+          } else {
+             // JIT Insertion! Fetch from Apple Books and Wikipedia concurrently
+             console.log(`[Recommend API] 🔧 JIT Expansion: Fetching new book "${fbook.title}"`);
+             const [olData, wikiDesc] = await Promise.all([
+               fetchFromAppleBooks(fbook.title, fbook.author),
+               fetchFromWikipedia(fbook.title)
+             ]);
+             
+             // Prioritize Wikipedia's deep summary, fallback to Apple Books
+             const finalDescription = wikiDesc || olData.description;
+             
+             // We need a genre_id to insert into the DB. We'll find the closest one or fallback
+             const { data: allGenres } = await supabase.from('genres').select('id, name');
+             let insertGenreId = allGenres?.[0]?.id; // Default to first genre
+             if (targetFilterAreas.length > 0 && allGenres) {
+                const matchedGenre = allGenres.find(g => g.name.toLowerCase() === targetFilterAreas[0] || targetFilterAreas[0].includes(g.name.toLowerCase()));
+                if (matchedGenre) insertGenreId = matchedGenre.id;
+             }
+
+             // Insert into DB
+             const newBook = {
+                title: fbook.title,
+                author: fbook.author,
+                genre_id: insertGenreId,
+                description: finalDescription,
+                cover_image_url: olData.cover_url,
+                published_year: olData.published_year,
+                page_count: olData.page_count,
+                expert_rating: 4.8, 
+                community_rating: 4.5,
+                total_reviews: 100,
+                language: 'en',
+                is_featured: false,
+                is_editors_pick: false,
+                is_bestseller: false,
+                tags: targetFilterAreas
+             };
+
+             const { data: inserted, error: insertError } = await supabase.from('books').insert(newBook).select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)').single();
+             
+             if (inserted && !insertError) {
+                console.log(`[Recommend API] 🚀 Successfully expanded database with "${inserted.title}"`);
+                finalTop6.unshift({ ...inserted, similarity: 1.0 });
+             } else {
+                console.warn("[Recommend API] JIT Insert Failed:", insertError);
+             }
+          }
+       }
+       finalTop6 = finalTop6.slice(0, 6);
+    }
+
+    // ── Phase 4: Dynamic Honest Rationales ──
+    const rationalePrompt = `
+# RATIONALE INSTRUCTIONS (PHASE 4)
+When acting as the Rationale Generator for the final book list, your job is to explain the connection between the user's request and the books we found.
+
+USER REQUEST: "${query || goal}"
+
+SELECTED BOOKS:
+${JSON.stringify(finalTop6.map(b => ({ title: b.title, author: b.author, description: b.description })))}
+
+RULES:
+- NEVER echo, copy-paste, or rephrase the user's exact input imagery (e.g., if the user says "foggy window," do not write "evokes a feeling like a foggy window").
+- Explain the connection purely through the book's concrete plot points, settings, and characters.
+- If a database item is a poor match, explicitly state that it is a "weak match" and note what specific element is missing.
+
+Write a 1-sentence personalized explanation for EACH book.
+Return ONLY a raw JSON array of strings in the exact same order as the books. Do not wrap in markdown.
+    `;
+
+    let rationales: string[] = [];
+    try {
+       const rationaleRes = await callAnyAI(rationalePrompt);
+       const cleanJson = rationaleRes.replace(/```json/g, '').replace(/```/g, '').trim();
+       rationales = JSON.parse(cleanJson);
+    } catch (e) {
+       console.warn("[Recommend API] Rationale generation failed", e);
+    }
+
+    // ── Step 4: Format the Output ──
+    const resultBooks = finalTop6.map((book: any, i: number) => {
+      let why = rationales[i] || `A strong match based on our AI semantic similarity analysis.`;
+
+      return {
+        ...book,
+        why,
+        expert_rating: book.expert_rating || 4.5,
+        community_rating: book.community_rating || 4.5,
+        expert_quote: book.expert_rating >= 4.8 ? "A masterclass in its genre." : "A thoroughly engaging read.",
+        expert_name: "AI Consensus",
+        expert_consensus: "Critics broadly agree this book delivers on its premise with excellent execution.",
+        community_consensus: "Readers found this incredibly satisfying and aligned with the genre's best tropes.",
+        genres: book.genres || { name: "Recommended", color: "blue", icon: "book" }
+      };
+    });
+
+    return NextResponse.json({ books: resultBooks });
     
   } catch (err: unknown) {
-    // If the entire API crashes (e.g. AI is completely down)
     console.error('[Recommend API Error]', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Something went wrong.' },

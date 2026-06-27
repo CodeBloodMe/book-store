@@ -104,8 +104,22 @@ export default async function BookDetailPage({ params }: PageProps) {
   const genre = book.genres;
   const cleanIsbn = book.isbn?.replace(/[-\s]/g, ''); // Remove dashes from ISBN
   
-  // If we don't have a cover image in the database, try to guess it using the ISBN
-  const coverUrl = book.cover_image_url ?? (cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg` : null);
+  let coverUrl = book.cover_image_url;
+  
+  // Optimization: If it's an Open Library URL using an internal ID, we should prefer the ISBN
+  // if available. This allows the PC proxy server to fallback to Apple/Google Books if Open Library goes down.
+  if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
+      coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+  }
+
+  if (!coverUrl && cleanIsbn) {
+    if (process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
+      coverUrl = `${serverBase}/covers/isbn/${cleanIsbn}/L`;
+    } else {
+      coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
+    }
+  }
 
   // --- External Store Links Logic ---
   

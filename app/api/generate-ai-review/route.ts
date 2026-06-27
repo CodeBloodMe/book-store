@@ -74,12 +74,28 @@ export async function POST(request: Request) {
     // 1. Fetch book details
     const { data: book, error: bookError } = await supabase
       .from('books')
-      .select('title, author, ai_review_summary')
+      .select('title, author, ai_review_summary, ai_pros, ai_cons, ai_rating')
       .eq('id', bookId)
       .single();
 
     if (bookError || !book) {
       return NextResponse.json({ error: 'Book not found' }, { status: 404 });
+    }
+
+    // --- HARD CACHING TO PREVENT API DRAIN ---
+    // If the book already has an AI consensus, instantly return it.
+    // Public users cannot trigger a re-generation.
+    if (book.ai_review_summary && book.ai_review_summary.length > 10) {
+      console.log(`[API Drain Protection] Serving cached review for: ${book.title}`);
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: book.ai_review_summary,
+          pros: book.ai_pros,
+          cons: book.ai_cons,
+          rating: book.ai_rating,
+        }
+      });
     }
 
     // 2. Scrape Multi-Source Data

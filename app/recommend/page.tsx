@@ -73,7 +73,7 @@ function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number })
               unoptimized={true}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl">📚</div>
+            <div className="w-full h-full flex items-center justify-center text-3xl"></div>
           )}
         </div>
 
@@ -134,6 +134,7 @@ function RecommendPageContent() {
   const [searchedQuery, setSearchedQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -374,22 +375,48 @@ function RecommendPageContent() {
               </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {searchHistory.filter(item => (item.mode || 'books') === mode).map((historyItem) => (
-                <button
-                  key={historyItem.query}
-                  onClick={() => {
-                    if (searchedQuery.toLowerCase() === historyItem.query.toLowerCase() && results !== null) {
-                      setResults(null);
-                      setSearchedQuery('');
-                    } else {
-                      handleSearch(historyItem.query);
-                    }
-                  }}
-                  className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-[#f0f0f0] text-[#0a0a0a] border border-[#ccc] cursor-pointer flex items-center gap-1"
-                >
-                  {historyItem.query}
-                </button>
-              ))}
+              {(() => {
+                const historyItems = searchHistory.filter(item => (item.mode || 'books') === mode);
+                const visibleItems = showAllHistory ? historyItems : historyItems.slice(0, 5);
+                const remainingCount = historyItems.length - 5;
+
+                return (
+                  <>
+                    {visibleItems.map((historyItem) => (
+                      <button
+                        key={historyItem.query}
+                        onClick={() => {
+                          if (searchedQuery.toLowerCase() === historyItem.query.toLowerCase() && results !== null) {
+                            setResults(null);
+                            setSearchedQuery('');
+                          } else {
+                            handleSearch(historyItem.query);
+                          }
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-[#f0f0f0] text-[#0a0a0a] border border-[#ccc] cursor-pointer flex items-center gap-1"
+                      >
+                        {historyItem.query}
+                      </button>
+                    ))}
+                    {!showAllHistory && remainingCount > 0 && (
+                      <button
+                        onClick={() => setShowAllHistory(true)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-white text-[#0a0a0a] border border-dashed border-[#ccc] cursor-pointer font-bold"
+                      >
+                        +{remainingCount} More
+                      </button>
+                    )}
+                    {showAllHistory && historyItems.length > 5 && (
+                      <button
+                        onClick={() => setShowAllHistory(false)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all hover:-translate-y-0.5 bg-white text-[#0a0a0a] border border-dashed border-[#ccc] cursor-pointer font-bold"
+                      >
+                        Show Less
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

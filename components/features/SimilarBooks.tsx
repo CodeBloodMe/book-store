@@ -23,8 +23,24 @@ export default async function SimilarBooks({ genreId, currentBookId, genreColor 
     <div className="flex flex-col gap-4">
       {books.map((book) => {
         const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
-        const coverUrl = book.cover_image_url
-          ?? (cleanIsbn ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg` : null);
+        const pcServerBase = process.env.NEXT_PUBLIC_PC_SERVER_URL?.replace(/\/$/, '');
+        let coverUrl = book.cover_image_url || '';
+        
+        if (coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
+            coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg`;
+        }
+        
+        if (coverUrl && coverUrl.includes('covers.openlibrary.org') && pcServerBase) {
+          const match = coverUrl.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
+          if (match) {
+            const [_, type, id, size] = match;
+            coverUrl = `${pcServerBase}/covers/${type}/${id}/${size}`;
+          }
+        } else if (!coverUrl && cleanIsbn) {
+          coverUrl = pcServerBase 
+            ? `${pcServerBase}/covers/isbn/${cleanIsbn}/S` 
+            : `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg`;
+        }
 
         return (
           <Link
@@ -49,7 +65,7 @@ export default async function SimilarBooks({ genreId, currentBookId, genreColor 
                 {book.title}
               </h4>
               <p className="text-sm text-gray-500">{book.author}</p>
-              {book.expert_rating && (
+              {book.expert_rating > 0 && (
                 <div className="mt-1 flex items-center gap-1">
                   <span className="text-yellow-400 text-xs">★</span>
                   <span className="text-xs font-bold text-gray-700">{book.expert_rating.toFixed(1)}</span>

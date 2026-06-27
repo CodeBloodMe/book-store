@@ -18,25 +18,25 @@ export default function VibeSearchBox() {
       <div className="relative">
         {/* Actual Input Container */}
         <div className="relative flex items-center bg-white rounded-2xl border-2 border-[#e5e5e5] group-focus-within:border-[#0a0a0a] transition-colors overflow-hidden">
-          
+
           <div className="pl-4 sm:pl-6 text-[#888] flex-shrink-0">
             <Search size={22} className="group-focus-within:text-[#0a0a0a] transition-colors" />
           </div>
-          
+
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { 
-              if (e.key === 'Enter') { 
-                e.preventDefault(); 
-                handleSearch(); 
-              } 
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearch();
+              }
             }}
             placeholder="e.g. A cozy sci-fi about a space cafe..."
             className="w-full py-4 sm:py-5 px-3 sm:px-4 text-base sm:text-lg outline-none bg-transparent text-[#0a0a0a] placeholder:text-[#aaa]"
           />
-          
+
           <div className="pr-2 sm:pr-3 flex-shrink-0">
             <button
               onClick={handleSearch}

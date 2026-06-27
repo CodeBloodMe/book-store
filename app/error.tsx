@@ -14,7 +14,7 @@ export default function Error({ error, reset }: ErrorProps) {
       style={{ background: 'var(--bg-base)' }}
     >
       <div className="text-center max-w-md px-6">
-        <p className="text-6xl mb-6">📚💥</p>
+        <p className="text-6xl mb-6"></p>
         <h1 className="font-extrabold text-2xl mb-3" style={{ color: 'var(--text-primary)' }}>
           Something went wrong
         </h1>
