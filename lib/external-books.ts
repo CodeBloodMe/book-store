@@ -97,6 +97,7 @@ export async function searchOpenLibrary(query: string): Promise<Partial<Book>[]>
       community_rating: 0, // OL rarely has ratings in search
       description: '', // OpenLibrary search doesn't return full descriptions easily
       external_id: `ol:${doc.key.replace('/works/', '')}`,
+      isbn: doc.isbn && doc.isbn.length > 0 ? doc.isbn[0] : null,
     }));
   } catch (err) {
     console.warn('OpenLibrary search failed:', err);
