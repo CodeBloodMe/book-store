@@ -16,6 +16,7 @@ import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
 import SimilarBooks from '@/components/features/SimilarBooks';
 import SeriesPanel from '@/components/features/SeriesPanel';
 import DynamicBackground from '@/components/ui/DynamicBackground';
+import GoodreadsScrapeTrigger from '@/components/features/GoodreadsScrapeTrigger';
 
 
 interface PageProps {
@@ -113,12 +114,7 @@ export default async function BookDetailPage({ params }: PageProps) {
   }
 
   if (!coverUrl && cleanIsbn) {
-    if (process.env.NEXT_PUBLIC_PC_SERVER_URL) {
-      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
-      coverUrl = `${serverBase}/covers/isbn/${cleanIsbn}/L`;
-    } else {
-      coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
-    }
+    coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
   }
 
   // --- External Store Links Logic ---
@@ -319,6 +315,11 @@ export default async function BookDetailPage({ params }: PageProps) {
 
         {/* Bottom Section */}
         <div className="mb-16">
+          <GoodreadsScrapeTrigger 
+            bookId={book.id} 
+            isbn={cleanIsbn ?? null} 
+            needsDescription={!book.description} 
+          />
           <UserReviews bookId={book.id} initialReviews={reviews} currentUserId={user?.id ?? null} />
         </div>
 

@@ -64,3 +64,12 @@ update-*.js
 scripts/*.mjs
 scripts/*.ts
 scripts/*.js
+
+# Python Cache & Envs
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Temp test files
+goodreads_test.png

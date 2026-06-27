@@ -19,23 +19,13 @@ interface NextBookPanelProps {
 
 export default function NextBookPanel({ nextBook }: NextBookPanelProps) {
   const cleanIsbn = nextBook.isbn?.replace(/[-\s]/g, '');
-  const pcServerBase = process.env.NEXT_PUBLIC_PC_SERVER_URL?.replace(/\/$/, '');
-  
   let coverUrl = nextBook.cover_image_url || '';
   if (coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
       coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
   }
   
-  if (coverUrl && coverUrl.includes('covers.openlibrary.org') && pcServerBase) {
-    const match = coverUrl.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
-    if (match) {
-      const [_, type, id, size] = match;
-      coverUrl = `${pcServerBase}/covers/${type}/${id}/${size}`;
-    }
-  } else if (!coverUrl && cleanIsbn) {
-    coverUrl = pcServerBase 
-      ? `${pcServerBase}/covers/isbn/${cleanIsbn}/M` 
-      : `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
+  if (!coverUrl && cleanIsbn) {
+    coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
   }
 
   return (
@@ -72,7 +62,7 @@ export default function NextBookPanel({ nextBook }: NextBookPanelProps) {
             src={coverUrl}
             alt={`Cover of ${nextBook.title}`}
             fallbackGradient="var(--indigo-600)"
-            fallbackText={nextBook.title}
+            fallbackText=""
           />
         </div>
 

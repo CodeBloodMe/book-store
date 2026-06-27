@@ -143,10 +143,23 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
             <div key={review.id} className="pb-6 border-b border-gray-50 last:border-0 last:pb-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs uppercase">
-                    {review.reviewer_name.slice(0, 2)}
+                  {review.external_author_image_url ? (
+                    <img 
+                      src={review.external_author_image_url} 
+                      alt={review.reviewer_name}
+                      className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs uppercase">
+                      {review.reviewer_name.slice(0, 2)}
+                    </div>
+                  )}
+                  <div>
+                    <span className="font-bold text-gray-900 block">{review.external_author_name || review.reviewer_name}</span>
+                    {review.source === 'goodreads' && (
+                      <span className="text-xs text-gray-500">via Goodreads</span>
+                    )}
                   </div>
-                  <span className="font-bold text-gray-900">{review.reviewer_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex text-amber-400">

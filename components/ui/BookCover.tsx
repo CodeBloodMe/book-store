@@ -19,15 +19,16 @@ interface BookCoverProps {
 
 export default function BookCover({ src, alt, fallbackGradient, fallbackText }: BookCoverProps) {
 
-  // Rewrite Open Library URLs to proxy via PC Server if configured
+  // USER: Uncomment this later to re-enable Open Library
+  // const [currentUrl, setCurrentUrl] = useState<string | null>(src);
+  
+  // USER: Delete this block when you uncomment the above
   const [currentUrl, setCurrentUrl] = useState<string | null>(() => {
-    if (!src) return null;
-    if (src.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+    if (src && src.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
       const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
       const match = src.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
       if (match) {
-        const [_, type, id, size] = match;
-        return `${serverBase}/covers/${type}/${id}/${size}`;
+        return `${serverBase}/covers/${match[1]}/${match[2]}/${match[3]}`;
       }
     }
     return src;
@@ -39,16 +40,23 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
   // Tracks if the image has finished downloading to the user's browser
   const [isFullyLoaded, setIsFullyLoaded] = useState(false);
   
-  // We should try to show the cover ONLY if we have a URL and it hasn't errored out
+  // We should try to show the cover ONLY if we have a URL and it hasn't errored out completely
   const shouldShowCover = currentUrl !== null && hasImageError === false;
 
   const handleError = () => {
-    if (currentUrl !== src) {
-      // PC server failed (e.g., PC asleep), fallback to original URL
-      setCurrentUrl(src);
-    } else {
-      setHasImageError(true);
+    // If the original URL failed, AND it's an Open Library URL, AND we have a PC Server configured
+    if (currentUrl === src && src && src.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
+      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
+      const match = src.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
+      if (match) {
+        const [_, type, id, size] = match;
+        // Fallback to PC Server!
+        setCurrentUrl(`${serverBase}/covers/${type}/${id}/${size}`);
+        return;
+      }
     }
+    // If we've exhausted all options or it wasn't an Open Library URL
+    setHasImageError(true);
   };
 
   // Prevent infinite loading skeletons by enforcing a strict 15-second timeout

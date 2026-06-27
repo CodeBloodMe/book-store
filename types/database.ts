@@ -110,6 +110,9 @@ export interface Book {
   // Free public domain book EPUB/PDF storage URL
   free_reading_url: string | null;
 
+  // Has been scraped by Goodreads script
+  goodreads_scraped: boolean;
+
   // Joined genre (optional — only when selected with *)
   genres?: Genre;
 
@@ -140,6 +143,9 @@ export interface Review {
   rating: number;
   content: string;
   created_at: string;
+  source: string;
+  external_author_name: string | null;
+  external_author_image_url: string | null;
 }
 
 export interface UserShelf {
