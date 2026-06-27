@@ -65,10 +65,10 @@ export default async function SimilarBooks({ genreId, currentBookId, genreColor 
                 {book.title}
               </h4>
               <p className="text-sm text-gray-500">{book.author}</p>
-              {book.expert_rating && book.expert_rating > 0 && (
+              {(book.expert_rating ?? 0) > 0 && (
                 <div className="mt-1 flex items-center gap-1">
                   <span className="text-yellow-400 text-xs">★</span>
-                  <span className="text-xs font-bold text-gray-700">{book.expert_rating.toFixed(1)}</span>
+                  <span className="text-xs font-bold text-gray-700">{(book.expert_rating || 0).toFixed(1)}</span>
                 </div>
               )}
             </div>
