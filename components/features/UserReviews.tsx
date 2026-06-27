@@ -65,6 +65,9 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
                 rating: parseInt(formData.get('rating') as string, 10),
                 content: formData.get('content') as string,
                 created_at: new Date().toISOString(),
+                source: 'local',
+                external_author_name: null,
+                external_author_image_url: null,
               };
               setReviews([newReview, ...reviews]);
             } else if (result.error) {
