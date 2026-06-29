@@ -105,6 +105,7 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
   const params = new URLSearchParams({ title, author, limit: '5' });
   const res = await fetch(`https://openlibrary.org/search.json?${params}`, {
     signal: AbortSignal.timeout(5000),
+    headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' }
   });
 
   if (!res.ok) {

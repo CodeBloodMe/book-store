@@ -12,18 +12,17 @@ interface BookCardProps {
 
 function getCoverUrls(book: Book) {
   const urls = { primary: '', fallback: '' };
-  const pcServerBase = process.env.NEXT_PUBLIC_PC_SERVER_URL?.replace(/\/$/, '');
+  const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
   
   // 1. If we have a cover URL in the database
   if (book.cover_image_url) {
-    /* USER: Uncomment this block later to re-enable Open Library
     urls.primary = book.cover_image_url;
     
     // If it's an Open Library URL, configure the PC Server as a fallback
     if (book.cover_image_url.includes('covers.openlibrary.org') && pcServerBase) {
       const match = book.cover_image_url.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
       if (match) {
-        let [_, type, id, size] = match;
+        let [, type, id, size] = match;
         const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
         if (type === 'id' && cleanIsbn) {
             type = 'isbn';
@@ -31,25 +30,6 @@ function getCoverUrls(book: Book) {
         }
         urls.fallback = `${pcServerBase}/covers/${type}/${id}/${size}`;
       }
-    }
-    */
-
-    // USER: Delete this block when you uncomment the above
-    if (book.cover_image_url.includes('covers.openlibrary.org') && pcServerBase) {
-      const match = book.cover_image_url.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
-      if (match) {
-        let [_, type, id, size] = match;
-        const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
-        if (type === 'id' && cleanIsbn) {
-            type = 'isbn';
-            id = cleanIsbn;
-        }
-        urls.primary = `${pcServerBase}/covers/${type}/${id}/${size}`;
-      } else {
-        urls.primary = book.cover_image_url;
-      }
-    } else {
-      urls.primary = book.cover_image_url;
     }
     
     return urls;

@@ -25,7 +25,8 @@ export default async function SimilarBooks({ genreId, currentBookId, genreColor 
         const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
         let coverUrl = book.cover_image_url || '';
         
-        if (coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
+        const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
+        if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
             coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-S.jpg`;
         }
         

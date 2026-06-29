@@ -13,7 +13,7 @@ export default function GoodreadsScrapeTrigger({ bookId, isbn, needsDescription 
     // Trigger scrape silently on the PC Server
     const triggerScrape = async () => {
       try {
-        const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL?.replace(/\/$/, '') || 'http://localhost:4000';
+        const serverBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '') || 'http://localhost:4000';
         const res = await fetch(`${serverBase}/scrape-goodreads`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -20,7 +20,9 @@ interface NextBookPanelProps {
 export default function NextBookPanel({ nextBook }: NextBookPanelProps) {
   const cleanIsbn = nextBook.isbn?.replace(/[-\s]/g, '');
   let coverUrl = nextBook.cover_image_url || '';
-  if (coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
+  const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
+  
+  if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
       coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
   }
   

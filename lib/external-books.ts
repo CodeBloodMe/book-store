@@ -83,7 +83,10 @@ export async function searchAppleBooks(query: string): Promise<Partial<Book>[]> 
 export async function searchOpenLibrary(query: string): Promise<Partial<Book>[]> {
   try {
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { 
+      cache: 'no-store',
+      headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' }
+    });
     if (!res.ok) return [];
     
     const data = await res.json();
@@ -134,7 +137,9 @@ export async function fetchExternalBookDetails(externalId: string): Promise<Part
     try {
       // First get work details for description
       const url = `https://openlibrary.org/works/${id}.json`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' }
+      });
       if (!res.ok) return null;
       const data = await res.json();
       
@@ -143,7 +148,9 @@ export async function fetchExternalBookDetails(externalId: string): Promise<Part
         : data.description?.value || '';
 
       // Get cover from search since works API doesn't always have simple cover IDs
-      const searchRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(data.title)}&limit=1`);
+      const searchRes = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(data.title)}&limit=1`, {
+        headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' }
+      });
       const searchData = await searchRes.json();
       const doc = searchData.docs?.[0] || {};
 

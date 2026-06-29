@@ -19,20 +19,7 @@ interface BookCoverProps {
 
 export default function BookCover({ src, alt, fallbackGradient, fallbackText }: BookCoverProps) {
 
-  // USER: Uncomment this later to re-enable Open Library
-  // const [currentUrl, setCurrentUrl] = useState<string | null>(src);
-  
-  // USER: Delete this block when you uncomment the above
-  const [currentUrl, setCurrentUrl] = useState<string | null>(() => {
-    if (src && src.includes('covers.openlibrary.org') && process.env.NEXT_PUBLIC_PC_SERVER_URL) {
-      const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
-      const match = src.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
-      if (match) {
-        return `${serverBase}/covers/${match[1]}/${match[2]}/${match[3]}`;
-      }
-    }
-    return src;
-  });
+  const [currentUrl, setCurrentUrl] = useState<string | null>(src);
   
   // Tracks if the image link is broken (e.g. 404 error)
   const [hasImageError, setHasImageError] = useState(false);
@@ -49,7 +36,7 @@ export default function BookCover({ src, alt, fallbackGradient, fallbackText }: 
       const serverBase = process.env.NEXT_PUBLIC_PC_SERVER_URL.replace(/\/$/, '');
       const match = src.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
       if (match) {
-        const [_, type, id, size] = match;
+        const [, type, id, size] = match;
         // Fallback to PC Server!
         setCurrentUrl(`${serverBase}/covers/${type}/${id}/${size}`);
         return;

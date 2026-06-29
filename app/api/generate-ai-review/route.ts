@@ -8,7 +8,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 async function fetchOpenLibraryData(query: string): Promise<string> {
   try {
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'ChapterOne/1.0' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' } });
     if (!res.ok) return '';
     const data = await res.json();
     const book = data.docs?.[0];
