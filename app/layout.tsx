@@ -24,6 +24,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://book-store-eight-zeta.vercel.app'),
   title: {
     default: 'ChapterOne — Expert Book Recommendations',
     template: '%s | ChapterOne',
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://chapterone.app',
+    url: 'https://book-store-eight-zeta.vercel.app',
     siteName: 'ChapterOne',
     title: 'ChapterOne — Expert Book Recommendations',
     description: 'Discover the best books in any genre, curated by experts.',

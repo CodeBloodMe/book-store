@@ -4,12 +4,13 @@
 // ============================================================
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 const footerLinks = {
   Explore: [
     { label: 'All Genres', href: '/#genres' },
     { label: 'Fiction Finder', href: '/fiction' },
-    { label: 'Editor\'s Picks', href: '/#picks' },
+    { label: 'Highest Rated', href: '/#highest-rated' },
     { label: 'Search Books', href: '/search' },
   ],
   Learning: [
@@ -42,7 +43,7 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
             <Link href="/" className="flex items-center mb-6 inline-block">
               <div className="h-28 w-28 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:-translate-y-1" style={{ boxShadow: '4px 4px 0 #0a0a0a' }}>
-                <img src="/logo.png" alt="ChapterOne Logo" className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
+                <Image src="/logo.png" alt="ChapterOne Logo" width={112} height={112} className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
               </div>
               <span className="sr-only">ChapterOne</span>
             </Link>
@@ -63,7 +64,7 @@ export default function Footer() {
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm hover:text-white transition-colors"
+                      className="text-sm hover:text-[#0a0a0a] transition-colors font-medium"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       {link.label}
@@ -86,14 +87,14 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              I hope this project help you find best books
+              I hope this project helps you find the best books
             </p>
             <div className="flex gap-4 items-center">
               <a
                 href="https://www.linkedin.com/in/krishkaushik5178/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-semibold hover:text-white transition-colors flex items-center gap-1 group"
+                className="text-sm font-semibold hover:text-[#0a0a0a] transition-colors flex items-center gap-1 group"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 LinkedIn <span className="group-hover:translate-x-1 transition-transform">→</span>
@@ -102,7 +103,7 @@ export default function Footer() {
                 href="https://github.com/CodeBloodMe"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-semibold hover:text-white transition-colors flex items-center gap-1 group"
+                className="text-sm font-semibold hover:text-[#0a0a0a] transition-colors flex items-center gap-1 group"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 GitHub <span className="group-hover:translate-x-1 transition-transform">→</span>

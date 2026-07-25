@@ -214,7 +214,7 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
         </Link>
 
         {/* Info */}
-        <div className="flex-1 min-w-0 py-1">
+        <div className="flex-1 min-w-0 py-1 flex flex-col justify-center text-center">
           <Link href={`/books/${book.id}`} className="group block">
             <h3
               className="font-bold text-base leading-tight mb-1 line-clamp-2 group-hover:underline"
@@ -225,23 +225,8 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
             <p className="text-sm font-medium mb-2" style={{ color: '#666' }}>{book.author}</p>
           </Link>
 
-          {/* Scores */}
-          <div className="flex items-center gap-4 mt-2">
-            {expertScore && (
-              <div className="flex items-center gap-1.5" title="Expert/Critic Rating">
-                <span className="text-sm">🍅</span>
-                <span className="font-bold text-sm" style={{ color: expertScore >= 80 ? '#d83a30' : '#444' }}>{expertScore}%</span>
-              </div>
-            )}
-            {communityScore && (
-              <div className="flex items-center gap-1.5" title="Community/Reader Rating">
-                <span className="text-sm">🍿</span>
-                <span className="font-bold text-sm" style={{ color: communityScore >= 80 ? '#eab308' : '#444' }}>{communityScore}%</span>
-              </div>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
             {book.difficulty_level && (
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#f5f5f0', color: '#666' }}>
                 {book.difficulty_level}
@@ -258,12 +243,6 @@ function ResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
 
       {/* Review Aggregator Section */}
       <div className="p-4 bg-gray-50 flex flex-col gap-3">
-        {book.why && (
-          <p className="text-sm leading-relaxed" style={{ color: '#333' }}>
-            <strong className="text-gray-600">Why it&apos;s perfect:</strong> {book.why}
-          </p>
-        )}
-
         {book.expert_quote && (
           <div className="bg-white p-3 rounded-xl border border-gray-200 text-sm italic text-gray-700 shadow-sm relative">
             &quot;{book.expert_quote}&quot;
@@ -505,7 +484,7 @@ export default function RecommendWizard() {
               <Link href="/recommend" className="underline font-medium">AI search page</Link> to describe what you want in your own words.
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {results.map((book, i) => (
                 <ResultCard key={book.id} book={book} rank={i + 1} />
               ))}

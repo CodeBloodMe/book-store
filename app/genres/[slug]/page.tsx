@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { getGenreBySlug, getBooksByGenre } from '@/lib/queries';
 import GenreBookList from '@/components/features/GenreBookList';
 
-export const revalidate = 0; // Force Next.js to always fetch fresh data from the database
+export const revalidate = 3600; // Cache for 1 hour
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -48,12 +48,6 @@ export default async function GenrePage({ params }: PageProps) {
     notFound();
     return null;
   }
-
-  // Separate books by difficulty for summary stats
-  const beginnerCount = books.filter((b) => b.difficulty_level === 'Beginner').length;
-  const intermediateCount = books.filter((b) => b.difficulty_level === 'Intermediate').length;
-  const advancedCount = books.filter((b) => b.difficulty_level === 'Advanced').length;
-  const avgRating = books.reduce((s, b) => s + (b.expert_rating ?? 0), 0) / (books.length || 1);
 
   return (
     <div style={{ background: 'var(--bg-base)', minHeight: '100vh' }}>

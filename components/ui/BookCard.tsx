@@ -2,116 +2,140 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Book } from '@/types/database';
+import { getCoverUrl } from '@/lib/cover-utils';
+import GeneratedCover from './GeneratedCover';
 
 interface BookCardProps {
   book: Book;
   featured?: boolean;
 }
 
-function getCoverUrls(book: Book) {
-  const urls = { primary: '', fallback: '' };
-  const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
-  
-  // 1. If we have a cover URL in the database
-  if (book.cover_image_url) {
-    urls.primary = book.cover_image_url;
-    
-    // If it's an Open Library URL, configure the PC Server as a fallback
-    if (book.cover_image_url.includes('covers.openlibrary.org') && pcServerBase) {
-      const match = book.cover_image_url.match(/covers\.openlibrary\.org\/b\/(.+?)\/(.+?)-(.+?)\.jpg/);
-      if (match) {
-        let [, type, id, size] = match;
-        const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
-        if (type === 'id' && cleanIsbn) {
-            type = 'isbn';
-            id = cleanIsbn;
-        }
-        urls.fallback = `${pcServerBase}/covers/${type}/${id}/${size}`;
-      }
-    }
-    
-    return urls;
-  }
-  
-  // 2. If no cover URL, but we have an ISBN
-  if (book.isbn) {
-    const cleanIsbn = book.isbn.replace(/[-\s]/g, '');
-    const olUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
-    
-    /* USER: Uncomment this block later to re-enable Open Library
-    urls.primary = olUrl;
-    if (pcServerBase) {
-      urls.fallback = `${pcServerBase}/covers/isbn/${cleanIsbn}/L`;
-    }
-    */
+// Lazy-load fast-average-color once at module level (not per card)
+let facInstance: any = null;
+let facPromise: Promise<any> | null = null;
 
-    // USER: Delete this block when you uncomment the above
-    if (pcServerBase) {
-      urls.primary = `${pcServerBase}/covers/isbn/${cleanIsbn}/L`;
-    } else {
-      urls.primary = olUrl;
-    }
+function getFacInstance(): Promise<any> {
+  if (facInstance) return Promise.resolve(facInstance);
+  if (!facPromise) {
+    facPromise = import('fast-average-color').then(({ FastAverageColor }) => {
+      facInstance = new FastAverageColor();
+      return facInstance;
+    });
   }
-  
-  return urls;
+  return facPromise;
 }
 
 export default function BookCard({ book, featured = false }: BookCardProps) {
-  // 0: trying primary, 1: trying fallback, 2: both failed (show placeholder)
+  // ── Image state ─────────────────────────────────────────────
   const [imageErrorLevel, setImageErrorLevel] = useState(0);
   const [dominantColor, setDominantColor] = useState('transparent');
 
-  const { primary, fallback } = getCoverUrls(book);
+  // ── Feature 1: Tilt + Holographic Foil ─────────────────────
+  const cardRef = useRef<HTMLElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, scale: 1 });
+
+  // Use centralized cover URL resolution
+  const { primary, fallback } = getCoverUrl(book);
   const currentCoverUrl = imageErrorLevel === 0 ? primary : (imageErrorLevel === 1 ? fallback : '');
   const shouldShowCover = currentCoverUrl !== '' && imageErrorLevel < 2;
 
+  // Dominant color extraction (shared FAC instance)
   useEffect(() => {
     if (!shouldShowCover || !currentCoverUrl) return;
-    
-    import('fast-average-color').then(({ FastAverageColor }) => {
-      const colorExtractor = new FastAverageColor();
-      const hiddenImage = new window.Image();
-      hiddenImage.crossOrigin = 'anonymous';
-      hiddenImage.src = currentCoverUrl;
-      
-      hiddenImage.onload = () => {
-        colorExtractor.getColorAsync(hiddenImage, { algorithm: 'dominant' })
-          .then((colorResult) => {
-            setDominantColor(colorResult.rgba);
+
+    let cancelled = false;
+
+    getFacInstance().then((fac) => {
+      if (cancelled) return;
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = currentCoverUrl;
+      img.onload = () => {
+        if (cancelled) return;
+        fac.getColorAsync(img, { algorithm: 'dominant' })
+          .then((r: any) => {
+            if (!cancelled) setDominantColor(r.rgba);
           })
           .catch(() => {});
       };
     });
+
+    return () => { cancelled = true; };
   }, [currentCoverUrl, shouldShowCover]);
 
-  const handleImageError = () => {
-    if (imageErrorLevel === 0 && fallback) {
-      setImageErrorLevel(1); // Try fallback
-    } else {
-      setImageErrorLevel(2); // Show placeholder
-    }
-  };
+  // Feature 1: Mouse tilt handler
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!cardRef.current) return;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      if (!cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      const cx = rect.left + rect.width  / 2;
+      const cy = rect.top  + rect.height / 2;
+      const dx = (e.clientX - cx) / (rect.width  / 2); // –1 to 1
+      const dy = (e.clientY - cy) / (rect.height / 2); // –1 to 1
 
-  const handleImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
-    const imageElement = event.currentTarget;
-    if (imageElement.naturalWidth <= 1) {
-      handleImageError();
-    }
+      setTilt({ rx: -dy * 13, ry: dx * 15, scale: 1.035 });
+    });
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    cardRef.current?.addEventListener('mousemove', handleMouseMove as EventListener);
+  }, [handleMouseMove]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    setTilt({ rx: 0, ry: 0, scale: 1 });
+    cardRef.current?.removeEventListener('mousemove', handleMouseMove as EventListener);
+  }, [handleMouseMove]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const handleImageError = () => {
+    if (imageErrorLevel === 0 && fallback) setImageErrorLevel(1);
+    else setImageErrorLevel(2);
+  };
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (e.currentTarget.naturalWidth <= 1) handleImageError();
   };
 
   const cardHeightClass = featured ? 'h-[320px] sm:h-[460px]' : 'h-[280px] sm:h-[420px]';
-  const cardClasses = `relative overflow-hidden group rounded-[20px] sm:rounded-[24px] shadow-sm hover:shadow-xl transition-all duration-300 ${cardHeightClass}`;
+
+  // Tilt transform
+  const isMoving = tilt.rx !== 0 || tilt.ry !== 0;
+  const tiltTransform = `perspective(820px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) scale(${tilt.scale})`;
+  const tiltTransition = isMoving
+    ? 'transform 0.06s linear'
+    : 'transform 0.45s cubic-bezier(0.23, 1, 0.32, 1)';
 
   return (
-    <article className={cardClasses} style={{ backgroundColor: '#222222' }}>
-      <Link 
-        href={`/books/${book.id}`} 
-        className="absolute inset-0 z-10" 
-        aria-label={`View details for ${book.title}`} 
+    <article
+      ref={cardRef}
+      className={`relative overflow-hidden group rounded-[20px] sm:rounded-[24px] shadow-sm hover:shadow-2xl ${cardHeightClass}`}
+      style={{
+        backgroundColor: '#222222',
+        transform: tiltTransform,
+        transition: tiltTransition,
+        transformStyle: 'preserve-3d',
+        willChange: 'transform',
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <Link
+        href={`/books/${book.id}`}
+        className="absolute inset-0 z-10"
+        aria-label={`View details for ${book.title}`}
       />
 
+      {/* ── Book cover image layer ──────────────────────────── */}
       <div className="absolute inset-0 bg-gray-900 pointer-events-none">
         {shouldShowCover ? (
           <Image
@@ -124,39 +148,40 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
             unoptimized={true}
           />
         ) : (
-          <div className="relative w-full h-full flex items-end p-6 transition-transform duration-700 group-hover:scale-105 bg-[#e5e5e5]">
-            <img 
-              src="/placeholder-book.png" 
-              alt="Placeholder cover" 
-              className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-50 grayscale"
-            />
+          <div className="transition-transform duration-700 group-hover:scale-105 w-full h-full">
+            <GeneratedCover title={book.title} author={book.author} />
           </div>
         )}
-        
-        <div 
-          className="absolute inset-0 pointer-events-none transition-all duration-1000" 
+
+        {/* Dominant color gradient */}
+        <div
+          className="absolute inset-0 pointer-events-none transition-all duration-1000"
           style={{
             background: `linear-gradient(to top, ${dominantColor} 0%, transparent 70%)`,
-            opacity: dominantColor === 'transparent' ? 0 : 0.8
+            opacity: dominantColor === 'transparent' ? 0 : 0.8,
           }}
         />
-        
+
+        {/* Base dark gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 from-10% via-black/20 to-transparent pointer-events-none" />
       </div>
 
+
+
+      {/* ── Text content overlay ─────────────────────────────── */}
       <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 md:p-6 flex flex-col justify-end z-20 pointer-events-none">
-        
+
         <h3
           className={`font-bold leading-tight line-clamp-2 mb-1 sm:mb-2 ${featured ? 'text-xl sm:text-[26px]' : 'text-lg sm:text-[22px]'}`}
-          style={{ 
+          style={{
             color: '#ffffff',
             fontFamily: 'var(--font-serif)',
-            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+            textShadow: '0 2px 4px rgba(0,0,0,0.5)',
           }}
         >
           {book.title}
         </h3>
-        
+
         <p className="text-gray-300 text-xs sm:text-sm line-clamp-1 mb-2 sm:mb-4">
           by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="font-bold hover:underline relative z-30 pointer-events-auto transition-colors" style={{ color: '#f5e642' }}>{book.author}</Link>
         </p>
@@ -177,7 +202,7 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
           
           {book.is_bestseller && (
             <div className="hidden sm:flex bg-[#222]/80 backdrop-blur-sm text-[#f59e0b] px-3 py-1.5 rounded-full text-xs font-medium border border-[#f59e0b]/30">
-              Top Rated
+              Bestseller
             </div>
           )}
         </div>

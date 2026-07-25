@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import BookCover from '@/components/ui/BookCover';
+import { getCoverUrl } from '@/lib/cover-utils';
 
 interface FloatingBook {
   id: string;
@@ -27,83 +28,51 @@ export default function FloatingCovers({ books }: { books: FloatingBook[] }) {
     transition: {
       duration: 5 + (index % 3) * 2,
       repeat: Infinity,
-      ease: "easeInOut" as any,
+      ease: "easeInOut" as const,
       delay: index * 0.5,
     }
   });
 
+  const renderBook = (book: FloatingBook, i: number, side: 'left' | 'right') => {
+    const { primary: coverUrl, fallback: fallbackUrl } = getCoverUrl(book);
+
+    const positionStyle = side === 'left'
+      ? {
+          top: `${120 + i * 220}px`,
+          left: `calc(50% - 700px - ${i % 2 === 0 ? 0 : 60}px)`,
+        }
+      : {
+          top: `${160 + i * 220}px`,
+          right: `calc(50% - 700px - ${i % 2 === 0 ? 60 : 0}px)`,
+        };
+
+    return (
+      <motion.div
+        key={book.id}
+        animate={getAnimation(side === 'left' ? i : i + 3)}
+        className="absolute pointer-events-auto hidden xl:block"
+        style={positionStyle}
+      >
+        <Link href={`/books/${book.id}`} title={book.title}>
+          <div className="w-24 h-36 md:w-32 md:h-48 rounded-lg overflow-hidden border-[3px] border-[#0a0a0a] shadow-[6px_6px_0_#0a0a0a] bg-white transition-transform hover:scale-110 hover:z-10 relative">
+            <BookCover
+              src={coverUrl}
+              fallbackSrc={fallbackUrl}
+              alt={book.title}
+              fallbackGradient="linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)"
+              fallbackText={book.title}
+            />
+          </div>
+        </Link>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden hidden lg:block z-0">
       <div className="relative w-full h-full max-w-[1400px] mx-auto">
-        
-        {/* Left Side */}
-        {leftBooks.map((book, i) => {
-          let coverUrl = book.cover_image_url;
-          const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
-          const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
-          
-          if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
-              coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
-          }
-          
-          return (
-            <motion.div
-              key={book.id}
-              animate={getAnimation(i)}
-              className="absolute pointer-events-auto hidden xl:block"
-              style={{
-                top: `${120 + i * 220}px`,
-                left: `calc(50% - 700px - ${i % 2 === 0 ? 0 : 60}px)`,
-              }}
-            >
-              <Link href={`/books/${book.id}`} title={book.title}>
-                <div className="w-24 h-36 md:w-32 md:h-48 rounded-lg overflow-hidden border-[3px] border-[#0a0a0a] shadow-[6px_6px_0_#0a0a0a] bg-white transition-transform hover:scale-110 hover:z-10 relative">
-                  <BookCover
-                    src={coverUrl}
-                    alt={book.title}
-                    fallbackGradient="linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)"
-                    fallbackText=""
-                  />
-                </div>
-              </Link>
-            </motion.div>
-          );
-        })}
-
-        {/* Right Side */}
-        {rightBooks.map((book, i) => {
-          let coverUrl = book.cover_image_url;
-          const cleanIsbn = book.isbn?.replace(/[-\s]/g, '');
-          const pcServerBase = (process.env.NEXT_PUBLIC_PC_SERVER_URL || '').replace(/\/$/, '');
-          
-          if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
-              coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-M.jpg`;
-          }
-          
-          return (
-            <motion.div
-              key={book.id}
-              animate={getAnimation(i + 3)}
-              className="absolute pointer-events-auto hidden xl:block"
-              style={{
-                top: `${160 + i * 220}px`,
-                right: `calc(50% - 700px - ${i % 2 === 0 ? 60 : 0}px)`,
-              }}
-            >
-              <Link href={`/books/${book.id}`} title={book.title}>
-                <div className="w-24 h-36 md:w-32 md:h-48 rounded-lg overflow-hidden border-[3px] border-[#0a0a0a] shadow-[6px_6px_0_#0a0a0a] bg-white transition-transform hover:scale-110 hover:z-10 relative">
-                  <BookCover
-                    src={coverUrl}
-                    alt={book.title}
-                    fallbackGradient="linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)"
-                    fallbackText=""
-                  />
-                </div>
-              </Link>
-            </motion.div>
-          );
-        })}
-        
+        {leftBooks.map((book, i) => renderBook(book, i, 'left'))}
+        {rightBooks.map((book, i) => renderBook(book, i, 'right'))}
       </div>
     </div>
   );

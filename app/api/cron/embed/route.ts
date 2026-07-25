@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       .from('books')
       .select('id, title, author, description, genres(name)')
       .is('embedding', null)
-      .limit(20);
+      .limit(10);
 
     if (error) throw error;
 
@@ -58,8 +58,8 @@ export async function GET(request: Request) {
 
         embeddedCount++;
         
-        // Small delay to prevent hitting API limits
-        await new Promise(r => setTimeout(r, 200));
+        // Increased delay to 2 seconds to prevent hitting API limits
+        await new Promise(r => setTimeout(r, 2000));
       } catch (err) {
         console.error(`[Cron] Error embedding "${book.title}":`, err);
       }

@@ -5,18 +5,19 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getBookById, getAllGenres } from '@/lib/queries';
 import RatingStars from '@/components/ui/RatingStars';
-import NextBookPanel from '@/components/features/NextBookPanel';
 import AIReviewPanel from '@/components/features/AIReviewPanel';
 import UserReviews from '@/components/features/UserReviews';
 import BookCover from '@/components/ui/BookCover';
 import { fetchAndImportExternalBook } from '@/lib/external-books';
+import { getCoverUrl } from '@/lib/cover-utils';
 import { getReviewsForBook } from '@/app/actions/reviews';
 import { createClient } from '@/lib/supabase/server';
 import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
-import SimilarBooks from '@/components/features/SimilarBooks';
+import SimilarBooksSection from '@/components/features/SimilarBooksSection';
 import SeriesPanel from '@/components/features/SeriesPanel';
 import DynamicBackground from '@/components/ui/DynamicBackground';
 import GoodreadsScrapeTrigger from '@/components/features/GoodreadsScrapeTrigger';
+import ReactMarkdown from 'react-markdown';
 
 
 interface PageProps {
@@ -105,17 +106,8 @@ export default async function BookDetailPage({ params }: PageProps) {
   const genre = book.genres;
   const cleanIsbn = book.isbn?.replace(/[-\s]/g, ''); // Remove dashes from ISBN
   
-  let coverUrl = book.cover_image_url;
-  
-  // Optimization: If it's an Open Library URL using an internal ID, we should prefer the ISBN
-  // if available. This allows the PC proxy server to fallback to Apple/Google Books if Open Library goes down.
-  if (coverUrl && coverUrl.includes('covers.openlibrary.org/b/id/') && cleanIsbn) {
-      coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
-  }
-
-  if (!coverUrl && cleanIsbn) {
-    coverUrl = `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
-  }
+  // Use centralized cover URL resolution
+  const { primary: coverUrl, fallback: coverFallback } = getCoverUrl(book);
 
   // --- External Store Links Logic ---
   
@@ -131,14 +123,38 @@ export default async function BookDetailPage({ params }: PageProps) {
     amazonLink = `https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`;
   }
 
-  // General Search Query (used for B&N and Library)
+  // General Search Query (used for B&N)
   const genericSearchQuery = (cleanIsbn && cleanIsbn !== '0000000000') ? cleanIsbn : `${book.title} ${book.author}`;
   const barnesAndNobleLink = `https://www.barnesandnoble.com/search?q=${encodeURIComponent(genericSearchQuery)}`;
-  const libraryLink = `https://search.worldcat.org/search?q=${encodeURIComponent(genericSearchQuery)}`;
 
-  // 6. Render the UI
+
+  // 6. JSON-LD for SEO
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Book',
+    name: book.title,
+    author: {
+      '@type': 'Person',
+      name: book.author,
+    },
+    url: `https://book-store-eight-zeta.vercel.app/books/${book.id}`,
+    image: coverUrl || undefined,
+    description: book.description || undefined,
+    isbn: (cleanIsbn && cleanIsbn !== '0000000000') ? cleanIsbn : undefined,
+    aggregateRating: book.total_reviews > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: book.expert_rating || book.community_rating || 0,
+      reviewCount: book.total_reviews,
+    } : undefined,
+  };
+
+  // 7. Render the UI
   return (
     <div className="relative min-h-screen pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       
       {/* Background that magically extracts colors from the cover image! */}
       <DynamicBackground coverUrl={coverUrl} />
@@ -156,9 +172,11 @@ export default async function BookDetailPage({ params }: PageProps) {
             >
               <BookCover
                 src={coverUrl}
+                fallbackSrc={coverFallback}
                 alt={`Cover of ${book.title}`}
                 fallbackGradient={`linear-gradient(135deg, ${genre?.color ?? '#1f2937'} 0%, #cbd5e1 100%)`}
                 fallbackText={book.title}
+                fallbackAuthor={book.author}
               />
             </div>
           </div>
@@ -203,9 +221,15 @@ export default async function BookDetailPage({ params }: PageProps) {
             </p>
 
             {/* Description Paragraph */}
-            <p className="text-gray-600 leading-relaxed mb-6 max-w-2xl mt-4">
-              {book.description || "A profound exploration that challenges the boundaries of its subject matter, offering a starting perspective that is highly recommended for readers seeking intellectual stimulation."}
-            </p>
+            <div className="text-gray-600 leading-relaxed mb-6 max-w-2xl mt-4">
+              <ReactMarkdown 
+                components={{
+                  a: ({node, ...props}) => <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
+                }}
+              >
+                {book.description || ''}
+              </ReactMarkdown>
+            </div>
 
             {/* Anti-Recommendations (Warning box if a book isn't for everyone) */}
             {book.not_recommended_for && book.not_recommended_for.length > 0 && (
@@ -264,16 +288,7 @@ export default async function BookDetailPage({ params }: PageProps) {
                   Barnes & Noble
                 </a>
 
-                {/* Library Button */}
-                <a 
-                  href={libraryLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-[#0a0a0a] transition-transform hover:-translate-y-0.5 shadow-sm hover:shadow-md bg-[#f5f5f0] border border-[#e5e5e5]"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m4 6 8-4 8 4"></path><path d="m18 10 4 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8l4-2"></path><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"></path><path d="M18 5v17"></path><path d="M6 5v17"></path><circle cx="12" cy="9" r="2"></circle></svg>
-                  Library
-                </a>
+
 
                 {/* Save to profile button (Requires user to be logged in) */}
                 <SaveToBookshelfButton 
@@ -287,25 +302,18 @@ export default async function BookDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Middle Section */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-16">
-          
-          {/* AI Generated Review Panel (Takes up 2/3 of the width) */}
-          <div className="lg:col-span-2">
-            <AIReviewPanel book={book} />
-          </div>
-          
-          {/* Next Book or Similar Books Panel (Takes up 1/3 of the width) */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-full">
-              <h3 className="font-bold text-gray-900 mb-6 font-serif text-lg">Because you liked this</h3>
-              {book.next_book ? (
-                <NextBookPanel nextBook={book.next_book} />
-              ) : (
-                <SimilarBooks genreId={book.genre_id} currentBookId={book.id} genreColor={genre?.color} />
-              )}
-            </div>
-          </div>
+        {/* AI Review — Full Width */}
+        <div className="mb-16">
+          <AIReviewPanel book={book} />
+        </div>
+
+        {/* ML-Powered Similar Books — Full Width */}
+        <div className="mb-16">
+          <SimilarBooksSection
+            bookId={book.id}
+            bookTitle={book.title}
+            nextBook={book.next_book}
+          />
         </div>
 
         {/* Series Info */}

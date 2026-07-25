@@ -12,12 +12,12 @@ import { Sparkles, Search, GraduationCap, BookOpen, Sprout } from 'lucide-react'
 // Metadata (SEO)
 export const metadata: Metadata = {
   title: 'ChapterOne — Find Your Perfect Book with AI',
-  description: 'Tell us what you want and our AI finds the perfect book for you instantly. 1,200+ curated books across every genre.',
+  description: 'Tell us what you want and our AI finds the perfect book for you instantly. 150+ expert-curated books across every genre.',
 };
 
 // Caching Rules
 // It ensures that when you add a new book to the database, it shows up here.
-export const revalidate = 0;
+export const revalidate = 3600;
 
 export default async function HomePage() {
   // Fetch Data from Database
@@ -29,10 +29,23 @@ export default async function HomePage() {
   // Organize Data
   const groupedGenres: Record<string, Genre[]> = {};
 
+  const personalGrowthSlugs = ['self-help', 'mental-health', 'spirituality', 'health-fitness', 'relationships'];
+
   // Loop through every genre we got from the database
   for (const genre of allGenres) {
-    // Determine its parent category. If it doesn't have one, call it 'Other'.
-    const categoryName = genre.super_categories?.name ?? 'Other';
+    // Determine its parent category.
+    let categoryName = genre.super_categories?.name;
+    
+    // Fallback if RLS or missing relationship hides super_categories
+    if (!categoryName) {
+      if (genre.is_fiction) {
+        categoryName = 'Fiction';
+      } else if (genre.is_learning) {
+        categoryName = personalGrowthSlugs.includes(genre.slug) ? 'Personal Growth' : 'Learning';
+      } else {
+        categoryName = 'Other';
+      }
+    }
 
     // If we haven't seen this category yet, create an empty array for it
     if (!groupedGenres[categoryName]) {
@@ -59,7 +72,7 @@ export default async function HomePage() {
 
           {/* Small Yellow Badge */}
           <div className="inline-flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-4 bg-[#f5e642] text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a]">
-            <Sparkles size={14} /> Find Books That suits you
+            <Sparkles size={14} /> Find Books That Suit You
           </div>
 
           {/* Subtitle */}
@@ -94,7 +107,7 @@ export default async function HomePage() {
       {/* Top Rated Books */}
       {/* We only show this section if we successfully loaded books */}
       {topRatedBooks.length > 0 && (
-        <section className="py-16 bg-white border-t-[3px] border-[#0a0a0a]">
+        <section id="highest-rated" className="py-16 bg-white border-t-[3px] border-[#0a0a0a]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {/* Section Header */}

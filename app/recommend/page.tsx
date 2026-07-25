@@ -19,6 +19,14 @@ interface RecommendedBook {
   genres?: { name: string; color: string; icon: string; slug: string } | null;
   why: string;
   path_level?: string;
+  // New multi-dimensional fields
+  mood_match?: number | null;
+  theme_match?: number | null;
+  style_match?: number | null;
+  read_if?: string | null;
+  skip_if?: string | null;
+  emotional_arc?: string | null;
+  discovery?: 'hidden-gem' | 'popular' | 'classic' | null;
 }
 
 interface HistoryItem {
@@ -31,8 +39,8 @@ type SearchMode = 'books' | 'path';
 
 // Pre-written examples a user can click on to auto-fill the search box
 const EXAMPLES = [
-  "Sad story books for my for my friend",
-  "A dark action thriller set in winter ",
+  "Sad story books for my friend",
+  "A dark action thriller set in winter",
   "Cozy fantasy with a warm cup of tea vibe",
   "A rainy Sunday in a Parisian cafe",
   "Epic world building but the protagonist is a bit chaotic",
@@ -40,75 +48,156 @@ const EXAMPLES = [
   "Books that feel like a Studio Ghibli movie",
 ];
 
+function MatchBar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-[10px] font-black uppercase tracking-widest text-[#0a0a0a] w-14 flex-shrink-0">{label}</span>
+      <div className="flex-1 h-3 bg-white border-2 border-[#0a0a0a] shadow-[2px_2px_0_#0a0a0a] overflow-hidden">
+        <div
+          className="h-full transition-all duration-700 border-r-2 border-[#0a0a0a]"
+          style={{ width: `${value}%`, background: color }}
+        />
+      </div>
+      <span className="text-[10px] font-black text-[#0a0a0a] w-9 text-center bg-[#f5e642] px-1 py-0.5 border-2 border-[#0a0a0a] shadow-[2px_2px_0_#0a0a0a]">{value}%</span>
+    </div>
+  );
+}
 
+function DiscoveryBadge({ type }: { type: string }) {
+  const config: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    'hidden-gem': { label: '💎 Hidden Gem', bg: '#f0fdf4', text: '#166534', border: '#86efac' },
+    'popular': { label: '🔥 Popular', bg: '#fefce8', text: '#854d0e', border: '#fde047' },
+    'classic': { label: '👑 Classic', bg: '#faf5ff', text: '#6b21a8', border: '#d8b4fe' },
+  };
+  const c = config[type] || config['popular'];
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: c.bg, color: c.text, border: `1.5px solid ${c.border}` }}>
+      {c.label}
+    </span>
+  );
+}
 
-function BookResultCard({ book, rank }: { book: RecommendedBook; rank: number }) {
+function BookResultCard({ book }: { book: RecommendedBook }) {
   const [imgError, setImgError] = useState(false);
-  const rating = book.expert_rating ?? book.community_rating ?? 0;
-
-  let rankBubbleColor = '#f5f5f0';
-  if (rank === 1) rankBubbleColor = '#f5e642';
-  if (rank === 2) rankBubbleColor = '#e8e8e8';
+  const [expanded, setExpanded] = useState(false);
+  const rating = book.expert_rating ?? book.community_rating ?? null;
+  const hasMatchData = book.mood_match != null || book.theme_match != null || book.style_match != null;
 
   return (
-    <Link href={`/books/${book.id}`}>
-      <div className="group flex gap-4 p-5 rounded-2xl transition-all duration-200 hover:-translate-y-1 cursor-pointer bg-white border-2 border-[#0a0a0a] shadow-[5px_5px_0_#0a0a0a]">
-
-        <div
-          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-[#0a0a0a] border-2 border-[#0a0a0a]"
-          style={{ background: rankBubbleColor }}
-        >
-          {rank}
-        </div>
-
-        <div className="flex-shrink-0 rounded-lg overflow-hidden w-16 h-[92px] bg-[#f0f0ee] border-2 border-[#e5e5e5]">
-          {book.cover_image_url && !imgError ? (
-            <Image
-              src={book.cover_image_url}
-              alt={book.title}
-              width={64}
-              height={92}
-              className="w-full h-full object-cover"
-              onError={() => setImgError(true)}
-              unoptimized={true}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl"></div>
-          )}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <h3 className="font-black text-base leading-snug mb-1 group-hover:underline line-clamp-2 text-[#0a0a0a]">
-            {book.title}
-          </h3>
-          <p className="text-sm mb-2 font-medium text-[#555]">
-            by <Link href={`/authors/${encodeURIComponent(book.author)}`} className="hover:underline hover:text-[#0a0a0a]">{book.author}</Link>
-          </p>
-
-          <p className="text-sm leading-relaxed mb-3 italic text-[#333] border-l-[3px] border-[#f5e642] pl-2">
-            {book.why}
-          </p>
-
-          <div className="flex flex-wrap gap-2 items-center">
-            {rating > 0 && (
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#f5e642] text-[#0a0a0a] border-2 border-[#0a0a0a]">
-                {rating.toFixed(1)}
-              </span>
-            )}
-            {book.difficulty_level && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-[#f5f5f0] text-[#0a0a0a] border border-[#ddd]">
-                {book.difficulty_level}
-              </span>
-            )}
-            {book.genres && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-[#f5f5f0] text-[#0a0a0a] border border-[#ddd]">
-                {book.genres.icon} {book.genres.name}
-              </span>
+    <div className="group rounded-2xl transition-all duration-200 hover:-translate-y-1 bg-white border-2 border-[#0a0a0a] shadow-[5px_5px_0_#0a0a0a] overflow-hidden">
+      <Link href={`/books/${book.id}`}>
+        <div className="flex gap-4 p-5 cursor-pointer">
+          <div className="flex-shrink-0 rounded-lg overflow-hidden w-16 h-[92px] bg-[#f0f0ee] border-2 border-[#e5e5e5]">
+            {book.cover_image_url && !imgError ? (
+              <Image
+                src={book.cover_image_url}
+                alt={book.title}
+                width={64}
+                height={92}
+                className="w-full h-full object-cover"
+                onError={() => setImgError(true)}
+                unoptimized={true}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-3xl">📖</div>
             )}
           </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h3 className="font-black text-base leading-snug group-hover:underline line-clamp-2 text-[#0a0a0a]">
+                {book.title}
+              </h3>
+            </div>
+            <p className="text-sm mb-2 font-medium text-[#555]">
+              by {book.author}
+            </p>
+
+            <p className="text-sm leading-relaxed mb-3 italic text-[#333] border-l-[3px] border-[#f5e642] pl-2">
+              {book.why}
+            </p>
+
+            <div className="flex flex-wrap gap-2 items-center">
+              {rating != null && rating > 0 && (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#f5e642] text-[#0a0a0a] border-2 border-[#0a0a0a]">
+                  ★ {rating.toFixed(1)}
+                </span>
+              )}
+              {book.difficulty_level && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-[#f5f5f0] text-[#0a0a0a] border border-[#ddd]">
+                  {book.difficulty_level}
+                </span>
+              )}
+              {book.genres && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-[#f5f5f0] text-[#0a0a0a] border border-[#ddd]">
+                  {book.genres.name}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+
+      {/* Expandable Deep Analysis Section */}
+      {(hasMatchData || book.read_if || book.skip_if) && (
+        <div className="border-t-[3px] border-[#0a0a0a]">
+          <button
+            onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}
+            className="w-full px-5 py-3 flex items-center justify-between bg-[#0a0a0a] text-white hover:bg-[#222] transition-colors cursor-pointer group/btn"
+          >
+            <span className="text-[11px] font-black uppercase tracking-widest group-hover/btn:translate-x-1 transition-transform">{expanded ? '▾ Hide Analysis' : '▸ Why This Book?'}</span>
+            {hasMatchData && !expanded && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#f5e642] border border-[#f5e642] px-2 py-0.5">
+                Match: {Math.round(((book.mood_match || 0) + (book.theme_match || 0) + (book.style_match || 0)) / 3)}%
+              </span>
+            )}
+          </button>
+
+          {expanded && (
+            <div className="px-5 py-6 space-y-6 animate-in fade-in duration-200 bg-[#f5f5f0]">
+              {/* Match Bars */}
+              {hasMatchData && (
+                <div className="space-y-3">
+                  {book.mood_match != null && <MatchBar label="Mood" value={book.mood_match} color="#f59e0b" />}
+                  {book.theme_match != null && <MatchBar label="Theme" value={book.theme_match} color="#3b82f6" />}
+                  {book.style_match != null && <MatchBar label="Style" value={book.style_match} color="#a855f7" />}
+                </div>
+              )}
+
+              {/* Emotional Arc */}
+              {book.emotional_arc && (
+                <div className="bg-white border-2 border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] p-4 relative mt-2">
+                  <div className="absolute -top-3 left-4 bg-[#f5e642] px-2 py-0.5 border-2 border-[#0a0a0a]">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#0a0a0a]">Emotional Journey</p>
+                  </div>
+                  <p className="text-sm font-medium text-[#0a0a0a] leading-relaxed mt-1">{book.emotional_arc}</p>
+                </div>
+              )}
+
+              {/* Read If / Skip If */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4">
+                {book.read_if && (
+                  <div className="bg-[#a3e635] border-2 border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] p-4 relative">
+                    <div className="absolute -top-3 left-3 bg-white px-2 py-0.5 border-2 border-[#0a0a0a]">
+                      <p className="text-[10px] font-black text-[#0a0a0a] uppercase tracking-widest">✓ READ THIS IF</p>
+                    </div>
+                    <p className="text-sm font-bold text-[#0a0a0a] leading-relaxed mt-1">{book.read_if.replace(/^Read this if you /i, 'You ')}</p>
+                  </div>
+                )}
+                {book.skip_if && (
+                  <div className="bg-[#f87171] border-2 border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] p-4 relative">
+                    <div className="absolute -top-3 left-3 bg-white px-2 py-0.5 border-2 border-[#0a0a0a]">
+                      <p className="text-[10px] font-black text-[#0a0a0a] uppercase tracking-widest">✗ SKIP THIS IF</p>
+                    </div>
+                    <p className="text-sm font-bold text-[#0a0a0a] leading-relaxed mt-1">{book.skip_if.replace(/^Skip this if you /i, 'You ')}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -221,9 +310,6 @@ function RecommendPageContent() {
           }
         });
       }
-
-      // Wait 2.5 seconds to give the covers time to load
-      await new Promise(resolve => setTimeout(resolve, 2500));
 
       setResults(booksArray);
 
@@ -515,7 +601,7 @@ function RecommendPageContent() {
                       </span>
                     </div>
 
-                    <BookResultCard book={book} rank={index + 1} />
+                    <BookResultCard book={book} />
                   </div>
                 ))}
               </div>
@@ -525,7 +611,7 @@ function RecommendPageContent() {
             {showBookGrid && (
               <div className="grid md:grid-cols-2 gap-6">
                 {results.map((book, index) => (
-                  <BookResultCard key={book.id} book={book} rank={index + 1} />
+                  <BookResultCard key={book.id} book={book} />
                 ))}
               </div>
             )}

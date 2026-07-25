@@ -18,11 +18,7 @@ function handleError<T>(data: T | null, error: unknown): T {
     throw new Error(errorMessage);
   }
   
-  if (data === null) {
-    throw new Error('Database returned empty data');
-  }
-  
-  return data;
+  return data as T;
 }
 
 export const getAllSuperCategories = unstable_cache(
@@ -216,12 +212,13 @@ export async function searchBooks(query: string): Promise<Book[]> {
   const { data: localData, error } = await supabase
     .from('books')
     .select(`*, genres(id, name, slug, icon, color)`)
-    .textSearch('search_vector', query, {
-      type: 'websearch',
-      config: 'english',
-    })
+    .or(`title.ilike.%${query}%,author.ilike.%${query}%`)
     .order('expert_rating', { ascending: false })
     .limit(15);
+
+  if (error) {
+    console.error('[Search] Supabase error:', error);
+  }
 
   const localBooks = error ? [] : (localData as Book[]);
 

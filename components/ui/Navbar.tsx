@@ -5,6 +5,7 @@
 // ============================================================
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { getAllGenres } from '@/lib/queries';
 import SearchBar from './SearchBar';
 import type { Genre } from '@/types/database';
@@ -25,9 +26,23 @@ export default async function Navbar() {
     // Don't crash if genre fetch fails
   }
 
+  const personalGrowthSlugs = ['self-help', 'mental-health', 'spirituality', 'health-fitness', 'relationships'];
+
   // Group genres by super-category for the mega-menu
   const grouped = genres.reduce<Record<string, Genre[]>>((acc, g) => {
-    const catName = g.super_categories?.name ?? 'Other';
+    let catName = g.super_categories?.name;
+    
+    // Fallback if RLS or missing relationship hides super_categories
+    if (!catName) {
+      if (g.is_fiction) {
+        catName = 'Fiction';
+      } else if (g.is_learning) {
+        catName = personalGrowthSlugs.includes(g.slug) ? 'Personal Growth' : 'Learning';
+      } else {
+        catName = 'Other';
+      }
+    }
+    
     if (!acc[catName]) acc[catName] = [];
     acc[catName].push(g);
     return acc;
@@ -53,7 +68,7 @@ export default async function Navbar() {
             aria-label="ChapterOne Home"
           >
             <div className="h-12 w-12 lg:h-20 lg:w-20 rounded-full border-2 border-gray-900 bg-[#f5f5f0] flex items-center justify-center overflow-hidden transition-transform hover:scale-105" style={{ boxShadow: '3px 3px 0 #0a0a0a' }}>
-              <img src="/logo.png" alt="ChapterOne Logo" className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" />
+              <Image src="/logo.png" alt="ChapterOne Logo" width={80} height={80} className="h-full w-full object-contain mix-blend-multiply grayscale contrast-125 brightness-110 scale-125 pl-1" priority />
             </div>
             <span className="sr-only">ChapterOne</span>
           </Link>

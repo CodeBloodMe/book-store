@@ -4,6 +4,11 @@ import { supabase } from '@/lib/supabase';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get('slug');
+  const adminKey = searchParams.get('key');
+
+  if (adminKey !== process.env.ADMIN_KEY && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   if (!slug) {
     return NextResponse.json({ 
@@ -48,14 +53,14 @@ export async function GET(request: Request) {
       published_year: item.volumeInfo.publishedDate ? parseInt(item.volumeInfo.publishedDate.substring(0, 4)) : null,
       isbn: item.volumeInfo.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier || 
             item.volumeInfo.industryIdentifiers?.[0]?.identifier || null,
-      expert_rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)), // Mock expert rating 3.5-5.0
-      community_rating: item.volumeInfo.averageRating || parseFloat((Math.random() * 2 + 3).toFixed(1)),
-      total_reviews: item.volumeInfo.ratingsCount || Math.floor(Math.random() * 1000),
-      difficulty_level: ['Beginner', 'Intermediate', 'Advanced'][Math.floor(Math.random() * 3)],
+      expert_rating: null,
+      community_rating: item.volumeInfo.averageRating || null,
+      total_reviews: item.volumeInfo.ratingsCount || 0,
+      difficulty_level: null,
       external_id: `google:${item.id}`,
       is_featured: false,
       is_editors_pick: false,
-      is_bestseller: item.volumeInfo.ratingsCount > 500, // Make highly rated books bestsellers
+      is_bestseller: false,
       tags: ['AUTO_IMPORTED']
     }));
 

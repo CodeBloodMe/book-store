@@ -60,10 +60,22 @@ proxy.ts
 fix_database.sql
 get-book.ts
 project_explanation.txt
-update-*.js
-scripts/*.mjs
-scripts/*.ts
-scripts/*.js
+# One-off utility scripts
+scripts/add-more-free-books.js
+scripts/backfill-embeddings.js
+scripts/bulk-seed-books.mjs
+scripts/download-all-covers.ts
+scripts/download-with-browser.ts
+scripts/fix-missing-covers.ts
+scripts/remove-purple.js
+scripts/remove-tailwind-purple.js
+scripts/seed-50-books.js
+scripts/seed-base-dataset.ts
+scripts/seed-exact-combinations.ts
+scripts/update-covers.js
+scripts/test*.js
+scripts/test*.mjs
+scripts/check*.js
 
 # Python Cache & Envs
 __pycache__/
@@ -73,3 +85,14 @@ venv/
 
 # Temp test files
 goodreads_test.png
+
+# Agent and AI IDE files
+AGENTS.md
+PROJECT_BRAIN.md
+CLAUDE.md
+.gemini/
+scratch/
+
+# IDE
+.vscode/
+.idea/

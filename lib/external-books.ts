@@ -27,7 +27,7 @@ function decodeHTMLEntities(text: string): string {
 export async function searchGoogleBooks(query: string): Promise<Partial<Book>[]> {
   try {
     const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return [];
     
     const data = await res.json();
@@ -52,7 +52,7 @@ export async function searchGoogleBooks(query: string): Promise<Partial<Book>[]>
 export async function searchAppleBooks(query: string): Promise<Partial<Book>[]> {
   try {
     const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=ebook&limit=10`;
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return [];
     
     const data = await res.json();
@@ -85,6 +85,7 @@ export async function searchOpenLibrary(query: string): Promise<Partial<Book>[]>
     const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
     const res = await fetch(url, { 
       cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'MyBooksSite/1.0 (admin@mybookssite.com)' }
     });
     if (!res.ok) return [];

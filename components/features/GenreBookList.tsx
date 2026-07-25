@@ -26,7 +26,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
   const [activeLevel, setActiveLevel] = useState<DifficultyLevel | 'All'>('All');
   const [sort, setSort] = useState<SortOption>('expert_rating');
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState<number>(4);
+  const [visibleCount, setVisibleCount] = useState<number>(12);
 
   // Collect all unique tags from the books for the filter chips
   const allTags = useMemo(() => {
@@ -79,7 +79,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
 
   // Reset visible count when filters change
   useEffect(() => {
-    setVisibleCount(4);
+    setVisibleCount(12);
   }, [filtered]);
 
   return (
@@ -138,12 +138,7 @@ export default function GenreBookList({ books, isLearning }: GenreBookListProps)
 
         {/* Tag Filter Chips */}
         {allTags.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 w-full" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <style jsx>{`
-              div::-webkit-scrollbar {
-                display: none;
-              }
-            `}</style>
+          <div className="flex gap-2 overflow-x-auto pb-2 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {activeTags.size > 0 && (
               <button
                 onClick={() => setActiveTags(new Set())}

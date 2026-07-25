@@ -138,15 +138,15 @@ export default function GenreCard({ genre }: GenreCardProps) {
       </div>
 
       {/* ── Action Button ── */}
-      <button 
-        className="block w-full py-2 sm:py-[13px] border-t-[3px] sm:border-t-[5px] border-[#0a0a0a] group-hover:bg-[#0a0a0a] group-hover:text-white transition-colors text-xs sm:text-[1.1rem] text-[#0a0a0a] cursor-pointer text-center tracking-[0.2em]"
+      <div 
+        className="block w-full py-2 sm:py-[13px] border-t-[3px] sm:border-t-[5px] border-[#0a0a0a] group-hover:bg-[#0a0a0a] group-hover:text-white transition-colors text-xs sm:text-[1.1rem] text-[#0a0a0a] text-center tracking-[0.2em]"
         style={{
           background: accentColor,
           fontFamily: 'var(--font-bebas)',
         }}
       >
         BROWSE
-      </button>
+      </div>
     </Link>
   );
 }

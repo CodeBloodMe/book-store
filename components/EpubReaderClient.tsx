@@ -362,61 +362,15 @@ export default function EpubReaderClient({
     return () => window.removeEventListener('keydown', handler);
   }, [showSettings, showTOC, handleBookmark, resetHideTimer]);
 
-  // Helper to detect if a new selection overlaps an existing highlight
-  const getOverlappingHighlight = useCallback((p: Popover | null, hls: Highlight[]) => {
-    if (!p) return undefined;
-    
-    // 1. Exact match
-    let match = hls.find(h => h.cfi === p.cfi);
-    if (match) return match;
 
-    // 2. DOM Range intersection match (Robust for partial overlaps)
-    const rendition = renditionRef.current;
-    if (rendition) {
-      try {
-        const contents = rendition.getContents()[0];
-        if (contents) {
-          const sel = contents.window.getSelection();
-          if (sel && sel.rangeCount > 0) {
-            const selRange = sel.getRangeAt(0);
-            match = hls.find(h => {
-              try {
-                // Returns a DOM Range for the highlight CFI
-                const hlRange = rendition.getRange(h.cfi);
-                if (!hlRange) return false;
-                
-                // Check if selRange overlaps hlRange
-                // END_TO_START (3): compares selRange.end to hlRange.start. selRange.end >= hlRange.start -> returns 1 or 0
-                // START_TO_END (1): compares selRange.start to hlRange.end. selRange.start <= hlRange.end -> returns -1 or 0
-                const startBeforeEnd = selRange.compareBoundaryPoints(3, hlRange) <= 0;
-                const endAfterStart = selRange.compareBoundaryPoints(1, hlRange) >= 0;
-                
-                return startBeforeEnd && endAfterStart;
-              } catch (e) {
-                return false;
-              }
-            });
-            if (match) return match;
-          }
-        }
-      } catch (e) {
-        /* ignore DOM errors */
-      }
-    }
-
-    // 3. Fuzzy Text match (Fallback for identical full texts in same chapter)
-    return hls.find(h => 
-      h.cfi.split('!')[0] === p.cfi.split('!')[0] && 
-      (h.text.includes(p.text) || p.text.includes(h.text))
-    );
-  }, []);
 
   // ── Highlight actions ────────────────────────────────────────────────────────
   const handleHighlight = useCallback((color: string) => {
     if (!popover || !renditionRef.current) return;
 
-    // Remove any existing annotation for this CFI or overlapping CFI
-    const target = getOverlappingHighlight(popover, highlightsRef.current);
+    // Only replace if it's the exact same annotation being modified (e.g., changing color).
+    // Allow overlapping highlights if the user makes a new selection.
+    const target = highlightsRef.current.find(h => h.cfi === popover.cfi);
     if (target) {
       try { renditionRef.current.annotations.remove(target.cfi, 'highlight'); } catch {}
     }
@@ -463,7 +417,7 @@ export default function EpubReaderClient({
 
   const handleEraseHighlight = useCallback(() => {
     if (!popover || !renditionRef.current) return;
-    const target = getOverlappingHighlight(popover, highlightsRef.current);
+    const target = highlightsRef.current.find(h => h.cfi === popover.cfi);
     
     if (target) {
       try { renditionRef.current.annotations.remove(target.cfi, 'highlight'); } catch {}
@@ -759,7 +713,7 @@ export default function EpubReaderClient({
           onHighlight={handleHighlight}
           onCopy={handleCopy}
           onClose={() => setPopover(null)}
-          existingColor={getOverlappingHighlight(popover, highlights)?.color}
+          existingColor={highlights.find(h => h.cfi === popover.cfi)?.color}
           onErase={handleEraseHighlight}
         />
       )}

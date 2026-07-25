@@ -10,9 +10,15 @@ const nextConfig: NextConfig = {
         pathname: '/b/**',
       },
       {
-        // Google Books covers
+        // Google Books API — cover thumbnails
         protocol: 'https',
         hostname: 'books.google.com',
+        pathname: '/**',
+      },
+      {
+        // Google Books actual image CDN (most cover images are served from here)
+        protocol: 'https',
+        hostname: '*.googleusercontent.com',
         pathname: '/**',
       },
       {
@@ -26,6 +32,25 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images-na.ssl-images-amazon.com',
         pathname: '/images/P/**',
+      },
+      {
+        // Local PC cover server (dev mode)
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '4000',
+        pathname: '/covers/**',
+      },
+      {
+        // Cloudflare Tunnel for PC cover server (production/remote access)
+        protocol: 'https',
+        hostname: '*.trycloudflare.com',
+        pathname: '/covers/**',
+      },
+      {
+        // Apple Books CDN — covers fetched from iTunes API
+        protocol: 'https',
+        hostname: '*.mzstatic.com',
+        pathname: '/**',
       },
     ],
   },

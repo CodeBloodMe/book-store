@@ -4,7 +4,13 @@ import { supabase } from '@/lib/supabase';
 // Helper to delay between API calls to prevent Google from blocking us
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const adminKey = searchParams.get('key');
+
+  if (adminKey !== process.env.ADMIN_KEY && process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   // 1. Fetch all genres from the database
   const { data: genres, error: genreError } = await supabase.from('genres').select('id, name');
   if (genreError || !genres) {
@@ -38,12 +44,12 @@ export async function GET() {
         description: item.volumeInfo.description || `A real book about ${genre.name} imported from Google Books.`,
         cover_image_url: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
         page_count: item.volumeInfo.pageCount || null,
-        expert_rating: parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)), 
-        community_rating: item.volumeInfo.averageRating || parseFloat((Math.random() * 2 + 3).toFixed(1)),
-        total_reviews: item.volumeInfo.ratingsCount || Math.floor(Math.random() * 1000),
-        difficulty_level: ['Beginner', 'Intermediate', 'Advanced'][Math.floor(Math.random() * 3)],
+        expert_rating: null,
+        community_rating: item.volumeInfo.averageRating || null,
+        total_reviews: item.volumeInfo.ratingsCount || 0,
+        difficulty_level: null,
         external_id: `google:${item.id}`,
-        is_bestseller: (item.volumeInfo.ratingsCount || 0) > 500,
+        is_bestseller: false,
         tags: ['REAL_GOOGLE_BOOKS']
       }));
 
