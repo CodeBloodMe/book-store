@@ -87,40 +87,40 @@ export async function GET(request: NextRequest) {
     const { data: bridge1Options } = await supabase
       .from('books')
       .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-      .eq('genre_id', startBook.genre_id)
-      .neq('id', startBook.id)
-      .neq('id', endBook.id)
+      .eq('genre_id', startBook!.genre_id)
+      .neq('id', startBook!.id)
+      .neq('id', endBook!.id)
       .limit(10);
       
     const bridge1 = (bridge1Options && bridge1Options.length > 0) 
       ? bridge1Options[Math.floor(Math.random() * bridge1Options.length)] 
-      : startBook; // If nothing found, just skip bridging
+      : startBook!; // If nothing found, just skip bridging
 
     // Find Bridge 2 (same genre or vibe as end)
     const { data: bridge2Options } = await supabase
       .from('books')
       .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-      .eq('genre_id', endBook.genre_id)
-      .neq('id', startBook.id)
-      .neq('id', endBook.id)
+      .eq('genre_id', endBook!.genre_id)
+      .neq('id', startBook!.id)
+      .neq('id', endBook!.id)
       .neq('id', bridge1.id)
       .limit(10);
 
     const bridge2 = (bridge2Options && bridge2Options.length > 0)
       ? bridge2Options[Math.floor(Math.random() * bridge2Options.length)]
-      : endBook;
+      : endBook!;
 
     // Construct simple robust path
-    const fullPath = [startBook];
-    if (bridge1.id !== startBook.id) fullPath.push(bridge1);
-    if (bridge2.id !== endBook.id && bridge2.id !== bridge1.id) fullPath.push(bridge2);
-    fullPath.push(endBook);
+    const fullPath = [startBook!];
+    if (bridge1.id !== startBook!.id) fullPath.push(bridge1);
+    if (bridge2.id !== endBook!.id && bridge2.id !== bridge1.id) fullPath.push(bridge2);
+    fullPath.push(endBook!);
 
     const edges = [];
     for (let i = 0; i < fullPath.length - 1; i++) {
       let rel = 'connected';
-      if (i === 0 && bridge1.id !== startBook.id) rel = 'same_genre';
-      else if (i === fullPath.length - 2 && bridge2.id !== endBook.id) rel = 'same_genre';
+      if (i === 0 && bridge1.id !== startBook!.id) rel = 'same_genre';
+      else if (i === fullPath.length - 2 && bridge2.id !== endBook!.id) rel = 'same_genre';
       else rel = 'wildcard_leap';
       
       edges.push({
