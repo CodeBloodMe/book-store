@@ -79,6 +79,10 @@ export async function GET(request: NextRequest) {
     const startBook = edgeBooks.find(b => b.id === fromId);
     const endBook = edgeBooks.find(b => b.id === toId);
 
+    if (!startBook || !endBook) {
+      return NextResponse.json({ error: 'Start or end book not found in DB' }, { status: 404 });
+    }
+
     // Find Bridge 1 (same genre or vibe as start)
     const { data: bridge1Options } = await supabase
       .from('books')
