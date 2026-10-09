@@ -38,9 +38,9 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, scale: 1 });
 
   // Use centralized cover URL resolution
-  const { primary, fallback } = getCoverUrl(book);
-  const currentCoverUrl = imageErrorLevel === 0 ? primary : (imageErrorLevel === 1 ? fallback : '');
-  const shouldShowCover = currentCoverUrl !== '' && imageErrorLevel < 2;
+  const { primary, fallback, tertiary } = getCoverUrl(book);
+  const currentCoverUrl = imageErrorLevel === 0 ? primary : (imageErrorLevel === 1 ? fallback : (imageErrorLevel === 2 ? tertiary : ''));
+  const shouldShowCover = currentCoverUrl !== '' && imageErrorLevel < 3;
 
   // Dominant color extraction (shared FAC instance)
   useEffect(() => {
@@ -100,7 +100,8 @@ export default function BookCard({ book, featured = false }: BookCardProps) {
 
   const handleImageError = () => {
     if (imageErrorLevel === 0 && fallback) setImageErrorLevel(1);
-    else setImageErrorLevel(2);
+    else if (imageErrorLevel === 1 && tertiary) setImageErrorLevel(2);
+    else setImageErrorLevel(3);
   };
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     if (e.currentTarget.naturalWidth <= 1) handleImageError();

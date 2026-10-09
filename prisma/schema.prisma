@@ -1,0 +1,47 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String   @unique
+  role       String   @default("User")
+  created_at DateTime @default(now())
+  reviews    Review[]
+  shelves    UserShelf[]
+}
+
+model Book {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  page_count  Int?
+  external_id String?  @unique
+  reviews     Review[]
+  shelves     UserShelf[]
+}
+
+model Review {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id String @db.Uuid
+  book_id String @db.Uuid
+  rating  Int
+  content String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book    Book   @relation(fields: [book_id], references: [id], onDelete: Cascade)
+}
+
+model UserShelf {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id String @db.Uuid
+  book_id String @db.Uuid
+  status  String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book    Book   @relation(fields: [book_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, book_id])
+}

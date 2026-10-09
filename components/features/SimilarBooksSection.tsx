@@ -25,7 +25,7 @@ export default function SimilarBooksSection({ bookId, bookTitle, nextBook }: Sim
 
     async function fetchSimilar() {
       try {
-        const res = await fetch(`/api/similar-books?bookId=${bookId}&count=8`);
+        const res = await fetch(`/api/similar-books?bookId=${bookId}&count=4`);
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         if (!cancelled) {
@@ -65,7 +65,7 @@ export default function SimilarBooksSection({ bookId, bookTitle, nextBook }: Sim
             Because You Liked This
           </h2>
           <p className="text-sm text-[#777]">
-
+            Readers who enjoyed this book also loved these picks.
           </p>
         </div>
       </div>
@@ -73,7 +73,7 @@ export default function SimilarBooksSection({ bookId, bookTitle, nextBook }: Sim
       {/* Loading State */}
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
               className="rounded-[20px] sm:rounded-[24px] overflow-hidden animate-pulse"

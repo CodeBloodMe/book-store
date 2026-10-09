@@ -374,4 +374,18 @@ a {
   100% { transform: translateX(350%); }
 }
 
+/* ── Toast Notification ──────────────────────────────────── */
+@keyframes toastIn {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.95); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.animate-toast-in {
+  animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Smooth Height Transition ────────────────────────────── */
+.transition-max-height {
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
 

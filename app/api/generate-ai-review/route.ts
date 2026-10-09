@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+import { callOmniroute } from '@/lib/omniroute';
 
 // ── Source 1: OpenLibrary API ──
 async function fetchOpenLibraryData(query: string): Promise<string> {
@@ -134,70 +132,57 @@ Generate a structured JSON response with exactly these keys:
 OUTPUT ONLY VALID JSON.
     `;
 
-    // 3. Fallback AI Call logic
-    const providers = [
-      {
-        name: 'Groq',
-        fn: async () => {
-          if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
-          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: prompt }],
-              response_format: { type: "json_object" },
-              temperature: 0.7,
-            }),
-          });
-          if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
-          const data = await res.json();
-          return data.choices[0].message.content;
-        }
-      },
-      {
-        name: 'Gemini',
-        fn: async () => {
-          const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-          const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: {
-              responseMimeType: "application/json",
-              temperature: 0.7,
-            }
-          });
-          return response.text;
-        }
-      }
-    ];
-
-    let resultText = '';
-    let lastError: any = null;
-
-    for (const provider of providers) {
-      try {
-        const text = await provider.fn();
-        if (text) {
-          resultText = text;
-          break; // Success!
-        }
-      } catch (err) {
-        console.warn(`[AI Review] ${provider.name} failed:`, err);
-        lastError = err;
-      }
+    // 3. Call Omniroute Agent
+    let text: string;
+    try {
+      text = await callOmniroute(prompt, { temperature: 0.7, jsonMode: true });
+    } catch (err) {
+      console.error(`[AI Review] Omniroute failed for "${book.title}". Last error:`, err);
+      return NextResponse.json({
+        error: 'AI returned an invalid response. Please try again.',
+      }, { status: 502 });
     }
 
-    if (!resultText) {
-      throw new Error(`All AI providers failed. Last error: ${lastError?.message || 'Unknown error'}`);
+    let aiData: { summary: string; pros: string[]; cons: string[]; rating: number } | null = null;
+    
+    try {
+      const rawParsed = JSON.parse(text);
+
+      // Validate required fields exist and are nonblank
+      if (!rawParsed.summary || typeof rawParsed.summary !== 'string' || rawParsed.summary.trim() === '') {
+        throw new Error('AI response missing or empty "summary" field');
+      }
+      if (!Array.isArray(rawParsed.pros) || rawParsed.pros.length === 0 || !rawParsed.pros.every((p: any) => typeof p === 'string' && p.trim() !== '')) {
+        throw new Error('AI response missing or invalid "pros" array');
+      }
+      if (!Array.isArray(rawParsed.cons) || rawParsed.cons.length === 0 || !rawParsed.cons.every((c: any) => typeof c === 'string' && c.trim() !== '')) {
+        throw new Error('AI response missing or invalid "cons" array');
+      }
+
+      // Clamp rating to valid 0.0 - 5.0 range
+      let rating = parseFloat(rawParsed.rating);
+      if (isNaN(rating)) {
+        rating = 3.5; // Default to neutral if AI didn't return a number
+        console.warn(`[AI Review] Rating was NaN for "${book.title}", defaulting to 3.5`);
+      }
+      rating = Math.max(0, Math.min(5, rating));
+      // Round to 1 decimal place
+      rating = Math.round(rating * 10) / 10;
+
+      aiData = {
+        summary: rawParsed.summary.trim(),
+        pros: rawParsed.pros.slice(0, 5).map((p: any) => String(p).trim()), // Max 5, ensure strings
+        cons: rawParsed.cons.slice(0, 5).map((c: any) => String(c).trim()), // Max 5, ensure strings
+        rating,
+      };
+    } catch (parseError) {
+      console.error(`[AI Review] Failed to parse output for "${book.title}":`, parseError);
+      return NextResponse.json({
+        error: 'AI returned an invalid JSON response.',
+      }, { status: 502 });
     }
 
-    const aiData = JSON.parse(resultText);
-
-    // 4. Save back to Supabase
+    // 4. Save validated data back to Supabase
     const { error: updateError } = await supabase
       .from('books')
       .update({

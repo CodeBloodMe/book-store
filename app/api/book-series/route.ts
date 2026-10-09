@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { callOmniroute } from '@/lib/omniroute';
 
 export async function POST(req: Request) {
   try {
@@ -34,21 +35,7 @@ If the book IS part of a series (e.g. Harry Potter, Lord of the Rings, Dune, A S
 
 Include the queried book in the "books" array in its correct chronological reading position.`;
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-      }),
-    });
-
-    const aiRes = await res.json();
-    const rawText = aiRes.choices?.[0]?.message?.content || '';
+    const rawText = await callOmniroute(prompt, { temperature: 0.2 });
     
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react';
 import type { Review } from '@/types/database';
 import { submitReview } from '@/app/actions/reviews';
 import RatingStars from '@/components/ui/RatingStars';
+import { Star, AlertCircle } from 'lucide-react';
 
 interface UserReviewsProps {
   bookId: string;
@@ -11,17 +12,58 @@ interface UserReviewsProps {
   currentUserId: string | null;
 }
 
+/** Interactive star rating selector */
+function StarRatingInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onMouseEnter={() => setHovered(star)}
+          onMouseLeave={() => setHovered(0)}
+          onClick={() => onChange(star)}
+          className="p-0.5 transition-transform hover:scale-110"
+          aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+        >
+          <Star
+            size={24}
+            fill={(hovered || value) >= star ? '#f59e0b' : 'none'}
+            stroke={(hovered || value) >= star ? '#f59e0b' : '#d1d5db'}
+            strokeWidth={2}
+            className="transition-colors"
+          />
+        </button>
+      ))}
+      {value > 0 && (
+        <span className="ml-2 text-sm font-semibold text-gray-600">
+          {value === 5 ? 'Excellent' : value === 4 ? 'Very Good' : value === 3 ? 'Average' : value === 2 ? 'Poor' : 'Terrible'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const MAX_REVIEW_LENGTH = 2000;
+
 export default function UserReviews({ bookId, initialReviews, currentUserId }: UserReviewsProps) {
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(submitReview, null);
+  const [selectedRating, setSelectedRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const avgRating = reviews.length > 0 
     ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length 
     : 0;
 
+  const charCount = reviewContent.length;
+
   return (
-    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100 mt-8">
+    <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-4">
         <h2 className="font-bold text-gray-900 font-serif text-2xl">Reader Reviews</h2>
         
@@ -51,19 +93,44 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
         <div className="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-200">
           <h3 className="font-bold text-gray-900 mb-4">Leave your review</h3>
           <form action={async (formData) => {
+            setFormError(null);
             formData.append('bookId', bookId);
+            formData.append('rating', String(selectedRating));
+            
+            // Client-side validation
+            const name = formData.get('reviewerName') as string;
+            const content = formData.get('content') as string;
+            
+            if (!name || name.trim().length < 2) {
+              setFormError('Please enter your name (at least 2 characters).');
+              return;
+            }
+            if (!content || content.trim().length < 10) {
+              setFormError('Please write a review with at least 10 characters.');
+              return;
+            }
+            if (content.length > MAX_REVIEW_LENGTH) {
+              setFormError(`Review is too long. Maximum ${MAX_REVIEW_LENGTH} characters.`);
+              return;
+            }
+            if (selectedRating < 1 || selectedRating > 5) {
+              setFormError('Please select a rating.');
+              return;
+            }
+
             const result = await submitReview(null, formData);
             if (result.success) {
               setIsFormOpen(false);
-              // Optimistic update for simple UX (in a real app, revalidatePath handles data refresh, 
-              // but we need to fetch the new reviews or just append optimistically)
+              setReviewContent('');
+              setSelectedRating(5);
+              // Optimistic update
               const newReview: Review = {
                 id: Math.random().toString(),
                 book_id: bookId,
                 user_id: currentUserId,
-                reviewer_name: formData.get('reviewerName') as string,
-                rating: parseInt(formData.get('rating') as string, 10),
-                content: formData.get('content') as string,
+                reviewer_name: name,
+                rating: selectedRating,
+                content: content,
                 created_at: new Date().toISOString(),
                 source: 'local',
                 external_author_name: null,
@@ -71,62 +138,70 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
               };
               setReviews([newReview, ...reviews]);
             } else if (result.error) {
-              alert(result.error);
+              setFormError(result.error);
             }
           }} className="flex flex-col gap-4">
             
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Your Name</label>
-                <input 
-                  type="text" 
-                  name="reviewerName" 
-                  required 
-                  placeholder="e.g. Alex"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Rating</label>
-                <select 
-                  name="rating" 
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none bg-white"
-                >
-                  <option value="5">5 - Excellent</option>
-                  <option value="4">4 - Very Good</option>
-                  <option value="3">3 - Average</option>
-                  <option value="2">2 - Poor</option>
-                  <option value="1">1 - Terrible</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Your Name</label>
+              <input 
+                type="text" 
+                name="reviewerName" 
+                required 
+                minLength={2}
+                maxLength={50}
+                placeholder="e.g. Alex"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none bg-white"
+              />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Your Review</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-2">Rating</label>
+              <StarRatingInput value={selectedRating} onChange={setSelectedRating} />
+              {/* Hidden input for form submission */}
+              <input type="hidden" name="rating" value={selectedRating} />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold text-gray-700 uppercase">Your Review</label>
+                <span className={`text-xs font-medium ${charCount > MAX_REVIEW_LENGTH ? 'text-red-500' : charCount > MAX_REVIEW_LENGTH * 0.9 ? 'text-amber-500' : 'text-gray-400'}`}>
+                  {charCount}/{MAX_REVIEW_LENGTH}
+                </span>
+              </div>
               <textarea 
                 name="content" 
                 required 
                 rows={4}
-                placeholder="What did you think about this book?"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none resize-none"
+                minLength={10}
+                maxLength={MAX_REVIEW_LENGTH}
+                value={reviewContent}
+                onChange={(e) => setReviewContent(e.target.value)}
+                placeholder="What did you think about this book? Be specific — your review helps other readers!"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:outline-none resize-none bg-white"
               ></textarea>
             </div>
 
-            {state?.error && <p className="text-red-500 text-sm">{state.error}</p>}
+            {/* Inline Error Display (replaces alert()) */}
+            {(formError || state?.error) && (
+              <div className="p-3 bg-red-50 border border-red-100 rounded-lg flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{formError || state?.error}</p>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 mt-2">
               <button 
                 type="button" 
-                onClick={() => setIsFormOpen(false)}
+                onClick={() => { setIsFormOpen(false); setFormError(null); setReviewContent(''); }}
                 className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                disabled={isPending}
-                className="bg-gray-600 text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                disabled={isPending || charCount > MAX_REVIEW_LENGTH}
+                className="bg-gray-900 text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-gray-800 transition-colors disabled:opacity-50 shadow-sm"
               >
                 {isPending ? 'Submitting...' : 'Submit Review'}
               </button>
@@ -137,8 +212,22 @@ export default function UserReviews({ bookId, initialReviews, currentUserId }: U
 
       {/* Review List */}
       {reviews.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-500">No reviews yet. Be the first to share your thoughts!</p>
+        <div className="text-center py-12 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 mt-4">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4 text-gray-400">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <h3 className="font-bold text-gray-900 mb-2">No Reviews Yet</h3>
+          <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">
+            Be the first to share your thoughts on this book. Your review helps other readers decide what to read next!
+          </p>
+          {!isFormOpen && (
+            <button 
+              onClick={() => setIsFormOpen(true)}
+              className="bg-gray-900 text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-gray-800 transition-colors shadow-sm"
+            >
+              Write the first review
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-6">

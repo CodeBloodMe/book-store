@@ -10,7 +10,7 @@ import { getAllGenres } from '@/lib/queries';
 import SearchBar from './SearchBar';
 import type { Genre } from '@/types/database';
 import { getGenreIcon } from './GenreIcon';
-import { BookOpen, Sparkles, User, Bookmark } from 'lucide-react';
+import { BookOpen, Sparkles, User, Bookmark, Network, Heart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import ProfileSidebar from './ProfileSidebar';
 import MobileNavSidebar from './MobileNavSidebar';
@@ -124,6 +124,14 @@ export default async function Navbar() {
             <Link href="/fiction" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
               <BookOpen size={16} />
               Fiction Finder
+            </Link>
+            <Link href="/bookweb" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+              <Network size={16} />
+              BookWeb
+            </Link>
+            <Link href="/blind-date" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+              <Heart size={16} />
+              Blind Date
             </Link>
             <Link
               href="/recommend"

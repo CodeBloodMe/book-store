@@ -62,6 +62,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ── Strategy 3: Fallback — top rated books across all genres ──
+    if (similarBooks.length === 0) {
+      const { data: topBooks } = await supabase
+        .from('books')
+        .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, isbn, genre_id')
+        .neq('id', bookId)
+        .order('expert_rating', { ascending: false, nullsFirst: false })
+        .limit(count);
+
+      if (topBooks && topBooks.length > 0) {
+        similarBooks = topBooks.map(b => ({ ...b, similarity: null }));
+        console.log(`[Similar Books] Global fallback found ${topBooks.length} results`);
+      }
+    }
+
     // ── Enrich with genre info ──
     const genreIds = [...new Set(similarBooks.map((b: any) => b.genre_id).filter(Boolean))];
     

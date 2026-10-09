@@ -258,11 +258,10 @@ async function determineBestGenre(
     }
   }
 
-  // 2. AI Fallback (using Groq for high speed)
-  if (process.env.GROQ_API_KEY) {
-    try {
-      const genreList = genres.map(g => `${g.name} (slug: ${g.slug})`).join(', ');
-      const prompt = `You are an expert librarian categorizing a new book into exactly one genre.
+  // 2. AI Fallback (using Omniroute for high availability)
+  try {
+    const genreList = genres.map(g => `${g.name} (slug: ${g.slug})`).join(', ');
+    const prompt = `You are an expert librarian categorizing a new book into exactly one genre.
 Book Title: "${title}"
 Description: "${description?.slice(0, 500)}"
 Categories/Tags: ${tags.join(', ')}
@@ -271,28 +270,14 @@ Available genres: ${genreList}
 
 Return ONLY the genre slug that best fits this book. No explanation, no markdown, just the slug string. If none fit well, return "global-catalog".`;
 
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const aiSlug = data.choices[0]?.message?.content?.trim()?.toLowerCase() || '';
-        const matched = genres.find(g => g.slug === aiSlug);
-        if (matched) return matched.id;
-      }
-    } catch (e) {
-      console.warn('AI Genre guess failed, falling back...', e);
-    }
+    const { callOmniroute } = await import('./omniroute');
+    const aiSlug = await callOmniroute(prompt, { temperature: 0.1 });
+    const cleanedSlug = aiSlug.trim().toLowerCase();
+    
+    const matched = genres.find(g => g.slug === cleanedSlug);
+    if (matched) return matched.id;
+  } catch (e) {
+    console.warn('AI Genre guess failed, falling back...', e);
   }
 
   // 3. Fallback

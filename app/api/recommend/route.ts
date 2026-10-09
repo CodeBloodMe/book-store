@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
-
-
+import { callOmniroute as callAnyAI } from '@/lib/omniroute';
 
 // Types
 
@@ -27,91 +25,8 @@ interface AIBook {
   community_consensus: string;
 }
 
-// AI Provider Functions
-// We have 3 different AIs. If one is down or out of credits, we try the next one!
 
-async function callGemini(prompt: string): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) throw new Error('No Gemini API Key');
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  const text = response.text ?? '';
-  if (!text) throw new Error('Gemini returned empty response');
-  return text;
-}
-
-async function callGroq(prompt: string): Promise<string> {
-  if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3, // Low temperature = more factual, less hallucinated books
-    }),
-  });
-  if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.choices[0].message.content;
-}
-
-async function callOpenAI(prompt: string): Promise<string> {
-  if (!process.env.OPENAI_API_KEY) throw new Error('No OpenAI API Key');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-    }),
-  });
-  if (!res.ok) throw new Error(`OpenAI failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.choices[0].message.content;
-}
-
-/**
- * Tries all AI providers one by one until one succeeds.
- * This makes our AI Finder extremely resilient!
- */
-async function callAnyAI(prompt: string): Promise<string> {
-  const providers = [
-    { name: 'Groq', fn: callGroq },
-    { name: 'Gemini', fn: callGemini },
-    { name: 'OpenAI', fn: callOpenAI },
-  ];
-  
-  let lastError: Error | null = null;
-  
-  for (const provider of providers) {
-    try {
-      console.log(`[Recommend API] Trying ${provider.name}...`);
-      const result = await provider.fn(prompt);
-      if (result) {
-        console.log(`[Recommend API] ✅ Success with ${provider.name}`);
-        return result; // Stop trying, we got an answer!
-      }
-    } catch (err: unknown) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`[Recommend API] ❌ ${provider.name} failed:`, lastError.message);
-    }
-  }
-  
-  // If we get here, ALL providers failed
-  throw new Error(`All AI providers failed. Last Error: ${lastError?.message}`);
-}
-
-// OpenLibrary Helper
+// External Book Data Helpers
 
 interface OLResult {
   description: string;
@@ -119,6 +34,74 @@ interface OLResult {
   page_count: number | null;
   published_year: number | null;
   isbn: string | null;
+}
+
+/**
+ * ANTI-HALLUCINATION GATE: Verify a book actually exists by checking Google Books API.
+ * Returns the Google Books volume data if found, null if the book is likely hallucinated.
+ * This prevents the LLM from inserting fake titles into our database.
+ */
+async function verifyBookExists(title: string, author: string): Promise<{
+  verified: boolean;
+  description?: string;
+  cover_url?: string | null;
+  page_count?: number | null;
+  published_year?: number | null;
+  isbn?: string | null;
+}> {
+  try {
+    const query = `intitle:"${encodeURIComponent(title)}"+inauthor:"${encodeURIComponent(author)}"`;
+    const res = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=3&printType=books`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return { verified: false };
+    const data = await res.json();
+    
+    if (!data.items || data.items.length === 0) {
+      console.log(`[Verify] ❌ "${title}" by ${author} — NOT FOUND on Google Books`);
+      return { verified: false };
+    }
+
+    // Check that the best result actually matches the title and author (fuzzy)
+    const cleanTitle = title.replace(/^(the|a|an)\s+/i, '').trim().toLowerCase();
+    const cleanAuthor = author.trim().toLowerCase();
+    
+    const bestMatch = data.items.find((item: any) => {
+      const volumeTitle = (item.volumeInfo?.title || '').replace(/^(the|a|an)\s+/i, '').trim().toLowerCase();
+      if (!volumeTitle) return false;
+      
+      const volumeAuthors = (item.volumeInfo?.authors || []).join(' ').toLowerCase();
+      const authorMatch = Boolean(volumeAuthors && cleanAuthor && (volumeAuthors.includes(cleanAuthor) || cleanAuthor.includes(volumeAuthors)));
+      const titleMatch = volumeTitle.includes(cleanTitle) || cleanTitle.includes(volumeTitle);
+      
+      return titleMatch && authorMatch;
+    });
+
+    if (!bestMatch) {
+      console.log(`[Verify] ❌ "${title}" — found results on Google Books but title mismatch`);
+      return { verified: false };
+    }
+
+    const vol = bestMatch.volumeInfo;
+    const imageLinks = vol.imageLinks || {};
+    const cover_url = imageLinks.thumbnail?.replace('http://', 'https://') || null;
+    const isbn13 = vol.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier;
+    const isbn10 = vol.industryIdentifiers?.find((id: any) => id.type === 'ISBN_10')?.identifier;
+
+    console.log(`[Verify] ✅ "${title}" by ${author} — CONFIRMED on Google Books`);
+    return {
+      verified: true,
+      description: vol.description || undefined,
+      cover_url,
+      page_count: vol.pageCount || null,
+      published_year: vol.publishedDate ? parseInt(vol.publishedDate.substring(0, 4)) : null,
+      isbn: isbn13 || isbn10 || null,
+    };
+  } catch (err) {
+    console.warn(`[Verify] Error checking "${title}":`, err);
+    return { verified: false };
+  }
 }
 
 /**
@@ -306,8 +289,11 @@ ${extractedVibe}
     let fallbackPromise: Promise<{title: string, author: string, genre_guess?: string}[]> | null = null;
     if (query) {
        const fallbackPrompt = `
-Recommend up to 6 real-world books that PERFECTLY match this exact atmosphere and request: "${query}".
-Are these 6 books explicitly classified in the primary genre requested by the user (e.g. horror, thriller, dark suspense)? If no, discard and regenerate.
+Recommend up to 6 real, well-known, published books that PERFECTLY match this exact atmosphere and request: "${query}".
+CRITICAL RULES:
+- Every book MUST be a real, published book that you are CERTAIN exists. Do NOT invent or hallucinate titles.
+- Every book must be explicitly classified in the primary genre requested by the user.
+- Include only books you can confidently attribute to a real author.
 Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess'. No other text.
        `;
        fallbackPromise = callAnyAI(fallbackPrompt).then(res => {
@@ -317,21 +303,28 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
     }
 
     // ── Step 1: Embed the User's Query ──
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await ai.models.embedContent({
-      model: 'gemini-embedding-001',
-      contents: userIntent,
+    const resEmbed = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/text-embedding-004',
+        content: { parts: [{ text: userIntent }] }
+      })
     });
     
+    const embedData = await resEmbed.json();
+    if (!embedData.embedding?.values) throw new Error("No embedding returned from AI model");
+    
     // Slice to 768 dimensions to match our database schema
-    const query_embedding = response.embeddings?.[0]?.values?.slice(0, 768);
-    if (!query_embedding) throw new Error("No embedding returned from AI model");
+    const query_embedding = embedData.embedding.values.slice(0, 768);
 
     // ── Step 2: Search the Database using pgvector ──
+    // Threshold raised from 0.05 → 0.20 to filter out noise and irrelevant matches.
+    // Count lowered from 300 → 80 since the higher threshold already filters.
     const { data: matchedBooks, error } = await supabase.rpc('match_books', {
       query_embedding,
-      match_threshold: 0.05, 
-      match_count: 300 // Increased pool for Hard Filter application
+      match_threshold: 0.20, 
+      match_count: 80
     });
 
     if (error) {
@@ -466,15 +459,26 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
           if (existingInDb && existingInDb.length > 0) {
              finalTop6.push({ ...existingInDb[0], similarity: 0.95 });
           } else {
-             // JIT Insertion! Fetch from Apple Books and Wikipedia concurrently
-             console.log(`[Recommend API] 🔧 JIT Expansion: Fetching new book "${fbook.title}"`);
+             // ── ANTI-HALLUCINATION: Verify the book exists before JIT insertion ──
+             console.log(`[Recommend API] 🔍 Verifying "${fbook.title}" by ${fbook.author}...`);
+             const verification = await verifyBookExists(fbook.title, fbook.author);
+             
+             if (!verification.verified) {
+               console.log(`[Recommend API] 🚫 Skipping hallucinated book: "${fbook.title}"`);
+               continue; // Skip this book — it's likely hallucinated
+             }
+
+             // Book is verified! Fetch additional data from Apple Books and Wikipedia
+             console.log(`[Recommend API] 🔧 JIT Expansion: Inserting verified book "${fbook.title}"`);
              const [olData, wikiDesc] = await Promise.all([
                fetchFromAppleBooks(fbook.title, fbook.author),
                fetchFromWikipedia(fbook.title)
              ]);
              
-             // Prioritize Wikipedia's deep summary, fallback to Apple Books
-             const finalDescription = wikiDesc || olData.description;
+             // Prioritize: Google Books description > Wikipedia > Apple Books
+             const finalDescription = verification.description || wikiDesc || olData.description;
+             // Prioritize: Google Books cover > Apple Books cover
+             const finalCover = verification.cover_url || olData.cover_url;
              
              // We need a genre_id to insert into the DB. We'll find the closest one or fallback
              const { data: allGenres } = await supabase.from('genres').select('id, name');
@@ -502,15 +506,16 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
                  if (matchedGenre) insertGenreId = matchedGenre.id;
               }
 
-             // Insert into DB
+             // Insert verified book into DB
              const newBook = {
                 title: fbook.title,
                 author: fbook.author,
                 genre_id: insertGenreId,
                 description: finalDescription,
-                cover_image_url: olData.cover_url,
-                published_year: olData.published_year,
-                page_count: olData.page_count,
+                cover_image_url: finalCover,
+                published_year: verification.published_year || olData.published_year,
+                page_count: verification.page_count || olData.page_count,
+                isbn: verification.isbn || null,
                 expert_rating: null,
                 community_rating: null,
                 total_reviews: 0,
@@ -524,8 +529,8 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
              const { data: inserted, error: insertError } = await supabase.from('books').insert(newBook).select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)').single();
              
              if (inserted && !insertError) {
-                console.log(`[Recommend API] 🚀 Successfully expanded database with "${inserted.title}"`);
-                finalTop6.push({ ...inserted, similarity: 0.95 });
+                console.log(`[Recommend API] 🚀 Successfully expanded database with verified "${inserted.title}"`);
+                finalTop6.push({ ...inserted, similarity: 0.95, _source: 'ai_verified' });
                 
                 // Fire and forget embedding generation for the new book
                 fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/cron/embed`).catch(() => {});
@@ -581,6 +586,9 @@ Return ONLY a raw JSON array of objects (one per book, same order). No markdown 
     const resultBooks = finalTop6.map((book: any, i: number) => {
       const analysis = analyses[i] || {};
 
+      // Confidence tagging: DB-sourced books are "high", AI-verified JIT are "medium"
+      const confidence = book._source === 'ai_verified' ? 'ai_suggested' : 'database';
+
       return {
         ...book,
         why: analysis.why || `Matched based on semantic similarity to your request.`,
@@ -591,6 +599,7 @@ Return ONLY a raw JSON array of objects (one per book, same order). No markdown 
         skip_if: analysis.skip_if || null,
         emotional_arc: analysis.emotional_arc || null,
         discovery: analysis.discovery || 'popular',
+        confidence,
         // HONEST DATA ONLY — no fake fallbacks
         expert_rating: book.expert_rating || null,
         community_rating: book.community_rating || null,

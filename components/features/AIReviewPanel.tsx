@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Book } from '@/types/database';
 import RatingStars from '@/components/ui/RatingStars';
+import { Sparkles, AlertCircle } from 'lucide-react';
 
 interface AIReviewPanelProps {
   book: Book;
@@ -70,31 +71,85 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
         )}
       </div>
 
+      {/* ── Empty State with Book Preview ── */}
       {!hasReview && !loading && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-6">
-          <p className="text-sm mb-6 text-gray-500 max-w-sm">
-            We haven't generated an AI consensus for this book yet. Click below to analyze reader reviews and discussions!
-          </p>
-          <button 
-            onClick={generateReview} 
-            className="bg-gray-600 text-white font-semibold rounded-xl px-6 py-3 hover:bg-gray-700 transition-colors"
-          >
-            Generate AI Consensus
-          </button>
-          {error && <p className="text-red-500 text-xs mt-4">{error}</p>}
+        <div className="flex-1 flex flex-col py-4">
+          {/* Show existing description as a teaser */}
+          {book.description && (
+            <div className="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-100">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Book Overview</p>
+              <p className="text-sm text-gray-600 leading-relaxed line-clamp-4">
+                {book.description}
+              </p>
+            </div>
+          )}
+          
+          <div className="flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+              <Sparkles className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="text-sm mb-6 text-gray-500 max-w-sm">
+              Generate an AI-powered analysis that aggregates expert reviews and reader discussions to give you the full picture.
+            </p>
+            <button 
+              onClick={generateReview} 
+              className="bg-gray-900 text-white font-bold rounded-xl px-6 py-3 hover:bg-gray-800 transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg flex items-center gap-2"
+            >
+              <Sparkles size={16} />
+              Generate AI Analysis
+            </button>
+          </div>
+
+          {/* Error display */}
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">Failed to generate analysis</p>
+                <p className="text-xs text-red-600 mt-1">{error}</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── Loading State (Skeleton matching final layout) ── */}
       {loading && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
-          <div className="w-10 h-10 border-4 border-gray-100 border-t-gray-600 rounded-full animate-spin mb-6" />
-          <p className="font-semibold text-gray-900 animate-pulse">
-            Analyzing reader consensus...
-          </p>
-          <p className="text-sm mt-2 text-gray-500">Gathering insights from reviews</p>
+        <div className="flex-1 flex flex-col gap-6 py-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 border-3 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Analyzing reader consensus...</p>
+              <p className="text-xs text-gray-400">Gathering insights from reviews across the web</p>
+            </div>
+          </div>
+
+          {/* Skeleton blocks matching the real layout */}
+          <div className="animate-pulse space-y-4">
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-100 rounded-full w-full" />
+              <div className="h-4 bg-gray-100 rounded-full w-5/6" />
+              <div className="h-4 bg-gray-100 rounded-full w-4/6" />
+            </div>
+            <div className="grid md:grid-cols-2 gap-6 mt-6">
+              <div className="space-y-3">
+                <div className="h-3 bg-gray-100 rounded-full w-1/3" />
+                <div className="h-3 bg-gray-50 rounded-full w-full" />
+                <div className="h-3 bg-gray-50 rounded-full w-5/6" />
+                <div className="h-3 bg-gray-50 rounded-full w-4/6" />
+              </div>
+              <div className="space-y-3">
+                <div className="h-3 bg-gray-100 rounded-full w-1/3" />
+                <div className="h-3 bg-gray-50 rounded-full w-full" />
+                <div className="h-3 bg-gray-50 rounded-full w-5/6" />
+                <div className="h-3 bg-gray-50 rounded-full w-4/6" />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
+      {/* ── Loaded Review ── */}
       {hasReview && !loading && (
         <div className="flex-1 flex flex-col fade-in-up">
           {(() => {
@@ -140,7 +195,7 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
               <ul className="flex flex-col gap-3">
                 {aiData.pros?.map((pro, i) => (
                   <li key={i} className="text-sm text-gray-600 flex gap-3 items-start">
-                    <span className="mt-0.5 flex-shrink-0 text-gray-600">
+                    <span className="mt-0.5 flex-shrink-0 text-emerald-600">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </span>
                     <span className="leading-snug">{pro}</span>
@@ -157,8 +212,8 @@ export default function AIReviewPanel({ book }: AIReviewPanelProps) {
               <ul className="flex flex-col gap-3">
                 {aiData.cons?.map((con, i) => (
                   <li key={i} className="text-sm text-gray-600 flex gap-3 items-start">
-                    <span className="mt-0.5 flex-shrink-0 text-gray-400">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                    <span className="mt-0.5 flex-shrink-0 text-amber-500">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     </span>
                     <span className="leading-snug">{con}</span>
                   </li>

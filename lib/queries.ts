@@ -209,19 +209,74 @@ export async function getFictionBooks(filters: FictionFilters): Promise<Book[]> 
 export async function searchBooks(query: string): Promise<Book[]> {
   if (!query.trim()) return [];
 
-  const { data: localData, error } = await supabase
-    .from('books')
-    .select(`*, genres(id, name, slug, icon, color)`)
-    .or(`title.ilike.%${query}%,author.ilike.%${query}%`)
-    .order('expert_rating', { ascending: false })
-    .limit(15);
+  // Sanitize query for PostgREST ilike — escape wildcards and remove chars that break .or() syntax
+  const sanitized = query
+    .replace(/[,()"]/g, '') // Remove chars that break PostgREST filter parsing
+    .replace(/[%_\\]/g, '\\$&') // Escape LIKE wildcards
+    .trim();
+  
+  if (!sanitized) return [];
 
-  if (error) {
-    console.error('[Search] Supabase error:', error);
+  // Strategy 1: ilike search on title and author (fast, works for partial matches)
+  let localBooks: Book[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('books')
+      .select(`*, genres(id, name, slug, icon, color)`)
+      .or(`title.ilike."%${sanitized}%",author.ilike."%${sanitized}%"`)
+      .order('expert_rating', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('[Search] Supabase ilike error:', error.message);
+    } else {
+      localBooks = (data || []) as Book[];
+    }
+  } catch (err) {
+    console.error('[Search] ilike query crashed:', err);
   }
 
-  const localBooks = error ? [] : (localData as Book[]);
+  // Strategy 2: If ilike found nothing, try splitting into individual words
+  // This helps with "intelligent investor" matching books with both words in different positions
+  if (localBooks.length === 0 && sanitized.includes(' ')) {
+    try {
+      const stopWords = new Set(['the', 'and', 'for', 'with']);
+      const words = sanitized.split(/\s+/).filter(w => w.length >= 3 && !stopWords.has(w.toLowerCase()));
+      if (words.length > 0) {
+        // Build an OR filter matching any word in title or author
+        const filters = words.flatMap(word => [
+          `title.ilike."%${word}%"`,
+          `author.ilike."%${word}%"`,
+        ]);
+        
+        const { data, error } = await supabase
+          .from('books')
+          .select(`*, genres(id, name, slug, icon, color)`)
+          .or(filters.join(','))
+          .order('expert_rating', { ascending: false })
+          .limit(100);
 
+        if (!error && data) {
+          // Rank results by how many words they match to prevent unrelated books from burying good matches
+          const ranked = (data as Book[]).map(book => {
+            const textToSearch = `${book.title} ${book.author}`.toLowerCase();
+            const matchCount = words.filter(w => textToSearch.includes(w.toLowerCase())).length;
+            return { book, matchCount };
+          });
+          
+          localBooks = ranked
+            .filter(r => r.matchCount > 0)
+            .sort((a, b) => b.matchCount - a.matchCount || (b.book.expert_rating || 0) - (a.book.expert_rating || 0))
+            .map(r => r.book)
+            .slice(0, 20);
+        }
+      }
+    } catch (err) {
+      console.error('[Search] word-split query failed:', err);
+    }
+  }
+
+  // Strategy 3: External API search for books not in our database
   const { searchGoogleBooks, searchOpenLibrary } = await import('./external-books');
   
   const [googleBooks, openLibraryBooks] = await Promise.all([

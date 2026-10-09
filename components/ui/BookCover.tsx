@@ -8,15 +8,16 @@ import GeneratedCover from './GeneratedCover';
  * Properties required to render a BookCover
  */
 interface BookCoverProps {
-  src: string | null;        // The URL of the book cover image (primary)
+  src: string | null;          // The URL of the book cover image (primary)
   fallbackSrc?: string | null; // The URL to try if the primary fails
-  alt: string;               // Screen-reader text describing the image
-  fallbackGradient: string;  // A CSS gradient string used if the image fails to load
-  fallbackText: string;      // The book title text to display if the image fails to load
-  fallbackAuthor?: string;   // The book author for the generated cover
+  tertiarySrc?: string | null; // Third-tier fallback URL
+  alt: string;                 // Screen-reader text describing the image
+  fallbackGradient: string;    // A CSS gradient string used if the image fails to load
+  fallbackText: string;        // The book title text to display if the image fails to load
+  fallbackAuthor?: string;     // The book author for the generated cover
 }
 
-export default function BookCover({ src, fallbackSrc, alt, fallbackGradient, fallbackText, fallbackAuthor }: BookCoverProps) {
+export default function BookCover({ src, fallbackSrc, tertiarySrc, alt, fallbackGradient, fallbackText, fallbackAuthor }: BookCoverProps) {
 
   const [currentUrl, setCurrentUrl] = useState<string | null>(src);
   const [hasImageError, setHasImageError] = useState(false);
@@ -31,28 +32,35 @@ export default function BookCover({ src, fallbackSrc, alt, fallbackGradient, fal
 
   const shouldShowCover = Boolean(currentUrl) && currentUrl !== '' && hasImageError === false;
 
-  // Memoized error handler to avoid stale closure bugs in useEffect
+  // Memoized error handler with 3-tier fallback chain:
+  // primary → fallback → tertiary → GeneratedCover
   const handleError = useCallback(() => {
     setCurrentUrl(prevUrl => {
-      // If the primary URL failed, try the fallback if provided
+      // Tier 1 failed → try fallback
       if (prevUrl === src && fallbackSrc && fallbackSrc !== src) {
         return fallbackSrc;
       }
-      // If we've exhausted all options, trigger error state
+      // Tier 2 failed → try tertiary
+      if (prevUrl === fallbackSrc && tertiarySrc && tertiarySrc !== fallbackSrc) {
+        return tertiarySrc;
+      }
+      // All tiers exhausted → show GeneratedCover
       setHasImageError(true);
       return prevUrl;
     });
-  }, [src, fallbackSrc]);
+  }, [src, fallbackSrc, tertiarySrc]);
 
-  // Prevent infinite loading skeletons — 12-second timeout.
-  // The PC cover server may take 6-8s on a cold cache miss (first fetch from Google Books).
-  // After it's cached on disk, all subsequent loads are <50ms.
+  // Prevent infinite loading skeletons — 6-second timeout.
+  // Reduced from 12s: if a cover hasn't loaded in 6 seconds on production,
+  // it's better to show the GeneratedCover than keep users waiting.
+  // The PC cover server cold cache miss (6-8s) is handled by the fallback
+  // chain moving to the next URL source instead.
   useEffect(() => {
     if (!shouldShowCover || !currentUrl || isFullyLoaded) return;
 
     const timer = setTimeout(() => {
       handleError();
-    }, 12000);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, [currentUrl, shouldShowCover, isFullyLoaded, handleError]);
@@ -61,16 +69,14 @@ export default function BookCover({ src, fallbackSrc, alt, fallbackGradient, fal
     return (
       <div className="relative w-full h-full bg-gray-200">
 
-        {/* Loading Skeleton */}
+        {/* GeneratedCover shown immediately as background while real image loads */}
         {!isFullyLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center animate-pulse bg-gray-200">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+          <div className="absolute inset-0">
+            <GeneratedCover title={fallbackText} author={fallbackAuthor} />
           </div>
         )}
 
-        {/* The Actual Image */}
+        {/* The Actual Image (fades in over GeneratedCover once loaded) */}
         <Image
           src={currentUrl}
           alt={alt}

@@ -52,8 +52,27 @@ const nextConfig: NextConfig = {
         hostname: '*.mzstatic.com',
         pathname: '/**',
       },
+      {
+        // Google Books direct cover CDN (ISBN-based lookups)
+        protocol: 'https',
+        hostname: 'books.google.com',
+        pathname: '/books/content**',
+      },
+      {
+        // Wikipedia/Wikimedia — author photos
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/wikipedia/**',
+      },
+      {
+        // Placeholder images
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        pathname: '/**',
+      },
     ],
   },
+  allowedDevOrigins: ['172.16.209.119'],
 };
 
 export default nextConfig;

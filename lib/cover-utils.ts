@@ -9,8 +9,9 @@
 //   1. PC server (localhost:4000 or configured URL) — always preferred.
 //      It caches every cover locally so it serves in <50ms after first hit.
 //   2. cover_image_url from DB — direct CDN URL (Apple Books, Google, etc.)
-//   3. OpenLibrary by ISBN — free, reliable for classic books
-//   4. Components fall back to GeneratedCover if everything fails
+//   3. Google Books by ISBN — reliable, high-quality covers
+//   4. OpenLibrary by ISBN — free, reliable for classic books
+//   5. Components fall back to GeneratedCover if everything fails
 // ============================================================
 
 export interface CoverUrls {
@@ -18,6 +19,8 @@ export interface CoverUrls {
   primary: string;
   /** The fallback URL if primary fails (e.g., original URL from DB) */
   fallback: string;
+  /** A third-tier fallback URL (e.g., OpenLibrary when Google Books is the fallback) */
+  tertiary: string;
 }
 
 interface BookCoverInput {
@@ -28,7 +31,25 @@ interface BookCoverInput {
 }
 
 /**
- * Returns the best cover URLs for a book.
+ * Build a Google Books cover URL from an ISBN.
+ * Google Books is more reliable than OpenLibrary for recent books
+ * and returns higher-quality images.
+ */
+function googleBooksUrl(isbn: string): string {
+  return `https://books.google.com/books/content?vid=isbn${isbn}&printsec=frontcover&img=1&zoom=1`;
+}
+
+/**
+ * Build an OpenLibrary cover URL from an ISBN.
+ * Very reliable for older/classic books. Returns a 1x1 pixel for
+ * unknown ISBNs (handled by BookCover's naturalWidth check).
+ */
+function openLibraryUrl(isbn: string): string {
+  return `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+}
+
+/**
+ * Returns the best cover URLs for a book, with up to 3 tiers of fallback.
  *
  * When the PC server is configured, it is ALWAYS the primary source —
  * even if the book already has a cover_image_url in the DB. This ensures
@@ -46,7 +67,7 @@ export function getCoverUrl(book: BookCoverInput): CoverUrls {
 
   const hasPcServer = pcServerBase.length > 0;
   const cleanIsbn = book.isbn?.replace(/[-\s]/g, '') || '';
-  const hasIsbn = cleanIsbn.length > 0;
+  const hasIsbn = cleanIsbn.length > 0 && cleanIsbn !== '0000000000';
   const coverUrl = book.cover_image_url || '';
   const hasCoverUrl = coverUrl.length > 0;
 
@@ -58,8 +79,8 @@ export function getCoverUrl(book: BookCoverInput): CoverUrls {
       // ISBN-based lookup: most reliable match
       return {
         primary: `${pcServerBase}/covers/isbn/${cleanIsbn}/L`,
-        fallback: hasCoverUrl ? coverUrl
-          : `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`,
+        fallback: hasCoverUrl ? coverUrl : googleBooksUrl(cleanIsbn),
+        tertiary: openLibraryUrl(cleanIsbn),
       };
     }
 
@@ -70,6 +91,7 @@ export function getCoverUrl(book: BookCoverInput): CoverUrls {
       return {
         primary: `${pcServerBase}/covers/title/${titleEnc}/${authorEnc}`,
         fallback: hasCoverUrl ? coverUrl : '',
+        tertiary: '',
       };
     }
 
@@ -77,23 +99,25 @@ export function getCoverUrl(book: BookCoverInput): CoverUrls {
   }
 
   // ── Case 2: No PC server — use DB cover_image_url directly ──
+  // This is the typical production path on Vercel where no local server exists.
   if (hasCoverUrl) {
     return {
       primary: coverUrl,
-      fallback: hasIsbn
-        ? `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`
-        : '',
+      fallback: hasIsbn ? googleBooksUrl(cleanIsbn) : '',
+      tertiary: hasIsbn ? openLibraryUrl(cleanIsbn) : '',
     };
   }
 
   // ── Case 3: No PC server, no DB URL, but have ISBN ──
+  // Try Google Books first (higher quality), OpenLibrary as backup.
   if (hasIsbn) {
     return {
-      primary: `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`,
-      fallback: '',
+      primary: googleBooksUrl(cleanIsbn),
+      fallback: openLibraryUrl(cleanIsbn),
+      tertiary: '',
     };
   }
 
   // ── Case 4: Nothing available — components will show GeneratedCover ──
-  return { primary: '', fallback: '' };
+  return { primary: '', fallback: '', tertiary: '' };
 }

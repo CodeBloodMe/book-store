@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
+import { callOmniroute as callAnyAI } from '@/lib/omniroute';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -18,78 +18,7 @@ interface AIPathBook {
 
 // ── AI Providers ─────────────────────────────────────────────
 
-async function callGemini(prompt: string): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) throw new Error('No Gemini API Key');
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-  });
-  const text = response.text ?? '';
-  if (!text) throw new Error('Gemini returned empty response');
-  return text;
-}
 
-async function callGroq(prompt: string): Promise<string> {
-  if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-    }),
-  });
-  if (!res.ok) throw new Error(`Groq failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.choices[0].message.content;
-}
-
-async function callOpenAI(prompt: string): Promise<string> {
-  if (!process.env.OPENAI_API_KEY) throw new Error('No OpenAI API Key');
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-    }),
-  });
-  if (!res.ok) throw new Error(`OpenAI failed: ${res.statusText}`);
-  const data = await res.json();
-  return data.choices[0].message.content;
-}
-
-async function callAnyAI(prompt: string): Promise<string> {
-  const providers = [
-    { name: 'Groq', fn: callGroq },
-    { name: 'Gemini', fn: callGemini },
-    { name: 'OpenAI', fn: callOpenAI },
-  ];
-  let lastError: Error | null = null;
-  for (const provider of providers) {
-    try {
-      console.log(`[Recommend Path] Trying ${provider.name}...`);
-      const result = await provider.fn(prompt);
-      if (result) {
-        console.log(`[Recommend Path] ✅ Success with ${provider.name}`);
-        return result;
-      }
-    } catch (err: unknown) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`[Recommend Path] ❌ ${provider.name} failed:`, lastError.message);
-    }
-  }
-  throw new Error(`All AI providers failed. Last: ${lastError?.message}`);
-}
 
 // ── OpenLibrary Helper ───────────────────────────────────────
 
