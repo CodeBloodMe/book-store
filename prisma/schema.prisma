@@ -1,6 +1,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 generator client {
@@ -12,7 +13,11 @@ model User {
   email      String   @unique
   role       String   @default("User")
   created_at DateTime @default(now())
-  // No foreign key from reviews/shelves to User exists yet in Prisma format
+
+  reviews    Review[]
+  shelves    UserShelf[]
+
+  @@map("users")
 }
 
 model Book {
@@ -20,8 +25,12 @@ model Book {
   title       String
   page_count  Int?
   external_id String?  @unique
-  // No formal FK to Author
   author      String?  
+  
+  reviews     Review[]
+  shelves     UserShelf[]
+
+  @@map("books")
 }
 
 model Review {
@@ -30,7 +39,13 @@ model Review {
   book_id String @db.Uuid
   rating  Int
   content String
-  // FKs missing in live schema
+
+  user    User   @relation(fields: [user_id], references: [id])
+  book    Book   @relation(fields: [book_id], references: [id])
+
+  @@index([user_id])
+  @@index([book_id])
+  @@map("reviews")
 }
 
 model UserShelf {
@@ -39,7 +54,13 @@ model UserShelf {
   book_id String @db.Uuid
   status  String
 
+  user    User   @relation(fields: [user_id], references: [id])
+  book    Book   @relation(fields: [book_id], references: [id])
+
   @@unique([user_id, book_id])
+  @@index([user_id])
+  @@index([book_id])
+  @@map("user_shelves")
 }
 
 model Genre {
@@ -47,12 +68,17 @@ model Genre {
   name              String
   super_category_id String @db.Uuid
   superCategory     SuperCategory @relation(fields: [super_category_id], references: [id])
+
+  @@index([super_category_id])
+  @@map("genres")
 }
 
 model SuperCategory {
   id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name   String
   genres Genre[]
+
+  @@map("super_categories")
 }
 
 model Author {
@@ -60,6 +86,8 @@ model Author {
   name     String @unique
   ai_bio   String?
   ai_style String[]
+
+  @@map("authors")
 }
 
 model BookEdge {
@@ -67,14 +95,21 @@ model BookEdge {
   book_b_id         String   @db.Uuid
   weight            Float
   relationship_type String
+  evidence          String?
+  similarity_score  Float?
   created_at        DateTime @default(now())
 
   @@unique([book_a_id, book_b_id])
+  @@index([book_a_id])
+  @@index([book_b_id])
+  @@map("book_edges")
 }
 
 model UserReaderProfile {
   session_id String @id
   mood       String
+
+  @@map("user_reader_profiles")
 }
 
 model BlindDateInteraction {
@@ -82,4 +117,6 @@ model BlindDateInteraction {
   session_id String 
   book_id    String @db.Uuid
   action     String
+
+  @@map("blind_date_interactions")
 }

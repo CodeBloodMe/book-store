@@ -43,6 +43,8 @@ interface Edge {
   book_b_id: string;
   weight: number;
   relationship_type: string;
+  evidence: string;
+  similarity_score: number;
 }
 
 function getDecade(year: number | null): number | null {
@@ -72,6 +74,8 @@ function deduplicateEdges(edges: Edge[]): Edge[] {
         book_b_id: second,
         weight: edge.weight,
         relationship_type: edge.relationship_type,
+        evidence: edge.evidence,
+        similarity_score: edge.similarity_score,
       });
     }
   }
@@ -85,7 +89,7 @@ async function buildGraph() {
 
   // 1. Fetch all books with pagination
   console.log('⏳ Fetching all books...');
-  let allBooks: any[] = [];
+  let allBooks: BookRow[] = [];
   let from = 0;
   const step = 1000;
   while (true) {
@@ -120,7 +124,7 @@ async function buildGraph() {
 
       // Same author → weight 0.2 (strongest connection)
       if (a.author && b.author && a.author.toLowerCase() === b.author.toLowerCase()) {
-        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.2, relationship_type: 'same_author' });
+        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.2, relationship_type: 'same_author', evidence: 'Same Author', similarity_score: 0.8 });
         continue; // Skip weaker edges
       }
 
@@ -129,13 +133,13 @@ async function buildGraph() {
       
       // Shared tags >= 2 → weight 0.4
       if (sharedTags >= 2) {
-        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.4, relationship_type: 'shared_tags' });
+        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.4, relationship_type: 'shared_tags', evidence: 'Shared Themes/Tags', similarity_score: 0.6 });
         continue;
       }
       
       // Shared tags == 1 AND Same Genre → weight 0.6
       if (sharedTags === 1 && sameGenre) {
-        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.6, relationship_type: 'shared_themes' });
+        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.6, relationship_type: 'shared_themes', evidence: 'Similar Genre and Theme', similarity_score: 0.4 });
         continue;
       }
 
@@ -143,7 +147,7 @@ async function buildGraph() {
       const decadeA = getDecade(a.published_year);
       const decadeB = getDecade(b.published_year);
       if (sameGenre && a.difficulty_level === b.difficulty_level && decadeA === decadeB && decadeA !== null) {
-        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.8, relationship_type: 'highly_similar' });
+        edges.push({ book_a_id: a.id, book_b_id: b.id, weight: 0.8, relationship_type: 'highly_similar', evidence: 'Similar Era and Reading Level', similarity_score: 0.2 });
         continue;
       }
     }

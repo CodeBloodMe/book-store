@@ -23,12 +23,15 @@ export default function BookCover({ src, fallbackSrc, tertiarySrc, alt, fallback
   const [hasImageError, setHasImageError] = useState(false);
   const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
-  // Reset state when src changes (e.g., navigating between books)
-  useEffect(() => {
+  const [prevSrc, setPrevSrc] = useState<string | null>(src);
+
+  // Derive state on prop change instead of using useEffect
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     setCurrentUrl(src);
     setHasImageError(false);
     setIsFullyLoaded(false);
-  }, [src]);
+  }
 
   const shouldShowCover = Boolean(currentUrl) && currentUrl !== '' && hasImageError === false;
 

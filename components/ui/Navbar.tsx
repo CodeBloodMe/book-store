@@ -10,7 +10,7 @@ import { getAllGenres } from '@/lib/queries';
 import SearchBar from './SearchBar';
 import type { Genre } from '@/types/database';
 import { getGenreIcon } from './GenreIcon';
-import { BookOpen, Sparkles, User, Bookmark, Network, Heart } from 'lucide-react';
+import { BookOpen, Sparkles, User, Network, Heart } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import ProfileSidebar from './ProfileSidebar';
 import MobileNavSidebar from './MobileNavSidebar';

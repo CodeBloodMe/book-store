@@ -5,6 +5,7 @@
 // This script conceptually demonstrates how to test the Row Level Security (RLS) 
 // and Role-Based Access Control (RBAC) implemented in the database.
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -58,4 +59,4 @@ async function runNegativeTests() {
   await supabase.auth.signOut();
 }
 
-// runNegativeTests(); // Uncomment to execute in a valid test environment
+runNegativeTests(); // Uncomment to execute in a valid test environment

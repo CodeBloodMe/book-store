@@ -38,7 +38,7 @@ export async function callOmniroute(prompt: string, options: OmnirouteOptions = 
 
 async function callGroq(prompt: string, temperature: number, jsonMode?: boolean): Promise<string> {
   if (!process.env.GROQ_API_KEY) throw new Error('No Groq API Key');
-  const body: any = {
+  const body: Record<string, unknown> = {
     model: 'qwen/qwen3.8-27b',
     messages: [{ role: 'user', content: prompt }],
     temperature,
@@ -62,7 +62,7 @@ async function callGroq(prompt: string, temperature: number, jsonMode?: boolean)
 async function callGemini(prompt: string, temperature: number, jsonMode?: boolean): Promise<string> {
   if (!process.env.GEMINI_API_KEY) throw new Error('No Gemini API Key');
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const config: any = { temperature };
+  const config: Record<string, unknown> = { temperature };
   if (jsonMode) {
     config.responseMimeType = 'application/json';
   }
@@ -78,7 +78,7 @@ async function callGemini(prompt: string, temperature: number, jsonMode?: boolea
 
 async function callOpenAI(prompt: string, temperature: number, jsonMode?: boolean): Promise<string> {
   if (!process.env.OPENAI_API_KEY) throw new Error('No OpenAI API Key');
-  const body: any = {
+  const body: Record<string, unknown> = {
     model: 'gpt-4o-mini',
     messages: [{ role: 'user', content: prompt }],
     temperature,

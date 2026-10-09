@@ -41,7 +41,7 @@ export const getAllGenres = unstable_cache(
       .select('*, super_categories(*), books(count)')
       .order('sort_order', { ascending: true });
       
-    const rawData = handleError(data, error) as any[];
+    const rawData = handleError(data, error) as { books?: { count?: number }[] | { count?: number } }[];
     
     const populatedGenres = rawData.filter(genre => {
       let bookCount = 0;

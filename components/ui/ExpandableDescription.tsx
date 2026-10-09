@@ -44,7 +44,7 @@ export default function ExpandableDescription({ description, maxLength = 300 }: 
       >
         <ReactMarkdown
           components={{
-            a: ({ node, ...props }) => (
+            a: ({ ...props }) => (
               <a
                 {...props}
                 className="text-blue-600 hover:underline"
@@ -52,7 +52,7 @@ export default function ExpandableDescription({ description, maxLength = 300 }: 
                 rel="noopener noreferrer"
               />
             ),
-            p: ({ node, ...props }) => (
+            p: ({ ...props }) => (
               <p {...props} className="mb-3 last:mb-0" />
             ),
           }}

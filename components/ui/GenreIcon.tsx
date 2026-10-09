@@ -1,7 +1,7 @@
 import {
   Rocket, Sparkles, Heart, Search, Ghost, BookOpen, User,
   Lightbulb, ShieldAlert, Cpu, Leaf, Globe, FlaskConical,
-  Scale, Briefcase, Glasses, BookText, Swords, Palette,
+  Scale, Briefcase, BookText, Swords, Palette,
   Camera, Music, MonitorPlay
 } from 'lucide-react';
 

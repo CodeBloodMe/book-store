@@ -14,11 +14,10 @@ Readers frequently experience "book hangovers"—the desire to find a book with 
 *   Provide a seamless user experience using modern web technologies (Next.js, React).
 *   Ensure a resilient AI pipeline that dynamically expands the database catalog.
 
-### 1.3 Team Members and Responsibilities
+### 1.3 Author
 | Name | Reg. No | Role & Responsibilities |
 | :--- | :--- | :--- |
-| **Student 1** | 26BDS0001 | Full-Stack Development, Database Schema Design, AI Integration |
-| **Student 2** | 26BDS0002 | UI/UX Design, Testing, Documentation, CI/CD Pipeline |
+| **Student 1** | 26BDS0001 | Full-Stack Development, Database Design, AI Integration, UI/UX, Documentation |
 
 ### 1.4 Major Deliverables
 1.  Fully functional Next.js web application deployed on a custom domain.

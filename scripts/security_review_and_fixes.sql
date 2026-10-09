@@ -1,50 +1,50 @@
 -- ======================================================================================
--- DBMS Lab Phase 4: Security Review & Constraint Fixes
--- (Prepared for submission; easily removable, not executed against live DB yet)
+-- DBMS Security Review and Fixes
+-- Addresses SECURITY DEFINER vulnerabilities and missing Row Level Security (RLS) policies.
 -- ======================================================================================
 
--- --------------------------------------------------------------------------------------
--- PART A: Security Fixes for Stored Procedures
--- --------------------------------------------------------------------------------------
--- Finding: Several functions (e.g., match_mystery_book, find_reading_path) use 
--- SECURITY DEFINER but lack a strict search_path. This is a vulnerability that could 
--- allow privilege escalation via path manipulation.
--- Fix: Force the search_path to public for these functions.
+BEGIN;
 
-ALTER FUNCTION public.match_mystery_book(session_id UUID, match_limit INT) 
-SET search_path = public;
+-- 1. Secure existing Stored Procedures (RPCs)
+-- Problem: Functions matching vectors run as SECURITY DEFINER which can execute with elevated 
+-- privileges. They must have a hardened search_path to prevent malicious search_path injection.
 
-ALTER FUNCTION public.find_reading_path(start_id UUID, end_id UUID, max_depth INT) 
-SET search_path = public;
+-- Secure match_books
+ALTER FUNCTION public.match_books(vector, integer, double precision) 
+    SET search_path = public, pg_temp;
 
--- --------------------------------------------------------------------------------------
--- PART B: Missing Foreign Key Fixes
--- --------------------------------------------------------------------------------------
--- Finding: The live database reflection showed missing foreign key relationships from 
--- books, reviews, and user_shelves to their parent tables.
--- Fix: Add strict relational integrity constraints.
+-- Secure match_books_with_genre
+ALTER FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) 
+    SET search_path = public, pg_temp;
 
--- 1. Fix books -> authors relationship
--- Note: Assuming books.author field should actually be a UUID author_id linking to authors.id
-ALTER TABLE public.books 
-ADD COLUMN IF NOT EXISTS author_id UUID;
+-- Revoke default public execution rights
+REVOKE EXECUTE ON FUNCTION public.match_books(vector, integer, double precision) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) FROM PUBLIC;
 
-ALTER TABLE public.books
-ADD CONSTRAINT fk_books_author
-FOREIGN KEY (author_id) 
-REFERENCES public.authors(id)
-ON DELETE SET NULL;
+-- Grant execution only to authenticated application users
+GRANT EXECUTE ON FUNCTION public.match_books(vector, integer, double precision) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) TO authenticated;
 
--- 2. Fix reviews -> books relationship
-ALTER TABLE public.reviews
-ADD CONSTRAINT fk_reviews_book
-FOREIGN KEY (book_id) 
-REFERENCES public.books(id)
-ON DELETE CASCADE;
+-- 2. Enhance Row Level Security (RLS) on sensitive tables
+-- Ensure RLS is enabled
+ALTER TABLE public.user_shelves ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
--- 3. Fix user_shelves -> books relationship
-ALTER TABLE public.user_shelves
-ADD CONSTRAINT fk_shelves_book
-FOREIGN KEY (book_id) 
-REFERENCES public.books(id)
-ON DELETE CASCADE;
+-- Drop existing generic policies if they exist (to ensure idempotent application)
+DROP POLICY IF EXISTS "Users can manage their own shelves" ON public.user_shelves;
+DROP POLICY IF EXISTS "Users can manage their own reviews" ON public.reviews;
+
+-- Create policies enforcing tenant isolation (users can only access their own data)
+CREATE POLICY "Users can manage their own shelves"
+    ON public.user_shelves
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage their own reviews"
+    ON public.reviews
+    FOR ALL
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+COMMIT;
