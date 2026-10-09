@@ -252,7 +252,7 @@ function RecommendPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
-  const handleSearch = async (optionalSearchQuery?: string) => {
+  async function handleSearch(optionalSearchQuery?: string) {
     const finalQuery = optionalSearchQuery ?? input;
 
     if (finalQuery.trim() === '') return;

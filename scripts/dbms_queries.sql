@@ -1,66 +1,67 @@
 -- ======================================================================================
 -- DBMS Lab Project Demonstrations (Easily Removable / Academic Purpose Only)
 -- ======================================================================================
--- This script uses a transactional DO block to demonstrate CRUD operations.
+-- This script demonstrates CRUD operations using explicit transactions and ROLLBACK.
 -- It is designed to be fully idempotent and safe to run multiple times without leaving
 -- junk data in the production database.
 
+BEGIN;
+
 DO $$
 DECLARE
-    new_user_id UUID := gen_random_uuid();
+    test_user_id UUID;
     new_book_id UUID := gen_random_uuid();
     new_review_id UUID := gen_random_uuid();
     selected_title TEXT;
 BEGIN
     RAISE NOTICE 'Starting DBMS CRUD Demonstration...';
 
-    -- 1. CREATE (Insert)
-    -- Creating a dummy user and book to satisfy foreign keys
-    INSERT INTO public.users (id, email) 
-    VALUES (new_user_id, 'dbms_demo_user_' || new_user_id || '@example.com');
-
-    INSERT INTO public.books (id, title, page_count)
-    VALUES (new_book_id, 'The DBMS Assessment Guide', 150);
-
-    INSERT INTO public.reviews (id, user_id, book_id, rating, content)
-    VALUES (new_review_id, new_user_id, new_book_id, 4, 'Good, but needs more normal forms.');
-
-    RAISE NOTICE 'Insert complete.';
-
-    -- 2. READ (Select with Filtering)
-    SELECT title INTO selected_title
-    FROM public.books 
-    WHERE id = new_book_id;
+    -- Grab an existing user to satisfy auth.users foreign key constraints safely
+    SELECT id INTO test_user_id FROM public.users LIMIT 1;
     
-    RAISE NOTICE 'Read complete. Found title: %', selected_title;
+    IF test_user_id IS NULL THEN
+        RAISE NOTICE 'No users exist. Skipping INSERT demonstrations that require a user_id.';
+    ELSE
+        -- 1. CREATE (Insert)
+        INSERT INTO public.books (id, title, page_count)
+        VALUES (new_book_id, 'The DBMS Assessment Guide', 150);
 
-    -- 3. UPDATE
-    UPDATE public.reviews 
-    SET content = 'An absolute masterpiece. Highly recommended!', rating = 5
-    WHERE id = new_review_id;
+        INSERT INTO public.reviews (id, user_id, book_id, rating, content, reviewer_name)
+        VALUES (new_review_id, test_user_id, new_book_id, 4, 'Good, but needs more normal forms.', 'Test Reviewer');
 
-    RAISE NOTICE 'Update complete.';
+        RAISE NOTICE 'Insert complete.';
 
-    -- 4. DELETE (Hard Delete)
-    DELETE FROM public.reviews 
-    WHERE id = new_review_id;
+        -- 2. READ (Select with Filtering)
+        SELECT title INTO selected_title
+        FROM public.books 
+        WHERE id = new_book_id;
+        
+        RAISE NOTICE 'Read complete. Found title: %', selected_title;
 
-    -- 5. Soft Delete / Status Update
-    INSERT INTO public.user_shelves (id, user_id, book_id, status)
-    VALUES (gen_random_uuid(), new_user_id, new_book_id, 'Reading');
-    
-    UPDATE public.user_shelves
-    SET status = 'Dropped' -- Logical equivalent of a soft-delete from an active shelf
-    WHERE user_id = new_user_id AND book_id = new_book_id;
+        -- 3. UPDATE
+        UPDATE public.reviews 
+        SET content = 'An absolute masterpiece. Highly recommended!', rating = 5
+        WHERE id = new_review_id;
 
-    RAISE NOTICE 'Delete operations complete.';
+        RAISE NOTICE 'Update complete.';
 
-    -- Clean up our dummy entities to ensure idempotency
-    DELETE FROM public.user_shelves WHERE user_id = new_user_id;
-    DELETE FROM public.books WHERE id = new_book_id;
-    DELETE FROM public.users WHERE id = new_user_id;
+        -- 4. Soft Delete equivalent (Status Update on shelves)
+        -- Valid statuses for check constraint: 'want_to_read', 'reading', 'read'
+        INSERT INTO public.user_shelves (id, user_id, book_id, status)
+        VALUES (gen_random_uuid(), test_user_id, new_book_id, 'want_to_read');
+        
+        UPDATE public.user_shelves
+        SET status = 'read'
+        WHERE user_id = test_user_id AND book_id = new_book_id;
 
-    RAISE NOTICE 'DBMS Demonstration completed successfully (Idempotent execution).';
+        -- 5. DELETE (Hard Delete)
+        DELETE FROM public.reviews 
+        WHERE id = new_review_id;
+
+        RAISE NOTICE 'Delete operations complete.';
+    END IF;
+
+    RAISE NOTICE 'DBMS Demonstration completed successfully.';
 END $$;
 
 -- 6. JOINS (Inner Join)
@@ -79,8 +80,5 @@ LIMIT 5;
 -- 8. VIEWS
 SELECT * FROM public.book_details_view LIMIT 5;
 
--- 9. EXPLICIT TRANSACTIONS
--- Demonstrate an explicit transaction with ROLLBACK to show atomicity 
-BEGIN;
-    INSERT INTO public.authors (id, name) VALUES (gen_random_uuid(), 'Atomicity Tester');
+-- 9. ROLLBACK to ensure idempotency and prevent test data from leaking into the live database
 ROLLBACK;

@@ -15,9 +15,8 @@ Readers frequently experience "book hangovers"—the desire to find a book with 
 *   Ensure a resilient AI pipeline that dynamically expands the database catalog.
 
 ### 1.3 Author
-| Name | Reg. No | Role & Responsibilities |
-| :--- | :--- | :--- |
-| **Student 1** | 26BDS0001 | Full-Stack Development, Database Design, AI Integration, UI/UX, Documentation |
+- **Project Author**: Solo Assessment Project
+- **Roles**: Full-Stack Development, Database Design, AI Integration, UI/UX, Documentation
 
 ### 1.4 Major Deliverables
 1.  Fully functional Next.js web application deployed on a custom domain.
@@ -121,7 +120,7 @@ erDiagram
 ## 3. Database Implementation
 
 *   **RDBMS**: PostgreSQL (via Supabase Cloud Database).
-*   **ORM Integration**: **Prisma ORM** is used alongside the Supabase SDK to guarantee robust, type-safe database interactions.
+*   **ORM Integration**: **Prisma ORM** integration is currently being configured to guarantee robust, type-safe database interactions.
 *   **Views**: A SQL View (`book_details_view`) is implemented to aggregate book ratings and review counts dynamically without redundant data storage.
 *   **Stored Procedures**: Custom RPCs like `match_books` (vector similarity) and `find_reading_path` (recursive CTEs) are heavily utilized.
 *   **Triggers**: A database trigger (`update_users_modtime`) automatically fires on user profile updates to maintain the `updated_at` column.
@@ -137,7 +136,7 @@ erDiagram
 
 ## 5. Authentication, Authorization & DB Security
 *   **Authentication**: OAuth & JWT via Supabase Auth.
-*   **Authorization (RBAC)**: Role-Based Access Control is strictly enforced using a single central `users` table containing a `role` column. Row Level Security (RLS) policies check this role to grant access (e.g., only `Admin` roles can execute global deletes).
+*   **Authorization (RBAC)**: Role-Based Access Control is currently being configured using a central `users` table containing a `role` column. Row Level Security (RLS) policies are being tested to check this role to grant access.
 *   **Security**: SQL Injection prevention is handled automatically by Prisma ORM and parameterized queries. Passwords are cryptographically hashed by Supabase Auth (Argon2 equivalent). All secrets are managed securely via `.env`.
 
 ---
@@ -145,8 +144,8 @@ erDiagram
 ## 6. Professional Development Practices
 *   **Version Control**: Maintained on GitHub with progressive commits, branching (`main`, `dev`), and a `.gitignore`.
 *   **Containerization**: `Dockerfile` and `.dockerignore` provided for consistent deployments via Docker Hub.
-*   **CI/CD Pipeline**: GitHub Actions (`.github/workflows/main.yml`) configured for automated linting, testing, and deployment.
-*   **Deployment**: Application deployed on a custom domain via Vercel, connected to the Supabase Cloud PostgreSQL database.
+*   **CI/CD Pipeline**: GitHub Actions (`.github/workflows/main.yml`) is configured for testing and validation.
+*   **Deployment**: Deployment configurations are in progress for a custom domain via Vercel.
 *   **Database Backup & Restore**: Native tools utilized. `pg_dump` and `pg_restore` bash scripts are provided in the `/scripts` directory for disaster recovery.
 
 ---

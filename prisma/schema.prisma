@@ -9,10 +9,11 @@ generator client {
 }
 
 model User {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String   @id @db.Uuid
   email      String   @unique
   role       String   @default("User")
-  created_at DateTime @default(now())
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
 
   reviews    Review[]
   shelves    UserShelf[]
@@ -21,38 +22,46 @@ model User {
 }
 
 model Book {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title       String
-  page_count  Int?
-  external_id String?  @unique
-  author      String?  
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String
+  page_count    Int?
+  external_id   String?  @unique
+  author        String?  
+  series_name   String?  @db.VarChar(255)
+  series_number Int?
   
   reviews     Review[]
   shelves     UserShelf[]
+  interactions BlindDateInteraction[]
 
   @@map("books")
 }
 
 model Review {
-  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id String @db.Uuid
-  book_id String @db.Uuid
-  rating  Int
-  content String
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  book_id       String   @db.Uuid
+  reviewer_name String   @db.VarChar
+  rating        Int
+  content       String
+  created_at    DateTime @default(now()) @db.Timestamptz
+  user_id       String?  @db.Uuid
 
-  user    User   @relation(fields: [user_id], references: [id])
+  user    User?  @relation(fields: [user_id], references: [id])
   book    Book   @relation(fields: [book_id], references: [id])
 
   @@index([user_id])
   @@index([book_id])
+  @@index([created_at(sort: Desc)])
   @@map("reviews")
 }
 
 model UserShelf {
-  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id String @db.Uuid
-  book_id String @db.Uuid
-  status  String
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  book_id    String   @db.Uuid
+  status     String   @db.VarChar(50)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
 
   user    User   @relation(fields: [user_id], references: [id])
   book    Book   @relation(fields: [book_id], references: [id])
@@ -82,41 +91,60 @@ model SuperCategory {
 }
 
 model Author {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name     String @unique
-  ai_bio   String?
-  ai_style String[]
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String    @unique
+  ai_bio          String?
+  ai_style        String[]
+  ai_last_updated DateTime? @db.Timestamptz
+  created_at      DateTime  @default(now()) @db.Timestamptz
+  updated_at      DateTime  @default(now()) @db.Timestamptz
 
   @@map("authors")
 }
 
 model BookEdge {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   book_a_id         String   @db.Uuid
   book_b_id         String   @db.Uuid
-  weight            Float
-  relationship_type String
-  evidence          String?
+  weight            Float    @default(1.0)
+  relationship_type String   @db.VarChar(50)
+  evidence          Json?
   similarity_score  Float?
-  created_at        DateTime @default(now())
+  algorithm_version String?  @db.VarChar(50)
+  created_at        DateTime @default(now()) @db.Timestamptz
 
   @@unique([book_a_id, book_b_id])
   @@index([book_a_id])
   @@index([book_b_id])
+  @@index([relationship_type])
   @@map("book_edges")
 }
 
 model UserReaderProfile {
-  session_id String @id
-  mood       String
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id            String   @unique
+  mood                  String?  @db.VarChar(50)
+  pace_preference       String?  @db.VarChar(50)
+  complexity_preference String?  @db.VarChar(50)
+  era_preference        String?  @db.VarChar(50)
+  length_preference     String?  @db.VarChar(50)
+  created_at            DateTime @default(now()) @db.Timestamptz
 
+  @@index([session_id])
   @@map("user_reader_profiles")
 }
 
 model BlindDateInteraction {
-  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  session_id String 
-  book_id    String @db.Uuid
-  action     String
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id String
+  book_id    String   @db.Uuid
+  accepted   Boolean
+  created_at DateTime @default(now()) @db.Timestamptz
 
+  book       Book     @relation(fields: [book_id], references: [id])
+
+  @@index([book_id])
+  @@index([session_id])
+  @@index([accepted])
   @@map("blind_date_interactions")
 }

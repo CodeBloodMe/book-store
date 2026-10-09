@@ -6,24 +6,45 @@
 BEGIN;
 
 -- 1. Secure existing Stored Procedures (RPCs)
--- Problem: Functions matching vectors run as SECURITY DEFINER which can execute with elevated 
--- privileges. They must have a hardened search_path to prevent malicious search_path injection.
+-- Problem: Functions running as SECURITY DEFINER can execute with elevated privileges.
+-- They must have a hardened search_path to prevent malicious search_path injection.
 
 -- Secure match_books
-ALTER FUNCTION public.match_books(vector, integer, double precision) 
+ALTER FUNCTION public.match_books(vector, double precision, integer) 
     SET search_path = public, pg_temp;
 
--- Secure match_books_with_genre
-ALTER FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) 
+-- Secure match_mystery_book
+ALTER FUNCTION public.match_mystery_book(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) 
     SET search_path = public, pg_temp;
 
--- Revoke default public execution rights
-REVOKE EXECUTE ON FUNCTION public.match_books(vector, integer, double precision) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) FROM PUBLIC;
+-- Secure get_blind_date_stats
+ALTER FUNCTION public.get_blind_date_stats() 
+    SET search_path = public, pg_temp;
+
+-- Secure find_reading_path
+ALTER FUNCTION public.find_reading_path(UUID, UUID, integer) 
+    SET search_path = public, pg_temp;
+
+-- Secure get_book_neighbors
+ALTER FUNCTION public.get_book_neighbors(UUID, integer) 
+    SET search_path = public, pg_temp;
+
+
+-- Revoke default public execution rights to prevent anonymous unauthenticated abuse
+REVOKE EXECUTE ON FUNCTION public.match_books(vector, double precision, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.match_mystery_book(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_blind_date_stats() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.find_reading_path(UUID, UUID, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_book_neighbors(UUID, integer) FROM PUBLIC;
+
 
 -- Grant execution only to authenticated application users
-GRANT EXECUTE ON FUNCTION public.match_books(vector, integer, double precision) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.match_books_with_genre(vector, uuid, integer, double precision) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.match_books(vector, double precision, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.match_mystery_book(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_blind_date_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.find_reading_path(UUID, UUID, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_book_neighbors(UUID, integer) TO authenticated;
+
 
 -- 2. Enhance Row Level Security (RLS) on sensitive tables
 -- Ensure RLS is enabled
