@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Heart, X, Book, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, Heart, X, Book, Loader2, ArrowRight, Swords, Brain, Rocket, Flame, FastForward, Play, Pause, Balloon, Layers, BrainCircuit, Landmark, Building2, Clock, Timer, Library } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import GeneratedCover from '@/components/ui/GeneratedCover';
@@ -41,7 +41,7 @@ interface RevealedBook {
 interface QuizQuestion {
   id: keyof QuizAnswers;
   question: string;
-  options: { label: string; value: string; emoji: string }[];
+  options: { label: string; value: string; icon: React.ReactNode }[];
 }
 
 const QUIZ_QUESTIONS: QuizQuestion[] = [
@@ -49,46 +49,46 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
     id: 'mood',
     question: 'How do you want to feel?',
     options: [
-      { label: 'Adventurous', value: 'adventurous', emoji: '⚔️' },
-      { label: 'Contemplative', value: 'contemplative', emoji: '🤔' },
-      { label: 'Escapist', value: 'escapist', emoji: '🌌' },
-      { label: 'Thrilled', value: 'thrilling', emoji: '🎢' },
+      { label: 'Adventurous', value: 'adventurous', icon: <Swords size={32} /> },
+      { label: 'Contemplative', value: 'contemplative', icon: <Brain size={32} /> },
+      { label: 'Escapist', value: 'escapist', icon: <Rocket size={32} /> },
+      { label: 'Thrilled', value: 'thrilling', icon: <Flame size={32} /> },
     ],
   },
   {
     id: 'pace',
     question: 'What pacing do you prefer?',
     options: [
-      { label: 'Fast (Sprint)', value: 'fast', emoji: '🏃' },
-      { label: 'Moderate (Jog)', value: 'moderate', emoji: '🚶' },
-      { label: 'Slow (Stroll)', value: 'slow', emoji: '🧘' },
+      { label: 'Fast (Sprint)', value: 'fast', icon: <FastForward size={32} /> },
+      { label: 'Moderate (Jog)', value: 'moderate', icon: <Play size={32} /> },
+      { label: 'Slow (Stroll)', value: 'slow', icon: <Pause size={32} /> },
     ],
   },
   {
     id: 'complexity',
     question: 'How complex should it be?',
     options: [
-      { label: 'Simple & Fun', value: 'simple', emoji: '🎈' },
-      { label: 'Layered', value: 'layered', emoji: '🧅' },
-      { label: 'Brain-Melting', value: 'complex', emoji: '🧠' },
+      { label: 'Simple & Fun', value: 'simple', icon: <Balloon size={32} /> },
+      { label: 'Layered', value: 'layered', icon: <Layers size={32} /> },
+      { label: 'Brain-Melting', value: 'complex', icon: <BrainCircuit size={32} /> },
     ],
   },
   {
     id: 'era',
     question: 'Pick an era',
     options: [
-      { label: 'Classic', value: 'classic', emoji: '🏛️' },
-      { label: 'Modern', value: 'modern', emoji: '🏙️' },
-      { label: 'Any', value: 'any', emoji: '🕰️' },
+      { label: 'Classic', value: 'classic', icon: <Landmark size={32} /> },
+      { label: 'Modern', value: 'modern', icon: <Building2 size={32} /> },
+      { label: 'Any', value: 'any', icon: <Clock size={32} /> },
     ],
   },
   {
     id: 'length',
     question: 'How long?',
     options: [
-      { label: 'Quick Read', value: 'quick read', emoji: '⏱️' },
-      { label: 'Standard', value: 'standard', emoji: '📖' },
-      { label: 'Epic', value: 'epic', emoji: '📚' },
+      { label: 'Quick Read', value: 'quick read', icon: <Timer size={32} /> },
+      { label: 'Standard', value: 'standard', icon: <Book size={32} /> },
+      { label: 'Epic', value: 'epic', icon: <Library size={32} /> },
     ],
   },
 ];
@@ -266,8 +266,8 @@ export default function BlindDateClient() {
                     className="p-6 bg-white border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] rounded-xl text-left
                       hover:-translate-y-1 transition-all group"
                   >
-                    <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform origin-left">
-                      {opt.emoji}
+                    <span className="text-3xl mb-3 block group-hover:scale-110 transition-transform origin-left text-[#0a0a0a]">
+                      {opt.icon}
                     </span>
                     <span className="text-lg font-black text-[#0a0a0a]">{opt.label}</span>
                   </button>

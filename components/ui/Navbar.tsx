@@ -74,11 +74,11 @@ export default async function Navbar() {
           </Link>
 
           {/* ── Desktop Nav ───────────────────────────────────── */}
-          <nav className="hidden lg:flex items-center gap-1" aria-label="Genre navigation">
+          <nav className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full" aria-label="Genre navigation">
             {sortedGroups.map(({ name, genres: catGenres }) => (
               <div key={name} className="relative group/cat">
                 <button
-                  className="btn-ghost text-sm px-3 py-2"
+                  className="btn-ghost text-sm px-3 py-2 whitespace-nowrap flex items-center"
                   aria-haspopup="true"
                   aria-expanded="false"
                 >
@@ -106,7 +106,7 @@ export default async function Navbar() {
                       key={g.id}
                       href={`/genres/${g.slug}`}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
-                        hover:text-white transition-colors"
+                        hover:text-white transition-colors whitespace-nowrap"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       <span className="opacity-60">{getGenreIcon(g.slug, "w-4 h-4")}</span>
@@ -117,25 +117,25 @@ export default async function Navbar() {
               </div>
             ))}
 
-            <Link href="/free-books" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+            <Link href="/free-books" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
               <BookOpen size={16} />
               Free Books
             </Link>
-            <Link href="/fiction" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+            <Link href="/fiction" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
               <BookOpen size={16} />
               Fiction Finder
             </Link>
-            <Link href="/bookweb" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+            <Link href="/bookweb" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
               <Network size={16} />
               BookWeb
             </Link>
-            <Link href="/blind-date" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5">
+            <Link href="/blind-date" className="btn-ghost text-sm px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
               <Heart size={16} />
               Blind Date
             </Link>
             <Link
               href="/recommend"
-              className="text-sm px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 mr-2"
+              className="text-sm px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all hover:-translate-y-0.5 mr-2 whitespace-nowrap flex-shrink-0"
               style={{
                 background: '#f5e642',
                 color: '#0a0a0a',
@@ -156,7 +156,7 @@ export default async function Navbar() {
             <div className="flex items-center gap-3 ml-2 lg:border-l lg:pl-6 lg:border-gray-200">
               {/* Desktop explicit Log In button (hidden on mobile, hidden if logged in) */}
               {!user && (
-                <Link href="/login" className="hidden lg:flex items-center gap-2 text-sm font-bold bg-white text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] transition-all px-4 py-2" style={{ borderRadius: '12px' }}>
+                <Link href="/login" className="hidden lg:flex items-center gap-2 text-sm font-bold bg-white text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0a0a0a] transition-all px-4 py-2 whitespace-nowrap flex-shrink-0" style={{ borderRadius: '12px' }}>
                   <User size={18} /> Log In
                 </Link>
               )}

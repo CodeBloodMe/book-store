@@ -22,6 +22,7 @@ interface PathEdge {
   to: string;
   relationship: string;
   weight: number;
+  evidence: string | null;
 }
 
 interface SearchResult {
@@ -211,11 +212,11 @@ function PathVisualizer({
         </span>
         <span className="text-xs text-[#0a0a0a]">•</span>
         <span className="text-xs font-black uppercase tracking-widest text-[#0a0a0a] whitespace-nowrap">
-          {edges.length} connections
+          Hops: {edges.length}
         </span>
         <span className="text-xs text-[#0a0a0a]">•</span>
         <span className="text-xs font-black uppercase tracking-widest text-[#0a0a0a] whitespace-nowrap">
-          Distance: {totalWeight.toFixed(2)}
+          Path Strength: {totalWeight.toFixed(2)}
         </span>
       </div>
 
@@ -286,7 +287,7 @@ function PathVisualizer({
                       {RELATIONSHIP_LABELS[edges[idx].relationship]?.emoji || '🔗'}
                     </span>
                     <span className="text-[9px] font-semibold text-gray-500 mt-0.5 whitespace-nowrap">
-                      {RELATIONSHIP_LABELS[edges[idx].relationship]?.label || 'Connected'}
+                      {edges[idx].evidence || RELATIONSHIP_LABELS[edges[idx].relationship]?.label || 'Connected'}
                     </span>
                   </div>
                   <div className="w-6 h-0.5 bg-gray-300" />
@@ -323,6 +324,11 @@ export default function BookWebClient() {
         `/api/bookweb/path?from=${bookA.id}&to=${bookB.id}`
       );
       const data = await res.json();
+
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
 
       if (!res.ok) {
         setError(data.error || 'Failed to find path');

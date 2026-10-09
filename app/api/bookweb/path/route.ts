@@ -35,21 +35,40 @@ export async function GET(request: NextRequest) {
         const bookMap = new Map(books.map(b => [b.id, b]));
         const orderedBooks = bookIds.map(id => bookMap.get(id)).filter(Boolean);
 
-        const edges: Array<{ from: string; to: string; relationship: string; weight: number }> = [];
+        const edges: Array<{ from: string; to: string; relationship: string; weight: number; evidence: string | null }> = [];
         for (let i = 0; i < bookIds.length - 1; i++) {
           const [a, b] = [bookIds[i], bookIds[i + 1]];
           const { data: edgeData } = await supabase
             .from('book_edges')
-            .select('relationship_type, weight')
+            .select('relationship_type, weight, evidence, similarity_score')
             .or(`and(book_a_id.eq.${a},book_b_id.eq.${b}),and(book_a_id.eq.${b},book_b_id.eq.${a})`)
             .limit(1)
             .single();
+
+          let evidenceText = null;
+          if (edgeData?.evidence) {
+            try {
+              const ev = edgeData.evidence;
+              if (ev.sharedGenres) {
+                evidenceText = `Shared genre: ${ev.sharedGenres.join(', ')}`;
+              } else if (ev.sharedSubjects) {
+                evidenceText = `Shared subject: ${ev.sharedSubjects.join(', ')}`;
+              } else if (ev.series) {
+                evidenceText = `Same series: ${ev.series}`;
+              } else if (ev.author) {
+                evidenceText = `Same author`;
+              }
+            } catch (e) {
+              // ignore json parse errors
+            }
+          }
 
           edges.push({
             from: a,
             to: b,
             relationship: edgeData?.relationship_type || 'connected',
             weight: edgeData?.weight || 1.0,
+            evidence: evidenceText,
           });
         }
 
@@ -63,81 +82,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Fallback: Dynamic Bridge Generation (No AI, real DB books only)
-    console.log('[BookWeb] Graph disconnected, using dynamic bridging...');
-    
-    // Fetch start and end books
-    const { data: edgeBooks } = await supabase
-      .from('books')
-      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-      .in('id', [fromId, toId]);
-
-    if (!edgeBooks || edgeBooks.length !== 2) {
-      return NextResponse.json({ error: 'Start or end book not found in DB' }, { status: 404 });
-    }
-
-    const startBook = edgeBooks.find(b => b.id === fromId);
-    const endBook = edgeBooks.find(b => b.id === toId);
-
-    if (!startBook || !endBook) {
-      return NextResponse.json({ error: 'Start or end book not found in DB' }, { status: 404 });
-    }
-
-    // Find Bridge 1 (same genre or vibe as start)
-    const { data: bridge1Options } = await supabase
-      .from('books')
-      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-      .eq('genre_id', startBook!.genre_id)
-      .neq('id', startBook!.id)
-      .neq('id', endBook!.id)
-      .limit(10);
-      
-    const bridge1 = (bridge1Options && bridge1Options.length > 0) 
-      ? bridge1Options[Math.floor(Math.random() * bridge1Options.length)] 
-      : startBook!; // If nothing found, just skip bridging
-
-    // Find Bridge 2 (same genre or vibe as end)
-    const { data: bridge2Options } = await supabase
-      .from('books')
-      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-      .eq('genre_id', endBook!.genre_id)
-      .neq('id', startBook!.id)
-      .neq('id', endBook!.id)
-      .neq('id', bridge1.id)
-      .limit(10);
-
-    const bridge2 = (bridge2Options && bridge2Options.length > 0)
-      ? bridge2Options[Math.floor(Math.random() * bridge2Options.length)]
-      : endBook!;
-
-    // Construct simple robust path
-    const fullPath = [startBook!];
-    if (bridge1.id !== startBook!.id) fullPath.push(bridge1);
-    if (bridge2.id !== endBook!.id && bridge2.id !== bridge1.id) fullPath.push(bridge2);
-    fullPath.push(endBook!);
-
-    const edges = [];
-    for (let i = 0; i < fullPath.length - 1; i++) {
-      let rel = 'connected';
-      if (i === 0 && bridge1.id !== startBook!.id) rel = 'same_genre';
-      else if (i === fullPath.length - 2 && bridge2.id !== endBook!.id) rel = 'same_genre';
-      else rel = 'wildcard_leap';
-      
-      edges.push({
-        from: fullPath[i].id,
-        to: fullPath[i+1].id,
-        relationship: rel,
-        weight: 1.0
-      });
-    }
-
-    return NextResponse.json({
-      found: true,
-      path: fullPath,
-      edges,
-      totalWeight: edges.length * 1.0,
-      depth: edges.length,
-    });
+    // Graph disconnected, no valid reading path exists
+    return NextResponse.json({ 
+      found: false, 
+      message: 'No strong reading path found.' 
+    }, { status: 404 });
 
   } catch (err) {
     console.error('[BookWeb API] Unexpected error:', err);

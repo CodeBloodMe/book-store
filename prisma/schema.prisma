@@ -12,8 +12,7 @@ model User {
   email      String   @unique
   role       String   @default("User")
   created_at DateTime @default(now())
-  reviews    Review[]
-  shelves    UserShelf[]
+  // No foreign key from reviews/shelves to User exists yet in Prisma format
 }
 
 model Book {
@@ -21,8 +20,8 @@ model Book {
   title       String
   page_count  Int?
   external_id String?  @unique
-  reviews     Review[]
-  shelves     UserShelf[]
+  // No formal FK to Author
+  author      String?  
 }
 
 model Review {
@@ -31,8 +30,7 @@ model Review {
   book_id String @db.Uuid
   rating  Int
   content String
-  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  book    Book   @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  // FKs missing in live schema
 }
 
 model UserShelf {
@@ -40,8 +38,48 @@ model UserShelf {
   user_id String @db.Uuid
   book_id String @db.Uuid
   status  String
-  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  book    Book   @relation(fields: [book_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, book_id])
+}
+
+model Genre {
+  id                String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String
+  super_category_id String @db.Uuid
+  superCategory     SuperCategory @relation(fields: [super_category_id], references: [id])
+}
+
+model SuperCategory {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name   String
+  genres Genre[]
+}
+
+model Author {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String @unique
+  ai_bio   String?
+  ai_style String[]
+}
+
+model BookEdge {
+  book_a_id         String   @db.Uuid
+  book_b_id         String   @db.Uuid
+  weight            Float
+  relationship_type String
+  created_at        DateTime @default(now())
+
+  @@unique([book_a_id, book_b_id])
+}
+
+model UserReaderProfile {
+  session_id String @id
+  mood       String
+}
+
+model BlindDateInteraction {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id String 
+  book_id    String @db.Uuid
+  action     String
 }

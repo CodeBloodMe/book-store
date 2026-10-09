@@ -64,10 +64,8 @@ erDiagram
         timestamp created_at
     }
     
-    BOOKS ||--o{ REVIEWS : receives
-    BOOKS ||--o{ USER_SHELVES : placed_on
+    %% Note: FKs for Reviews, Shelves, and Authors to Books are currently missing in live DB
     BOOKS }o--o{ GENRES : categorizes
-    BOOKS }o--o{ AUTHORS : written_by
     BOOKS {
         uuid id PK
         string title
@@ -114,7 +112,7 @@ erDiagram
 
 **Constraints Applied:**
 *   `PRIMARY KEY` on all tables (UUIDs).
-*   `FOREIGN KEY` constraints with `ON DELETE CASCADE`.
+*   `FOREIGN KEY` constraints are partially implemented (Missing FKs for `reviews.book_id`, `user_shelves.book_id`, and `books.author` confirmed missing in live schema).
 *   `CHECK` constraint on `reviews.rating` (1 to 5).
 *   `CHECK` constraint on `users.role` (Admin, User, Faculty, Student).
 *   `UNIQUE` constraint on `books.external_id` and composite `(user_id, book_id)` in shelves.
