@@ -303,12 +303,13 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
     }
 
     // ── Step 1: Embed the User's Query ──
-    const resEmbed = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+    const resEmbed = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'models/text-embedding-004',
-        content: { parts: [{ text: userIntent }] }
+        model: 'models/gemini-embedding-2',
+        content: { parts: [{ text: userIntent }] },
+        outputDimensionality: 768
       })
     });
     
