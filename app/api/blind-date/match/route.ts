@@ -14,69 +14,104 @@ export async function POST(request: NextRequest) {
     const { sessionId, mood, pace, complexity, era, length } = body;
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Missing required parameter: sessionId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required parameter: sessionId' }, { status: 400 });
     }
 
     // 1. Save/update the quiz profile
-    const { error: profileError } = await supabase
+    await supabase
       .from('user_reader_profiles')
       .upsert(
-        {
-          session_id: sessionId,
-          mood: mood || null,
-          pace_preference: pace || null,
-          complexity_preference: complexity || null,
-          era_preference: era || null,
-          length_preference: length || null,
-        },
+        { session_id: sessionId, mood, pace_preference: pace, complexity_preference: complexity, era_preference: era, length_preference: length },
         { onConflict: 'session_id' }
       );
 
-    if (profileError) {
-      console.error('[Blind Date] Profile save error:', profileError.message);
-      // Non-fatal — continue with matching
+    // 2. Generate Semantic Target for Embedding
+    const userIntent = `A book that is ${pace || 'moderately'} paced, has ${complexity || 'average'} complexity, a ${mood || 'balanced'} mood, and is a ${length || 'standard'} length read.`;
+    
+    let query_embedding = null;
+    try {
+      const resEmbed = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'models/text-embedding-004',
+          content: { parts: [{ text: userIntent }] },
+          outputDimensionality: 768
+        })
+      });
+      const embedData = await resEmbed.json();
+      if (embedData.embedding?.values) {
+        query_embedding = embedData.embedding.values.slice(0, 768);
+      }
+    } catch (e) {
+      console.error("[Blind Date] Embedding failed, falling back to basic matching.", e);
     }
 
-    // 2. Call the match_mystery_book RPC
-    const { data: matchResult, error: matchError } = await supabase.rpc('match_mystery_book', {
-      p_session_id: sessionId,
-      p_mood: mood || null,
-      p_pace: pace || null,
-      p_complexity: complexity || null,
-      p_era: era || null,
-      p_length: length || null,
-    });
-
-    if (matchError) {
-      console.error('[Blind Date] RPC error:', matchError.message);
-      return NextResponse.json(
-        { error: 'Failed to find a match' },
-        { status: 500 }
-      );
+    // 3. Call the appropriate RPC
+    let matchResult, matchError;
+    
+    if (query_embedding) {
+      const { data, error } = await supabase.rpc('match_mystery_book_advanced', {
+        p_session_id: sessionId,
+        p_query_embedding: `[${query_embedding.join(',')}]`,
+        p_length: length || null,
+        p_era: era || null,
+      });
+      matchResult = data;
+      matchError = error;
+    } else {
+      const { data, error } = await supabase.rpc('match_mystery_book', {
+        p_session_id: sessionId, p_mood: mood, p_pace: pace, p_complexity: complexity, p_era: era, p_length: length
+      });
+      matchResult = data;
+      matchError = error;
     }
 
-    if (!matchResult || matchResult.length === 0) {
-      return NextResponse.json(
-        {
-          found: false,
-          message: "You've seen all available books! Try a new session.",
-        },
-        { status: 200 }
-      );
+    if (matchError || !matchResult || matchResult.length === 0) {
+      return NextResponse.json({ found: false, message: "You've seen all available books! Try a new session." }, { status: 200 });
     }
 
     const match = matchResult[0];
 
-    // 3. Return MYSTERY metadata — no title, no cover
-    // The client will reveal these only after the user "accepts the date"
+    // 4. Generate AI Teaser (Groq/Llama3)
+    let aiTeaser = match.description ? match.description.substring(0, 150) + '...' : 'A thrilling mystery awaits...';
+    try {
+      const prompt = `You are a matchmaker setting someone up on a blind date with a book.
+The user requested a book with these vibes: Mood=${mood}, Pace=${pace}, Complexity=${complexity}.
+The chosen book is about: ${match.description?.substring(0, 500)}
+
+Write a highly engaging, persuasive 2-sentence teaser explaining why this book is their perfect match.
+CRITICAL RULES:
+- Do NOT mention the title or author (it's a blind date!).
+- Keep it under 3 sentences.
+- Speak directly to the user (e.g. "You asked for a dark, fast-paced read, and...").`;
+
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 150
+        })
+      });
+      
+      const groqData = await groqRes.json();
+      if (groqData.choices?.[0]?.message?.content) {
+        aiTeaser = groqData.choices[0].message.content.trim();
+      }
+    } catch (e) {
+      console.error("[Blind Date] AI Teaser generation failed:", e);
+    }
+
     return NextResponse.json({
       found: true,
       mystery: {
         bookId: match.book_id,
-        // Vibe/mood clues (these are shown before the reveal)
         vibe: match.vibe,
         lengthCategory: match.length_category,
         difficultyLevel: match.difficulty_level,
@@ -84,13 +119,9 @@ export async function POST(request: NextRequest) {
         communityRating: match.community_rating,
         genreName: match.genre_name,
         genreColor: match.genre_color,
-        // A teaser description — show only first 100 chars
-        descriptionTeaser: match.description
-          ? match.description.substring(0, 100) + '...'
-          : 'A mystery awaits...',
-        // Tags for mood indicators
+        descriptionTeaser: aiTeaser,
         tags: match.tags || [],
-        matchScore: match.match_score,
+        matchScore: match.similarity || match.match_score,
       },
     });
   } catch (err) {

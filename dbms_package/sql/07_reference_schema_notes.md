@@ -1,0 +1,9 @@
+# Schema interpretation notes
+
+This bundle is aligned to the schema evidence collected from the GitHub repository and the live-column export provided in the conversation. The live export ended partway through `user_shelves`; it did not prove that later tables/columns do not exist. Use `00_schema_audit.sql` to complete verification.
+
+Current confirmed `books` columns include: `id`, `genre_id`, `title`, `author`, `description`, `cover_image_url`, `page_count`, `published_year`, `isbn`, `language`, `amazon_url`, `goodreads_url`, `expert_rating`, `community_rating`, `total_reviews`, `expert_quote`, `expert_name`, `difficulty_level`, `next_book_id`, `tags`, `vibe`, `plot_type`, `length_category`, `is_featured`, `is_editors_pick`, `is_bestseller`, `created_at`, `updated_at`, `search_vector`, `series_name`, `series_number`, `external_id`, AI review fields, `fiction_genres`, `free_reading_url`, `embedding`, `author_image_url`, and `author_bio`.
+
+Current relationships declared in repository SQL include `genres.super_category_id -> super_categories.id`, `books.genre_id -> genres.id`, `books.next_book_id -> books.id`, `reviews.book_id -> books.id`, `reviews.user_id -> auth.users.id`, `user_shelves.book_id -> books.id`, `user_shelves.user_id -> auth.users.id`, and both endpoint IDs in `book_edges -> books.id`. `public.users.id -> auth.users.id` is migration-defined; verify it live. `authors` has no formal FK to `books` in the current schema. `blind_date_interactions.session_id` is text in the provided migration and does not have an FK to `user_reader_profiles.session_id`.
+
+`book_details_view` is a VIEW, not a base table. `auth.users` is Supabase-managed, not an app-owned table. Do not present a view or external provider table as an app-owned base table to satisfy the table-count requirement.

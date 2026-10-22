@@ -55,6 +55,11 @@ The database strictly adheres to Third Normal Form (3NF). Below is the ER Diagra
 erDiagram
     USERS ||--o{ REVIEWS : writes
     USERS ||--o{ USER_SHELVES : manages
+    SUPER_CATEGORIES ||--o{ GENRES : contains
+    BOOKS ||--o{ BLIND_DATE_INTERACTIONS : generates
+    BOOKS ||--o{ BOOK_EDGES : relates_to
+    BOOKS }o--o{ GENRES : categorizes
+    
     USERS {
         uuid id PK
         string email
@@ -62,13 +67,10 @@ erDiagram
         timestamp created_at
     }
     
-    %% Note: FKs for Reviews, Shelves, and Authors to Books are currently missing in live DB
-    BOOKS }o--o{ GENRES : categorizes
     BOOKS {
         uuid id PK
         string title
         int page_count
-        vector embedding
         string external_id UK
     }
     
@@ -98,15 +100,46 @@ erDiagram
         string name
         uuid super_category_id FK
     }
+
+    SUPER_CATEGORIES {
+        uuid id PK
+        string name
+    }
+
+    BOOK_EDGES {
+        uuid id PK
+        uuid book_a_id FK
+        uuid book_b_id FK
+        float weight
+        string relationship_type
+    }
+
+    USER_READER_PROFILES {
+        uuid id PK
+        string session_id UK
+        string mood
+        string pace_preference
+    }
+
+    BLIND_DATE_INTERACTIONS {
+        uuid id PK
+        string session_id
+        uuid book_id FK
+        boolean accepted
+    }
 ```
 
 ### 2.2 Relational Schema & Data Dictionary
-*   **users**(<u>id</u>, email, role, created_at)
-*   **books**(<u>id</u>, title, page_count, embedding, external_id)
-*   **authors**(<u>id</u>, name, ai_bio, ai_style)
-*   **reviews**(<u>id</u>, user_id*, book_id*, rating, content)
+*   **users**(<u>id</u>, email, role, created_at, updated_at)
+*   **books**(<u>id</u>, title, page_count, external_id, author, series_name, series_number)
+*   **authors**(<u>id</u>, name, ai_bio, ai_style, ai_last_updated)
+*   **reviews**(<u>id</u>, user_id*, book_id*, rating, content, reviewer_name)
 *   **user_shelves**(<u>id</u>, user_id*, book_id*, status)
 *   **genres**(<u>id</u>, name, super_category_id*)
+*   **super_categories**(<u>id</u>, name)
+*   **book_edges**(<u>id</u>, book_a_id*, book_b_id*, weight, relationship_type, similarity_score, algorithm_version)
+*   **user_reader_profiles**(<u>id</u>, session_id, mood, pace_preference, complexity_preference, era_preference, length_preference)
+*   **blind_date_interactions**(<u>id</u>, session_id, book_id*, accepted)
 
 **Constraints Applied:**
 *   `PRIMARY KEY` on all tables (UUIDs).

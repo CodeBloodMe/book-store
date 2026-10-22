@@ -3,8 +3,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://xpmpzpdjsdzhiloykmfi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwbXB6cGRqc2R6aGlsb3lrbWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTkwODIsImV4cCI6MjA5NjkzNTA4Mn0.ZnI6ZI5JE14W1Sr9WkuYqGhmL1aqbb8avBZIQWmV7Uw';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));

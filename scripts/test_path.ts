@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-const supabase = createClient('https://xpmpzpdjsdzhiloykmfi.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwbXB6cGRqc2R6aGlsb3lrbWZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTkwODIsImV4cCI6MjA5NjkzNTA4Mn0.ZnI6ZI5JE14W1Sr9WkuYqGhmL1aqbb8avBZIQWmV7Uw');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 async function test() {
   const { data: hp } = await supabase.from('books').select('id, title, genre_id').ilike('title', '%harry potter%').limit(1);
   const { data: hobbit } = await supabase.from('books').select('id, title, genre_id').ilike('title', '%hobbit%').limit(1);

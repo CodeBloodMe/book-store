@@ -1,0 +1,28 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Prisma local generated artifacts / local DB files
+prisma/*.db
+
+# PostgreSQL backups and potentially sensitive exports
+backups/
+*.dump
+*.backup
+*.sql.gz
+
+# Logs and local OS/editor files
+*.log
+.DS_Store
+.vscode/
+.idea/

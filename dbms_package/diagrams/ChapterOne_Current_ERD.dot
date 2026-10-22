@@ -1,0 +1,31 @@
+digraph ERD {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.35", ranksep="0.65", fontname="Arial", labelloc="t", label="ChapterOne - Current Database ERD (observed schema + migration-defined users)", fontsize=20];
+  node [shape=plain, fontname="Arial"];
+  edge [fontname="Arial", fontsize=9, color="#475569", arrowsize=0.75];
+  auth [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#334155"><FONT COLOR="white"><B>auth.users (Supabase)</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id UUID</TD></TR></TABLE> >];
+  users [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#1D4ED8"><FONT COLOR="white"><B>public.users</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK/FK</B> id UUID</TD></TR><TR><TD ALIGN="LEFT">email, role</TD></TR><TR><TD ALIGN="LEFT">created_at, updated_at</TD></TR></TABLE> >];
+  cats [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#0F766E"><FONT COLOR="white"><B>super_categories</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT">name (unique), slug (unique)</TD></TR><TR><TD ALIGN="LEFT">icon, color</TD></TR></TABLE> >];
+  genres [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#0F766E"><FONT COLOR="white"><B>genres</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> super_category_id</TD></TR><TR><TD ALIGN="LEFT">name, slug, description</TD></TR><TR><TD ALIGN="LEFT">is_learning, is_fiction, sort_order</TD></TR></TABLE> >];
+  books [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#7C3AED"><FONT COLOR="white"><B>books</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> genre_id, next_book_id</TD></TR><TR><TD ALIGN="LEFT">title, author, description</TD></TR><TR><TD ALIGN="LEFT">ratings, pages, year, ISBN</TD></TR><TR><TD ALIGN="LEFT">tags, vibe, plot_type, length_category</TD></TR><TR><TD ALIGN="LEFT">external_id, embedding, search_vector</TD></TR><TR><TD ALIGN="LEFT">AI review and series fields</TD></TR></TABLE> >];
+  authors [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#64748B"><FONT COLOR="white"><B>authors</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT">name (unique), ai_bio, ai_style</TD></TR><TR><TD ALIGN="LEFT"><I>No enforced FK from books.author</I></TD></TR></TABLE> >];
+  reviews [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#B45309"><FONT COLOR="white"><B>reviews</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> book_id, user_id (auth.users)</TD></TR><TR><TD ALIGN="LEFT">reviewer_name, rating, content</TD></TR><TR><TD ALIGN="LEFT">source, external_author_name</TD></TR></TABLE> >];
+  shelves [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#B45309"><FONT COLOR="white"><B>user_shelves</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> user_id (auth.users), book_id</TD></TR><TR><TD ALIGN="LEFT">status, created_at, updated_at</TD></TR><TR><TD ALIGN="LEFT">Unique user_id + book_id</TD></TR></TABLE> >];
+  edges [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#9333EA"><FONT COLOR="white"><B>book_edges</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> book_a_id, book_b_id</TD></TR><TR><TD ALIGN="LEFT">weight, relationship_type</TD></TR><TR><TD ALIGN="LEFT">No evidence/version columns currently</TD></TR></TABLE> >];
+  profiles [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#0369A1"><FONT COLOR="white"><B>user_reader_profiles</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT">session_id (unique)</TD></TR><TR><TD ALIGN="LEFT">mood, pace, complexity, era, length</TD></TR></TABLE> >];
+  interactions [label=< <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5"><TR><TD BGCOLOR="#0369A1"><FONT COLOR="white"><B>blind_date_interactions</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><B>PK</B> id</TD></TR><TR><TD ALIGN="LEFT">session_id (text; no FK shown)</TD></TR><TR><TD ALIGN="LEFT"><B>FK</B> book_id</TD></TR><TR><TD ALIGN="LEFT">accepted, created_at</TD></TR></TABLE> >];
+  view [shape=note, style="filled", fillcolor="#F1F5F9", color="#64748B", label="book_details_view\nVIEW (not a base table)\nbook_id, title, average_rating, review_count"];
+  auth -> users [label="1 : 0..1 profile"];
+  cats -> genres [label="1 : many"];
+  genres -> books [label="1 : many"];
+  books -> books [label="next_book_id", constraint=false];
+  auth -> reviews [label="user_id", constraint=false];
+  books -> reviews [label="book_id"];
+  auth -> shelves [label="user_id", constraint=false];
+  books -> shelves [label="book_id"];
+  books -> edges [label="book_a_id"];
+  books -> edges [label="book_b_id"];
+  books -> interactions [label="book_id", constraint=false];
+  reviews -> view [style=dashed, label="aggregate query"];
+  books -> view [style=dashed, label="aggregate query"];
+  {rank=same; authors; profiles;}
+}

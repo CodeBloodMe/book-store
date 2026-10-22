@@ -1,0 +1,101 @@
+erDiagram
+    AUTH_USERS ||--o| USERS : profile
+    SUPER_CATEGORIES ||--o{ GENRES : contains
+    GENRES ||--o{ BOOKS : classifies
+    BOOKS o|--o{ BOOKS : next_book
+    AUTH_USERS o|--o{ REVIEWS : optional_user_id
+    BOOKS ||--o{ REVIEWS : receives
+    AUTH_USERS ||--o{ USER_SHELVES : user_id
+    BOOKS ||--o{ USER_SHELVES : saved_on
+    BOOKS ||--o{ BOOK_EDGES : endpoint_a
+    BOOKS ||--o{ BOOK_EDGES : endpoint_b
+    BOOKS ||--o{ BLIND_DATE_INTERACTIONS : relates_to
+
+    AUTH_USERS {
+        uuid id PK
+    }
+    USERS {
+        uuid id PK,FK
+        varchar email
+        varchar role
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    SUPER_CATEGORIES {
+        uuid id PK
+        varchar name UK
+        varchar slug UK
+        text icon
+        varchar color
+    }
+    GENRES {
+        uuid id PK
+        uuid super_category_id FK
+        varchar name UK
+        varchar slug UK
+        text description
+        boolean is_learning
+        boolean is_fiction
+        integer sort_order
+    }
+    BOOKS {
+        uuid id PK
+        uuid genre_id FK
+        uuid next_book_id FK
+        varchar title
+        varchar author
+        text description
+        integer page_count
+        integer published_year
+        numeric expert_rating
+        numeric community_rating
+        varchar external_id UK
+        text vibe
+        text plot_type
+        varchar length_category
+        vector embedding
+        tsvector search_vector
+    }
+    AUTHORS {
+        uuid id PK
+        text name UK
+        text ai_bio
+        text_array ai_style
+    }
+    REVIEWS {
+        uuid id PK
+        uuid book_id FK
+        uuid user_id FK
+        varchar reviewer_name
+        integer rating
+        text content
+        text source
+    }
+    USER_SHELVES {
+        uuid id PK
+        uuid user_id FK
+        uuid book_id FK
+        varchar status
+    }
+    BOOK_EDGES {
+        uuid id PK
+        uuid book_a_id FK
+        uuid book_b_id FK
+        float weight
+        varchar relationship_type
+    }
+    USER_READER_PROFILES {
+        uuid id PK
+        text session_id UK
+        varchar mood
+        varchar pace_preference
+        varchar complexity_preference
+        varchar era_preference
+        varchar length_preference
+    }
+    BLIND_DATE_INTERACTIONS {
+        uuid id PK
+        text session_id
+        uuid book_id FK
+        boolean accepted
+    }

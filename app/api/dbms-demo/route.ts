@@ -1,13 +1,26 @@
+// ======================================================================================
+// VIT BCSE302P DBMS Lab Assessment 8, 9 & 10
+// Faculty: Dr. V. Sivakumar | Slot: L25+L26
+// Student Name: Krish | Register Number: 24BCE0846
+// Mandatory Rule 7 Compliance: Registerno & name used in method, variables, and output
+// ======================================================================================
+
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-
-// Note: This file is created specifically for the DBMS Lab Assessment 
-// to demonstrate ORM Integration, Pagination, Validation, and Exception Handling.
-// It can be safely deleted after the assessment.
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
+  // Method variable embedding student identity per Rule 7
+  const student_24BCE0846_krish = {
+    student_name: 'Krish',
+    register_number: '24BCE0846',
+    slot: 'L25+L26',
+    course_code: 'BCSE302P',
+    course_title: 'Database Systems Lab',
+    faculty: 'Dr. V. SIVAKUMAR'
+  };
+
   try {
     const { searchParams } = new URL(request.url);
     
@@ -25,10 +38,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid limit parameter. Must be between 1 and 100.' }, { status: 400 });
     }
 
-    // 2. Pagination & ORM Integration
+    // 2. Pagination & ORM Integration (skip / take)
     const skip = (page - 1) * limit;
 
-    // Prisma query demonstrating relational joins (include) and pagination (skip/take)
+    // Prisma query demonstrating relational joins (include) and pagination
     const books = await prisma.book.findMany({
       skip,
       take: limit,
@@ -42,8 +55,9 @@ export async function GET(request: NextRequest) {
 
     const totalBooks = await prisma.book.count();
 
-    // 3. Successful Response
+    // 3. Successful Response with Evaluation Metadata
     return NextResponse.json({
+      evaluation: student_24BCE0846_krish,
       data: books,
       meta: {
         total: totalBooks,
@@ -57,7 +71,6 @@ export async function GET(request: NextRequest) {
     // 4. Exception Handling
     console.error('[DBMS_DEMO_API] Error fetching books:', error);
     
-    // Check if it's a known Prisma error
     if (error instanceof Error && error.message.includes('Prisma')) {
       return NextResponse.json({ error: 'Database ORM Error occurred.' }, { status: 500 });
     }

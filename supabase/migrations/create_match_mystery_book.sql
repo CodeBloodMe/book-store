@@ -36,62 +36,66 @@ SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT
-        b.id AS book_id,
-        b.title::TEXT,
-        b.author::TEXT,
-        b.cover_image_url::TEXT,
-        b.description::TEXT,
-        b.vibe::TEXT,
-        b.length_category::TEXT,
-        b.difficulty_level::TEXT,
-        b.expert_rating::FLOAT,
-        b.community_rating::FLOAT,
-        b.tags::TEXT[],
-        g.name::TEXT AS genre_name,
-        g.color::TEXT AS genre_color,
-        (
-            -- Attribute match score (0-5 points)
-            (CASE WHEN p_mood IS NOT NULL AND b.vibe ILIKE '%' || p_mood || '%' THEN 1.0 ELSE 0.0 END) +
-            (CASE WHEN p_length IS NOT NULL AND b.length_category ILIKE p_length THEN 1.0 ELSE 0.0 END) +
-            (CASE WHEN p_complexity IS NOT NULL AND b.difficulty_level ILIKE p_complexity THEN 1.0 ELSE 0.0 END) +
-            (CASE 
-                WHEN p_era = 'classic' AND b.published_year IS NOT NULL AND b.published_year < 1980 THEN 1.0
-                WHEN p_era = 'modern' AND b.published_year IS NOT NULL AND b.published_year >= 2000 THEN 1.0
-                WHEN p_era = 'any' THEN 0.5
-                ELSE 0.0
-            END) +
-            (CASE 
-                WHEN p_pace = 'fast' AND b.page_count IS NOT NULL AND b.page_count < 300 THEN 1.0
-                WHEN p_pace = 'moderate' AND b.page_count IS NOT NULL AND b.page_count BETWEEN 300 AND 500 THEN 1.0
-                WHEN p_pace = 'slow' AND b.page_count IS NOT NULL AND b.page_count > 500 THEN 1.0
-                ELSE 0.0
-            END) +
-            -- Acceptance rate exploitation (0-3 points)
-            COALESCE(stats.acceptance_rate * 3.0, 1.5) +
-            -- Exploration bonus for under-explored books (UCB1-inspired)
-            CASE WHEN COALESCE(stats.interaction_count, 0) < 5 THEN random() * 2.0 ELSE 0.0 END +
-            -- Quality bonus — prefer higher-rated books slightly
-            COALESCE(b.expert_rating::FLOAT / 5.0, 0.0)
-        )::FLOAT AS match_score
-    FROM public.books b
-    LEFT JOIN public.genres g ON g.id = b.genre_id
-    LEFT JOIN (
+    SELECT * FROM (
         SELECT
-            bdi.book_id AS stat_book_id,
-            COUNT(*) FILTER (WHERE bdi.accepted = true)::FLOAT / NULLIF(COUNT(*), 0) AS acceptance_rate,
-            COUNT(*) AS interaction_count
-        FROM public.blind_date_interactions bdi
-        GROUP BY bdi.book_id
-    ) stats ON stats.stat_book_id = b.id
-    WHERE b.id NOT IN (
-        -- Don't show books this session has already seen
-        SELECT bdi2.book_id FROM public.blind_date_interactions bdi2 WHERE bdi2.session_id = p_session_id
-    )
-    -- Must have some minimum data quality
-    AND b.description IS NOT NULL
-    AND b.cover_image_url IS NOT NULL
-    ORDER BY match_score DESC
+            b.id AS book_id,
+            b.title::TEXT,
+            b.author::TEXT,
+            b.cover_image_url::TEXT,
+            b.description::TEXT,
+            b.vibe::TEXT,
+            b.length_category::TEXT,
+            b.difficulty_level::TEXT,
+            b.expert_rating::FLOAT,
+            b.community_rating::FLOAT,
+            b.tags::TEXT[],
+            g.name::TEXT AS genre_name,
+            g.color::TEXT AS genre_color,
+            (
+                -- Attribute match score (0-5 points)
+                (CASE WHEN p_mood IS NOT NULL AND b.vibe ILIKE '%' || p_mood || '%' THEN 1.0 ELSE 0.0 END) +
+                (CASE WHEN p_length IS NOT NULL AND b.length_category ILIKE p_length THEN 1.0 ELSE 0.0 END) +
+                (CASE WHEN p_complexity IS NOT NULL AND b.difficulty_level ILIKE p_complexity THEN 1.0 ELSE 0.0 END) +
+                (CASE 
+                    WHEN p_era = 'classic' AND b.published_year IS NOT NULL AND b.published_year < 1980 THEN 1.0
+                    WHEN p_era = 'modern' AND b.published_year IS NOT NULL AND b.published_year >= 2000 THEN 1.0
+                    WHEN p_era = 'any' THEN 0.5
+                    ELSE 0.0
+                END) +
+                (CASE 
+                    WHEN p_pace = 'fast' AND b.page_count IS NOT NULL AND b.page_count < 300 THEN 1.0
+                    WHEN p_pace = 'moderate' AND b.page_count IS NOT NULL AND b.page_count BETWEEN 300 AND 500 THEN 1.0
+                    WHEN p_pace = 'slow' AND b.page_count IS NOT NULL AND b.page_count > 500 THEN 1.0
+                    ELSE 0.0
+                END) +
+                -- Acceptance rate exploitation (0-3 points)
+                COALESCE(stats.acceptance_rate * 3.0, 1.5) +
+                -- Exploration bonus for under-explored books (UCB1-inspired)
+                CASE WHEN COALESCE(stats.interaction_count, 0) < 5 THEN random() * 2.0 ELSE 0.0 END +
+                -- Quality bonus — prefer higher-rated books slightly
+                COALESCE(b.expert_rating::FLOAT / 5.0, 0.0)
+            )::FLOAT AS match_score
+        FROM public.books b
+        LEFT JOIN public.genres g ON g.id = b.genre_id
+        LEFT JOIN (
+            SELECT
+                bdi.book_id AS stat_book_id,
+                COUNT(*) FILTER (WHERE bdi.accepted = true)::FLOAT / NULLIF(COUNT(*), 0) AS acceptance_rate,
+                COUNT(*) AS interaction_count
+            FROM public.blind_date_interactions bdi
+            GROUP BY bdi.book_id
+        ) stats ON stats.stat_book_id = b.id
+        WHERE b.id NOT IN (
+            -- Don't show books this session has already seen
+            SELECT bdi2.book_id FROM public.blind_date_interactions bdi2 WHERE bdi2.session_id = p_session_id
+        )
+        -- Must have some minimum data quality
+        AND b.description IS NOT NULL
+        AND b.cover_image_url IS NOT NULL
+        ORDER BY match_score DESC
+        LIMIT 15
+    ) top_candidates
+    ORDER BY random()
     LIMIT 1;
 END;
 $$;

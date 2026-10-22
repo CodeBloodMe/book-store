@@ -1,4 +1,10 @@
 -- ======================================================================================
+-- VIT BCSE302P DBMS Lab Assessment 8, 9 & 10
+-- Faculty: Dr. V. Sivakumar | Slot: L25+L26
+-- Student Name: Krish | Register Number: 24BCE0846
+-- ======================================================================================
+
+-- ======================================================================================
 -- DBMS Lab Project Demonstrations (Easily Removable / Academic Purpose Only)
 -- ======================================================================================
 -- This script demonstrates CRUD operations using explicit transactions and ROLLBACK.
