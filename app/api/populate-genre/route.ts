@@ -1,99 +1,86 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const slug = searchParams.get('slug');
-  const adminKey = searchParams.get('key');
+export const dynamic = 'force-dynamic';
 
-  if (adminKey !== process.env.ADMIN_KEY && process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function POST(request: Request) {
+  const access = await requireRole(['Admin']);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status, headers: { 'Cache-Control': 'no-store' } });
+
+  const body = await request.json().catch(() => null) as { slug?: unknown } | null;
+  const querySlug = new URL(request.url).searchParams.get('slug');
+  const slugValue = typeof body?.slug === 'string' ? body.slug : querySlug;
+  const slug = slugValue?.trim() ?? '';
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120) {
+    return NextResponse.json({ error: 'Provide a valid genre slug.' }, { status: 400 });
   }
 
-  if (!slug) {
-    return NextResponse.json({ 
-      error: 'Please provide a genre slug (e.g. ?slug=web-development)' 
-    }, { status: 400 });
-  }
-
-  // 1. Get genre from DB
-  const { data: genre, error: genreError } = await supabase
-    .from('genres')
-    .select('id, name')
-    .eq('slug', slug)
-    .single();
-
+  const { data: genre, error: genreError } = await supabaseAdmin
+    .from('genres').select('id, name').eq('slug', slug).single();
   if (genreError || !genre) {
-    return NextResponse.json({ error: `Genre '${slug}' not found in database.` }, { status: 404 });
+    return NextResponse.json({ error: 'Genre not found.' }, { status: 404 });
   }
 
-  // 2. Fetch Top 40 Books from Google Books API
-  // Using subject + keyword search for best results
-  const query = encodeURIComponent(`subject:${genre.name} OR "${genre.name}"`);
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=40&langRestrict=en&orderBy=relevance`;
-  
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Google Books API failed');
-    
-    const data = await res.json();
-    if (!data.items || data.items.length === 0) {
-      return NextResponse.json({ message: `No books found on Google Books for '${genre.name}'.` });
-    }
+    const query = encodeURIComponent(`subject:${genre.name} OR "${genre.name}"`);
+    const response = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${query}&maxResults=40&langRestrict=en&orderBy=relevance`,
+      { signal: AbortSignal.timeout(10000), cache: 'no-store' },
+    );
+    if (!response.ok) throw new Error(`Google Books returned HTTP ${response.status}`);
+    const payload = await response.json();
+    const items = Array.isArray(payload.items) ? payload.items : [];
 
-    // 3. Format books for database
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newBooks = data.items.map((item: any) => ({
-      genre_id: genre.id,
-      title: item.volumeInfo.title || 'Unknown Title',
-      author: item.volumeInfo.authors?.join(', ') || 'Unknown Author',
-      description: item.volumeInfo.description || `A comprehensive guide exploring ${genre.name}.`,
-      cover_image_url: item.volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
-      page_count: item.volumeInfo.pageCount || null,
-      published_year: item.volumeInfo.publishedDate ? parseInt(item.volumeInfo.publishedDate.substring(0, 4)) : null,
-      isbn: item.volumeInfo.industryIdentifiers?.find((id: any) => id.type === 'ISBN_13')?.identifier || 
-            item.volumeInfo.industryIdentifiers?.[0]?.identifier || null,
-      expert_rating: null,
-      community_rating: item.volumeInfo.averageRating || null,
-      total_reviews: item.volumeInfo.ratingsCount || 0,
-      difficulty_level: null,
-      external_id: `google:${item.id}`,
-      is_featured: false,
-      is_editors_pick: false,
-      is_bestseller: false,
-      tags: ['AUTO_IMPORTED']
-    }));
-
-    // 4. Deduplicate against existing books to avoid inserting the same book twice
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const externalIds = newBooks.map((b: any) => b.external_id);
-    const { data: existing } = await supabase
-      .from('books')
-      .select('external_id')
-      .in('external_id', externalIds);
-      
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existingIds = new Set(existing?.map((e: any) => e.external_id) || []);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const toInsert = newBooks.filter((b: any) => !existingIds.has(b.external_id));
-
-    if (toInsert.length === 0) {
-      return NextResponse.json({ 
-        message: `All top Google Books for '${genre.name}' are already in your database.` 
+    const records = items
+      .filter((item: { id?: string; volumeInfo?: { title?: string } }) => Boolean(item.id && item.volumeInfo?.title))
+      .map((item: {
+        id: string;
+        volumeInfo?: {
+          title?: string; authors?: string[]; description?: string; imageLinks?: { thumbnail?: string };
+          pageCount?: number; averageRating?: number; ratingsCount?: number; publishedDate?: string;
+          industryIdentifiers?: Array<{ type?: string; identifier?: string }>;
+        };
+      }) => {
+        const info = item.volumeInfo ?? {};
+        const yearText = info.publishedDate?.slice(0, 4) ?? '';
+        const year = /^\d{4}$/.test(yearText) ? Number(yearText) : null;
+        const isbn = info.industryIdentifiers?.find((entry) => entry.type === 'ISBN_13')?.identifier
+          ?? info.industryIdentifiers?.[0]?.identifier ?? null;
+        return {
+          genre_id: genre.id,
+          title: String(info.title).slice(0, 500),
+          author: (info.authors ?? []).join(', ').slice(0, 500) || 'Unknown Author',
+          description: (info.description ?? `Catalog metadata imported for ${genre.name}.`).slice(0, 20000),
+          cover_image_url: info.imageLinks?.thumbnail?.replace(/^http:/, 'https:') ?? null,
+          page_count: Number.isInteger(info.pageCount) && (info.pageCount ?? 0) > 0 ? info.pageCount : null,
+          published_year: year,
+          isbn,
+          expert_rating: null,
+          community_rating: typeof info.averageRating === 'number' && info.averageRating >= 0 && info.averageRating <= 5 ? info.averageRating : null,
+          total_reviews: Number.isInteger(info.ratingsCount) && (info.ratingsCount ?? 0) >= 0 ? info.ratingsCount : 0,
+          difficulty_level: null,
+          external_id: `google:${item.id}`,
+          is_featured: false,
+          is_editors_pick: false,
+          is_bestseller: false,
+          tags: ['AUTO_IMPORTED'],
+        };
       });
+
+    if (records.length === 0) {
+      return NextResponse.json({ success: true, inserted: 0, message: 'No books were returned for this genre.' });
     }
 
-    // 5. Insert into Supabase
-    const { error: insertError } = await supabase.from('books').insert(toInsert);
-    if (insertError) throw insertError;
+    const { data, error } = await supabaseAdmin
+      .from('books')
+      .upsert(records, { onConflict: 'external_id', ignoreDuplicates: true })
+      .select('id');
+    if (error) throw error;
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Successfully imported ${toInsert.length} REAL books for '${genre.name}' from Google Books!` 
-    });
-
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ success: true, inserted: data?.length ?? 0 }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[populate-genre] Import failed:', error);
+    return NextResponse.json({ error: 'Book import failed.' }, { status: 502 });
   }
 }

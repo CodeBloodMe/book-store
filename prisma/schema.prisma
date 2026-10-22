@@ -1,13 +1,14 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  relationMode = "prisma"
 }
 
 generator client {
   provider = "prisma-client-js"
 }
 
+// PostgreSQL enforces the declared foreign keys. Supabase Auth remains the
+// identity provider; public.users is the application profile/role table.
 model User {
   id         String   @id @db.Uuid
   email      String   @unique
@@ -15,25 +16,35 @@ model User {
   created_at DateTime @default(now()) @db.Timestamptz
   updated_at DateTime @default(now()) @db.Timestamptz
 
-  reviews    Review[]
-  shelves    UserShelf[]
+  reviews Review[]
+  shelves UserShelf[]
 
   @@map("users")
 }
 
 model Book {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title         String
-  page_count    Int?
-  external_id   String?  @unique
-  author        String?  
-  series_name   String?  @db.VarChar(255)
-  series_number Int?
-  
-  reviews     Review[]
-  shelves     UserShelf[]
-  interactions BlindDateInteraction[]
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title               String
+  page_count          Int?
+  external_id         String?  @unique
+  author              String?
+  expert_rating       Decimal?
+  community_rating    Decimal?
+  genre_id            String   @db.Uuid
+  series_name         String?  @db.VarChar(255)
+  series_number       Int?
+  user_review_average Decimal  @default(0) @db.Decimal(3, 2)
+  user_review_count   Int      @default(0)
 
+  genre                Genre                  @relation(fields: [genre_id], references: [id], onDelete: Restrict)
+  reviews              Review[]
+  shelves              UserShelf[]
+  interactions         BlindDateInteraction[]
+  edgesFrom            BookEdge[]             @relation("BookEdgeFrom")
+  edgesTo              BookEdge[]             @relation("BookEdgeTo")
+  currentMatchProfiles UserReaderProfile[]    @relation("ProfileCurrentMatch")
+
+  @@index([genre_id])
   @@map("books")
 }
 
@@ -46,8 +57,8 @@ model Review {
   created_at    DateTime @default(now()) @db.Timestamptz
   user_id       String?  @db.Uuid
 
-  user    User?  @relation(fields: [user_id], references: [id])
-  book    Book   @relation(fields: [book_id], references: [id])
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  book Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([book_id])
@@ -63,8 +74,8 @@ model UserShelf {
   created_at DateTime @default(now()) @db.Timestamptz
   updated_at DateTime @default(now()) @db.Timestamptz
 
-  user    User   @relation(fields: [user_id], references: [id])
-  book    Book   @relation(fields: [book_id], references: [id])
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [book_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, book_id])
   @@index([user_id])
@@ -76,7 +87,9 @@ model Genre {
   id                String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name              String
   super_category_id String @db.Uuid
-  superCategory     SuperCategory @relation(fields: [super_category_id], references: [id])
+
+  superCategory SuperCategory @relation(fields: [super_category_id], references: [id])
+  books         Book[]
 
   @@index([super_category_id])
   @@map("genres")
@@ -113,6 +126,9 @@ model BookEdge {
   algorithm_version String?  @db.VarChar(50)
   created_at        DateTime @default(now()) @db.Timestamptz
 
+  bookA Book @relation("BookEdgeFrom", fields: [book_a_id], references: [id], onDelete: Cascade)
+  bookB Book @relation("BookEdgeTo", fields: [book_b_id], references: [id], onDelete: Cascade)
+
   @@unique([book_a_id, book_b_id])
   @@index([book_a_id])
   @@index([book_b_id])
@@ -128,9 +144,11 @@ model UserReaderProfile {
   complexity_preference String?  @db.VarChar(50)
   era_preference        String?  @db.VarChar(50)
   length_preference     String?  @db.VarChar(50)
+  last_matched_book_id  String?  @db.Uuid
   created_at            DateTime @default(now()) @db.Timestamptz
 
-  @@index([session_id])
+  lastMatchedBook Book? @relation("ProfileCurrentMatch", fields: [last_matched_book_id], references: [id], onDelete: SetNull)
+
   @@map("user_reader_profiles")
 }
 
@@ -141,7 +159,7 @@ model BlindDateInteraction {
   accepted   Boolean
   created_at DateTime @default(now()) @db.Timestamptz
 
-  book       Book     @relation(fields: [book_id], references: [id])
+  book Book @relation(fields: [book_id], references: [id], onDelete: Cascade)
 
   @@index([book_id])
   @@index([session_id])

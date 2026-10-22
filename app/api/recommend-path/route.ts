@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 import { callOmniroute as callAnyAI } from '@/lib/omniroute';
 
 // ── Types ────────────────────────────────────────────────────
@@ -82,6 +84,11 @@ async function fetchFromOpenLibrary(title: string, author: string): Promise<OLRe
 
 export async function POST(request: Request) {
   try {
+    const access = await requireRole(['Admin', 'User', 'Faculty', 'Student']);
+    if (!access.ok) {
+      return NextResponse.json({ error: 'Sign in to generate a learning path.' }, { status: access.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+
     const body: RecommendPathRequest = await request.json();
     const { query } = body;
 
@@ -167,7 +174,7 @@ Critical rules:
           if (!existingBook.cover_image_url) {
             const olData = await fetchFromOpenLibrary(aiBook.title, aiBook.author);
             if (olData.cover_url) {
-              await supabase
+              await supabaseAdmin
                 .from('books')
                 .update({ cover_image_url: olData.cover_url })
                 .eq('id', existingBook.id);
@@ -188,7 +195,7 @@ Critical rules:
 
         if (!genreId) continue;
 
-        const { data: inserted, error: insertError } = await supabase
+        const { data: inserted, error: insertError } = await supabaseAdmin
           .from('books')
           .insert({
             genre_id: genreId,

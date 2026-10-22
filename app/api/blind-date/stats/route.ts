@@ -1,25 +1,14 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
-/**
- * GET /api/blind-date/stats
- *
- * Returns aggregate statistics for the "Blind Date With a Book" feature.
- * Used for the live counter on the UI: "X readers accepted their date this week"
- */
+/** Public, aggregate-only statistics. Raw session records remain private. */
 export async function GET() {
   try {
-    const { data, error } = await supabase.rpc('get_blind_date_stats');
+    const { data, error } = await supabaseAdmin.rpc('get_blind_date_stats');
 
     if (error) {
       console.error('[Blind Date Stats] RPC error:', error.message);
-      // Return default stats on error
-      return NextResponse.json({
-        totalDates: 0,
-        acceptedDates: 0,
-        acceptanceRate: 0,
-        datesThisWeek: 0,
-      });
+      return NextResponse.json({ error: 'Could not load statistics.' }, { status: 503 });
     }
 
     const stats = data?.[0] || {
@@ -44,6 +33,6 @@ export async function GET() {
     );
   } catch (err) {
     console.error('[Blind Date Stats API] Unexpected error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }

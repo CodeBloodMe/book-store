@@ -1,8 +1,17 @@
 #!/bin/bash
 # Restore PostgreSQL database from dump (DBMS Lab Requirement)
 
-# Set these variables or export them in your environment
-DB_URL=${DATABASE_URL:-"postgresql://postgres:password@localhost:5432/postgres"}
+# Restore only into a separate, empty test database. Never fall back to production.
+if [ -z "${RESTORE_DATABASE_URL:-}" ]; then
+    echo "RESTORE_DATABASE_URL must point to a separate empty test database." >&2
+    exit 1
+fi
+
+if [ -n "${DATABASE_URL:-}" ] && [ "$RESTORE_DATABASE_URL" = "$DATABASE_URL" ]; then
+    echo "Refusing to restore into DATABASE_URL. Choose a separate test database." >&2
+    exit 1
+fi
+
 BACKUP_FILE=$1
 
 if [ -z "$BACKUP_FILE" ]; then
@@ -15,9 +24,8 @@ if [ ! -f "$BACKUP_FILE" ]; then
     exit 1
 fi
 
-echo "Starting database restore from $BACKUP_FILE..."
-# Warning: Clean flag (-c) drops database objects before recreating them.
-pg_restore -c -d "$DB_URL" "$BACKUP_FILE"
+echo "Starting database restore into the separate test database..."
+pg_restore --dbname "$RESTORE_DATABASE_URL" --no-owner --no-acl --exit-on-error "$BACKUP_FILE"
 
 if [ $? -eq 0 ]; then
     echo "Restore completed successfully."

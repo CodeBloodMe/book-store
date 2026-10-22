@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
 CREATE POLICY "Users can view their own profile" ON public.users FOR SELECT USING (auth.uid() = id);
 
 -- 2. Create a SQL View joining books and reviews (View Requirement)

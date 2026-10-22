@@ -1,26 +1,36 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 import { fetchAuthorBioFromWikipedia } from '@/lib/external-books';
 import { callOmniroute as callAnyAI } from '@/lib/omniroute';
 
 
 export async function POST(request: Request) {
   try {
-    const { authorName } = await request.json();
-    if (!authorName) {
+    const body: unknown = await request.json().catch(() => null);
+    const authorName = body && typeof body === 'object' && !Array.isArray(body)
+      ? (body as Record<string, unknown>).authorName
+      : null;
+    if (typeof authorName !== 'string' || authorName.trim().length < 1 || authorName.trim().length > 120) {
       return NextResponse.json({ error: 'Author name is required' }, { status: 400 });
     }
+    const normalizedAuthorName = authorName.trim();
 
     // 1. Check if we already have this author in the DB
     const { data: existingAuthor } = await supabase
       .from('authors')
       .select('*')
-      .ilike('name', authorName)
+      .eq('name', normalizedAuthorName)
       .maybeSingle();
 
     if (existingAuthor && existingAuthor.ai_bio) {
       return NextResponse.json({ success: true, data: existingAuthor });
+    }
+
+    const access = await requireRole(['Admin', 'User', 'Faculty', 'Student']);
+    if (!access.ok) {
+      return NextResponse.json({ error: 'Sign in to generate author information.' }, { status: access.status, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // 2. If not, try Wikipedia first
@@ -47,11 +57,11 @@ Make it engaging and specific. If the author is extremely obscure or unknown, pr
     }
 
     // 4. Upsert into database
-    const { data: upsertedAuthor, error: upsertError } = await supabase
+    const { data: upsertedAuthor, error: upsertError } = await supabaseAdmin
       .from('authors')
       .upsert(
         {
-          name: authorName, // Use the provided casing
+          name: normalizedAuthorName,
           ai_bio: aiBio,
           ai_style: aiStyle,
           ai_last_updated: new Date().toISOString(),

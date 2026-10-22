@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 import { callOmniroute as callAnyAI } from '@/lib/omniroute';
 
 // Types
@@ -204,6 +206,11 @@ export async function POST(request: Request) {
       }
     }
     rateLimit.set(ip, userLimit);
+
+    const access = await requireRole(['Admin', 'User', 'Faculty', 'Student']);
+    if (!access.ok) {
+      return NextResponse.json({ error: 'Sign in to use AI recommendations.' }, { status: access.status, headers: { 'Cache-Control': 'no-store' } });
+    }
 
     const body: RecommendRequest = await request.json();
     const { query, goal, area, style } = body;
@@ -527,14 +534,21 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
                 tags: validFilterAreas
              };
 
-             const { data: inserted, error: insertError } = await supabase.from('books').insert(newBook).select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)').single();
+             const { data: inserted, error: insertError } = await supabaseAdmin.from('books').insert(newBook).select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, is_bestseller, genres(name, color, icon, slug)').single();
              
              if (inserted && !insertError) {
                 console.log(`[Recommend API] 🚀 Successfully expanded database with verified "${inserted.title}"`);
                 finalTop6.push({ ...inserted, similarity: 0.95, _source: 'ai_verified' });
                 
-                // Fire and forget embedding generation for the new book
-                fetch(`${request.headers.get('origin') || 'http://localhost:3000'}/api/cron/embed`).catch(() => {});
+                // Trigger a secured embedding pass only when the server has both values.
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+                const cronSecret = process.env.CRON_SECRET;
+                if (siteUrl && cronSecret) {
+                  const cronUrl = new URL('/api/cron/embed', siteUrl);
+                  fetch(cronUrl, {
+                    headers: { authorization: `Bearer ${cronSecret}` },
+                  }).catch((error) => console.warn('[Recommend API] Embedding trigger failed:', error));
+                }
              } else {
                 console.warn("[Recommend API] JIT Insert Failed:", insertError);
              }

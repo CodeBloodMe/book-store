@@ -1,77 +1,78 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const action = searchParams.get('action');
+export const dynamic = 'force-dynamic';
 
-  if (action === 'add') {
-    // 1. Fetch all genres to assign books to them
-    const { data: genres, error: genreError } = await supabase.from('genres').select('id, name');
-    if (genreError || !genres || genres.length === 0) {
-      return NextResponse.json({ error: 'Failed to fetch genres or no genres found' }, { status: 400 });
-    }
+export async function GET() {
+  return NextResponse.json({
+    message: 'Test data changes require a signed-in administrator session.',
+    instructions: { add: 'POST /api/test-data with { "action": "add" }', remove: 'POST /api/test-data with { "action": "remove" }' },
+  }, { headers: { 'Cache-Control': 'no-store' } });
+}
 
-    const dummyBooks = [];
-    
-    // Create 30 dummy books per genre
-    for (const genre of genres) {
-      for (let i = 1; i <= 30; i++) {
-        dummyBooks.push({
-          genre_id: genre.id,
-          title: `[TEST] ${genre.name} Book ${i}`,
-          author: `Test Author ${i}`,
-          description: `This is a randomly generated test book for ${genre.name}. Used to test UI grids, scrolling, and pagination limits.`,
-          expert_rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Between 3.0 and 5.0
-          community_rating: parseFloat((Math.random() * 2 + 3).toFixed(1)),
-          total_reviews: Math.floor(Math.random() * 5000),
-          difficulty_level: ['Beginner', 'Intermediate', 'Advanced'][Math.floor(Math.random() * 3)],
-          tags: ['DUMMY_TEST_DATA'], // We use this tag to safely delete them later
-          is_featured: false,
-          is_editors_pick: false,
-          is_bestseller: Math.random() > 0.8, // 20% chance of being a bestseller
-        });
-      }
-    }
-
-    // Insert in batches of 500 to avoid Supabase limits
-    for (let i = 0; i < dummyBooks.length; i += 500) {
-      const batch = dummyBooks.slice(i, i + 500);
-      const { error } = await supabase.from('books').insert(batch);
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `Successfully injected ${dummyBooks.length} test books! You can now browse the UI to see dense grids. To remove them, use ?action=remove` 
-    });
+/** Admin-only, development-only fixture endpoint. Never enable it in production. */
+export async function POST(request: Request) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   }
+  const access = await requireRole(['Admin']);
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
 
-  if (action === 'remove') {
-    // Delete all books that have 'DUMMY_TEST_DATA' in their tags array
-    const { error, count } = await supabase
+  const body = await request.json().catch(() => null) as { action?: unknown } | null;
+  if (body?.action === 'remove') {
+    const { data, error } = await supabaseAdmin
       .from('books')
       .delete()
-      .contains('tags', ['DUMMY_TEST_DATA']);
-
+      .contains('tags', ['DUMMY_TEST_DATA'])
+      .select('id');
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[test-data] Cleanup failed:', error);
+      return NextResponse.json({ error: 'Test data cleanup failed.' }, { status: 500 });
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'All dummy test books have been successfully removed from the database!',
-      deleted_count: count
-    });
+    return NextResponse.json({ success: true, deleted: data?.length ?? 0 });
   }
 
-  return NextResponse.json({ 
-    message: 'Test Data API is ready.', 
-    instructions: {
-      add: 'Go to /api/test-data?action=add to generate thousands of test books',
-      remove: 'Go to /api/test-data?action=remove to delete all test books'
+  if (body?.action !== 'add') {
+    return NextResponse.json({ error: 'action must be add or remove.' }, { status: 400 });
+  }
+
+  const { data: genres, error: genreError } = await supabaseAdmin.from('genres').select('id, name');
+  if (genreError || !genres?.length) {
+    return NextResponse.json({ error: 'No genres are available for test data.' }, { status: 400 });
+  }
+
+  let inserted = 0;
+  for (const genre of genres) {
+    const records = Array.from({ length: 30 }, (_, index) => {
+      const seq = index + 1;
+      const id = `test-fixture:${genre.id}:${seq}`;
+      return {
+        genre_id: genre.id,
+        title: `[TEST] ${genre.name} Book ${seq}`,
+        author: `Test Author ${seq}`,
+        description: `Deterministic fixture record for validating pagination and filtering for ${genre.name}.`,
+        expert_rating: Number((3 + ((seq % 20) / 10)).toFixed(1)),
+        community_rating: Number((3 + ((seq % 20) / 10)).toFixed(1)),
+        total_reviews: seq * 7,
+        difficulty_level: (['Beginner', 'Intermediate', 'Advanced'] as const)[seq % 3],
+        external_id: id,
+        tags: ['DUMMY_TEST_DATA'],
+        is_featured: false,
+        is_editors_pick: false,
+        is_bestseller: seq % 5 === 0,
+      };
+    });
+    const { data, error } = await supabaseAdmin
+      .from('books')
+      .upsert(records, { onConflict: 'external_id', ignoreDuplicates: true })
+      .select('id');
+    if (error) {
+      console.error(`[test-data] Fixture insertion failed for ${genre.name}:`, error);
+      return NextResponse.json({ error: 'Fixture insertion failed. Remove fixture rows and inspect database constraints.' }, { status: 500 });
     }
-  });
+    inserted += data?.length ?? 0;
+  }
+
+  return NextResponse.json({ success: true, inserted, genreCount: genres.length });
 }

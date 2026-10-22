@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import 'server-only';
 import { Book } from '@/types/database';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 function decodeHTMLEntities(text: string): string {
   const entities: { [key: string]: string } = {
@@ -331,7 +333,7 @@ export async function fetchAndImportExternalBook(extId: string): Promise<string 
   }
 
   // 4. Insert into database
-  const { data: newBook, error } = await supabase
+  const { data: newBook, error } = await supabaseAdmin
     .from('books')
     .insert({
       title: bookDetails.title,

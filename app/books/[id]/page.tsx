@@ -12,6 +12,7 @@ import { fetchAndImportExternalBook, fetchAuthorImage } from '@/lib/external-boo
 import { getCoverUrl } from '@/lib/cover-utils';
 import { getReviewsForBook } from '@/app/actions/reviews';
 import { createClient } from '@/lib/supabase/server';
+import { requireRole } from '@/lib/require-role';
 import SaveToBookshelfButton from '@/components/features/SaveToBookshelfButton';
 import SimilarBooksSection from '@/components/features/SimilarBooksSection';
 import SeriesPanel from '@/components/features/SeriesPanel';
@@ -60,6 +61,9 @@ export default async function BookDetailPage({ params }: PageProps) {
   // We need to fetch it from the OpenLibrary API, save it to our database, and then
   // redirect the user to the newly created real database ID.
   if (id.startsWith('ext_')) {
+    const access = await requireRole(['Admin', 'User', 'Faculty', 'Student']);
+    if (!access.ok) redirect(`/login?next=${encodeURIComponent(`/books/${id}`)}`);
+
     const newDatabaseId = await fetchAndImportExternalBook(id);
     
     if (newDatabaseId) {

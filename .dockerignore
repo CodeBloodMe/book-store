@@ -1,0 +1,15 @@
+.git
+.github
+.next
+node_modules
+coverage
+playwright-report
+test-results
+backups
+*.dump
+*.sql.gz
+.env
+.env.*
+!.env.example
+*.pem
+scratch

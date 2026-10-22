@@ -1,78 +1,84 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 import { GoogleGenAI } from '@google/genai';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { isCronRequest } from '@/lib/security/request-auth';
 
-export const maxDuration = 60; // Allow function to run for up to 60 seconds (Vercel Pro/Hobby limits)
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  if (!isCronRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+  }
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: 'Embedding service is not configured.' }, { status: 503 });
+  }
+
   try {
-    // Basic security: only run if the cron secret is provided
-    // Example: /api/cron/embed?secret=YOUR_SECRET
-    const { searchParams } = new URL(request.url);
-    const secret = searchParams.get('secret');
-    
-    // If you deploy to Vercel, use process.env.CRON_SECRET. For local testing, we'll bypass.
-    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    console.log("[Cron] Starting embedding backfill...");
-
-    // Find up to 20 books that are missing their vector embeddings
-    const { data: books, error } = await supabase
+    const { data: books, error } = await supabaseAdmin
       .from('books')
       .select('id, title, author, description, genres(name)')
       .is('embedding', null)
+      .order('created_at', { ascending: true })
       .limit(10);
-
     if (error) throw error;
 
-    if (!books || books.length === 0) {
-      return NextResponse.json({ message: 'No new books to embed. Everything is up to date!' });
+    if (!books?.length) {
+      return NextResponse.json({ success: true, processed: 0, failed: 0, message: 'No books need embeddings.' }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-    let embeddedCount = 0;
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    let processed = 0;
+    const failures: string[] = [];
 
-    // Process each missing book
     for (const book of books) {
-      const genreName = Array.isArray(book.genres) ? book.genres[0]?.name : (book.genres as any)?.name || "Fiction";
-      const contentToEmbed = `Title: ${book.title}\nAuthor: ${book.author}\nGenre: ${genreName}\nDescription: ${book.description || 'A great book.'}`;
-      
       try {
+        const genreName = Array.isArray(book.genres)
+          ? book.genres[0]?.name ?? 'Unknown genre'
+          : (book.genres as { name?: string } | null)?.name ?? 'Unknown genre';
+        const content = [
+          `Title: ${book.title}`,
+          `Author: ${book.author ?? 'Unknown author'}`,
+          `Genre: ${genreName}`,
+          `Description: ${book.description ?? ''}`,
+        ].join('\n');
+
         const response = await ai.models.embedContent({
           model: 'gemini-embedding-001',
-          contents: contentToEmbed,
+          contents: content,
+          config: { outputDimensionality: 768, taskType: 'RETRIEVAL_DOCUMENT' },
         });
-        
-        // Slice to 768 to fit your database schema
-        const vector = response.embeddings?.[0]?.values?.slice(0, 768);
-        
-        if (!vector) throw new Error("No embedding returned from AI model");
+        const vector = response.embeddings?.[0]?.values;
+        if (!vector || vector.length !== 768 || vector.some((value) => !Number.isFinite(value))) {
+          throw new Error('Embedding was missing, non-finite, or had an unexpected dimension.');
+        }
 
-        await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('books')
           .update({ embedding: vector })
-          .eq('id', book.id);
+          .eq('id', book.id)
+          .is('embedding', null);
+        if (updateError) throw updateError;
+        processed++;
+      } catch (error) {
+        console.error(`[cron/embed] Failed for book ${book.id}:`, error);
+        failures.push(book.id);
+      }
 
-        embeddedCount++;
-        
-        // Increased delay to 2 seconds to prevent hitting API limits
-        await new Promise(r => setTimeout(r, 2000));
-      } catch (err) {
-        console.error(`[Cron] Error embedding "${book.title}":`, err);
+      // Keep within provider limits without sleeping unnecessarily after the last item.
+      if (processed + failures.length < books.length) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Successfully generated mathematical vectors for ${embeddedCount} new books!`,
-      booksProcessed: embeddedCount
-    });
-
-  } catch (error: any) {
-    console.error("[Cron] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({
+      success: failures.length === 0,
+      processed,
+      failed: failures.length,
+      failedBookIds: failures,
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    console.error('[cron/embed] Failed to load/process embedding batch:', error);
+    return NextResponse.json({ error: 'Embedding batch failed.' }, { status: 500 });
   }
 }

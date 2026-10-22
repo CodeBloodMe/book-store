@@ -18,6 +18,16 @@ import MobileNavSidebar from './MobileNavSidebar';
 export default async function Navbar() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  let isAdmin = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    isAdmin = profile?.role === 'Admin';
+  }
 
   let genres: Genre[] = [];
   try {
@@ -145,6 +155,11 @@ export default async function Navbar() {
             >
               <Sparkles size={16} /> AI Finder
             </Link>
+            {isAdmin && (
+              <Link href="/admin" className="btn-ghost text-sm px-3 py-2 whitespace-nowrap">
+                Admin Dashboard
+              </Link>
+            )}
           </nav>
 
           {/* ── Search + Mobile + Auth ────────────────────────── */}
@@ -163,12 +178,12 @@ export default async function Navbar() {
 
               {/* Mobile Hamburger Menu: Show only on mobile */}
               <div className="flex lg:hidden">
-                <MobileNavSidebar groups={sortedGroups} />
+                <MobileNavSidebar groups={sortedGroups} isAdmin={isAdmin} />
               </div>
 
               {/* Profile Sidebar: Show on desktop if logged in, show on mobile always */}
               <div className={`${user ? 'flex' : 'flex lg:hidden'}`}>
-                <ProfileSidebar isAuthenticated={!!user} />
+                <ProfileSidebar isAuthenticated={!!user} isAdmin={isAdmin} />
               </div>
             </div>
           </div>

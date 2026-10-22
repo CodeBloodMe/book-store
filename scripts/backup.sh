@@ -1,19 +1,25 @@
-#!/bin/bash
-# Backup PostgreSQL database (DBMS Lab Requirement)
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Set these variables or export them in your environment
-DB_URL=${DATABASE_URL:-"postgresql://postgres:password@localhost:5432/postgres"}
-BACKUP_DIR="./backups"
-DATE=$(date +%Y%m%d_%H%M%S)
+: "${DATABASE_URL:?Set DATABASE_URL in the shell or load it from a secret manager.}"
+command -v pg_dump >/dev/null 2>&1 || { echo 'pg_dump is required.' >&2; exit 1; }
 
+BACKUP_DIR="${BACKUP_DIR:-./backups}"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+OUTPUT="$BACKUP_DIR/chapterone-${TIMESTAMP}.dump"
+
+umask 077
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+pg_dump --format=custom --no-owner --no-privileges --dbname="$DATABASE_URL" --file="$OUTPUT"
 
-echo "Starting database backup..."
-pg_dump "$DB_URL" -F c -f "$BACKUP_DIR/backup_$DATE.dump"
-
-if [ $? -eq 0 ]; then
-    echo "Backup completed successfully: backup_$DATE.dump"
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum "$OUTPUT" > "${OUTPUT}.sha256"
+elif command -v shasum >/dev/null 2>&1; then
+  shasum -a 256 "$OUTPUT" > "${OUTPUT}.sha256"
 else
-    echo "Backup failed!"
-    exit 1
+  echo 'Backup created, but no SHA-256 utility was found.' >&2
 fi
+
+echo "Backup created: $OUTPUT"
+echo 'Store it securely outside version control and test restore into a separate database.'

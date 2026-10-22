@@ -1,63 +1,103 @@
-// ======================================================================================
-// DBMS Lab Phase 6: Negative Security Tests (RBAC & RLS)
-// (Prepared for submission; easily removable)
-// ======================================================================================
-// This script demonstrates how to safely test Row Level Security (RLS) 
-// and Role-Based Access Control (RBAC) in an isolated, non-destructive manner.
+// Local smoke checks for unauthenticated access to protected ChapterOne endpoints.
+// Start the application locally, then run: npm run test:security
+// This script never calls Supabase directly and never prints credentials.
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { createClient } = require('@supabase/supabase-js');
+const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+const base = new URL(baseUrl);
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-require('dotenv').config({ path: '.env.local' });
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Skipping security test: Supabase environment variables not found.");
-  process.exit(0);
+if (!['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)) {
+  console.error('APP_BASE_URL must point to a local application instance.');
+  process.exit(2);
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const checks = [];
 
-async function runNegativeTests() {
-  console.log("Starting Security Negative Tests...\n");
-
-  // TEST 1: Unauthorized User attempting to delete another user's review (Should Fail)
-  console.log("Test 1: Unauthenticated/Unauthorized user attempting to delete a specific review...");
-  
-  // We use a dummy UUID that we don't own, ensuring we test RLS securely
-  // without dropping real user data via broad filters like `eq('rating', 1)`
-  const dummyReviewId = '00000000-0000-0000-0000-000000000000';
-
-  const { error: deleteError } = await supabase
-    .from('reviews')
-    .delete()
-    .eq('id', dummyReviewId);
-
-  // Since we are unauthenticated or unauthorized, RLS should block or silently ignore
-  // Supabase RLS deletes return no rows affected if blocked, rather than an explicit error sometimes,
-  // but if we query we can see it failed to delete. However, anon deletes are blocked by our policies.
-  console.log("✅ SUCCESS: Delete operation blocked by RLS or resulted in 0 rows affected.");
-
-  // TEST 2: SQL Injection Attempt via ORM/SDK (Should Fail / Be escaped)
-  console.log("\nTest 2: SQL Injection attempt in search field...");
-  
-  const maliciousInput = "'; DROP TABLE users; --";
-  
-  const { data, error: sqliError } = await supabase
-    .from('books')
-    .select('*')
-    .eq('title', maliciousInput);
-
-  if (sqliError) {
-    console.log("✅ SUCCESS: Query blocked or safely escaped.");
-  } else if (!data || data.length === 0) {
-    console.log("✅ SUCCESS: Input was safely escaped. No tables dropped, no data returned.");
-  } else {
-    console.error("❌ FAILED: Query returned unexpected data. Potential vulnerability.");
+async function check(name, path, expectedStatuses, inspectBody, init) {
+  try {
+    const response = await fetch(new URL(path, base), init);
+    const body = await response.json().catch(() => null);
+    const statusOk = expectedStatuses.includes(response.status);
+    const bodyOk = !inspectBody || inspectBody(body);
+    const passed = statusOk && bodyOk;
+    checks.push({ name, passed, status: response.status });
+    console.log(`${passed ? 'PASS' : 'FAIL'} ${name} (HTTP ${response.status})`);
+  } catch (error) {
+    checks.push({ name, passed: false, error });
+    console.error(`FAIL ${name}: ${error instanceof Error ? error.message : 'request failed'}`);
   }
 }
 
-runNegativeTests();
+async function main() {
+  await check(
+    'Admin database API rejects signed-out requests',
+    '/api/admin/database-stats',
+    [401],
+  );
+  await check(
+    'Prisma review API rejects signed-out requests',
+    '/api/dbms-demo/reviews',
+    [401],
+  );
+  await check(
+    'AI recommendations reject signed-out requests',
+    '/api/recommend',
+    [401],
+    null,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'a short mystery' }) },
+  );
+  await check(
+    'Learning-path generation rejects signed-out requests',
+    '/api/recommend-path',
+    [401],
+    null,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: 'database systems' }) },
+  );
+  await check(
+    'Test-data GET is informational and does not mutate data',
+    '/api/test-data?action=add',
+    [200],
+    (body) => body?.instructions?.add?.startsWith('POST /api/test-data') && body?.instructions?.remove?.startsWith('POST /api/test-data'),
+  );
+  await check(
+    'Bulk import no longer accepts a mutating GET request',
+    '/api/populate-all',
+    [405],
+  );
+  await check(
+    'Bulk import rejects signed-out POST requests',
+    '/api/populate-all',
+    [401],
+    null,
+    { method: 'POST' },
+  );
+  await check(
+    'Genre import no longer accepts a mutating GET request',
+    '/api/populate-genre?slug=fiction',
+    [405],
+  );
+  await check(
+    'Genre import rejects signed-out POST requests',
+    '/api/populate-genre?slug=fiction',
+    [401],
+    null,
+    { method: 'POST' },
+  );
+  await check(
+    'Test-data mutations are unavailable to production clients',
+    '/api/test-data',
+    [401, 404],
+    null,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'add' }) },
+  );
+  await check(
+    'Embedding cron rejects requests without a bearer secret',
+    '/api/cron/embed',
+    [401, 503],
+  );
+
+  const failed = checks.filter((result) => !result.passed);
+  console.log(`\n${checks.length - failed.length}/${checks.length} security checks passed.`);
+  if (failed.length > 0) process.exitCode = 1;
+}
+
+main();

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/require-role';
 import { callOmniroute } from '@/lib/omniroute';
 
 // ── Source 1: OpenLibrary API ──
@@ -64,9 +66,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'GEMINI_API_KEY is not set in environment variables' }, { status: 500 });
     }
 
-    const { bookId } = await request.json();
-    if (!bookId) {
-      return NextResponse.json({ error: 'bookId is required' }, { status: 400 });
+    const body: unknown = await request.json().catch(() => null);
+    const bookId = body && typeof body === 'object' && !Array.isArray(body)
+      ? (body as Record<string, unknown>).bookId
+      : null;
+    if (typeof bookId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bookId)) {
+      return NextResponse.json({ error: 'bookId must be a UUID.' }, { status: 400 });
     }
 
     // 1. Fetch book details
@@ -94,6 +99,11 @@ export async function POST(request: Request) {
           rating: book.ai_rating,
         }
       });
+    }
+
+    const access = await requireRole(['Admin', 'User', 'Faculty', 'Student']);
+    if (!access.ok) {
+      return NextResponse.json({ error: 'Sign in to generate an AI review.' }, { status: access.status, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // 2. Scrape Multi-Source Data
@@ -183,7 +193,7 @@ OUTPUT ONLY VALID JSON.
     }
 
     // 4. Save validated data back to Supabase
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('books')
       .update({
         ai_review_summary: aiData.summary,

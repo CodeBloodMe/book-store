@@ -48,28 +48,58 @@ BEGIN
 END $$;
 
 
--- STEP 3: Ensure RBAC Users Table has Default ID and Test Users
+-- STEP 3: Ensure RBAC profiles map to Auth identities and default to least privilege
 CREATE TABLE IF NOT EXISTS public.users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email VARCHAR NOT NULL UNIQUE,
-    role VARCHAR(50) DEFAULT 'User' CHECK (role IN ('Admin', 'User', 'Faculty', 'Student')),
+    role VARCHAR(50) NOT NULL DEFAULT 'User' CHECK (role IN ('Admin', 'User', 'Faculty', 'Student')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Ensure id has default generator in case table existed without it
-ALTER TABLE public.users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+-- Do not create profile IDs unrelated to auth.users and never trust signup metadata for roles.
+ALTER TABLE public.users ALTER COLUMN id DROP DEFAULT;
+ALTER TABLE public.users ALTER COLUMN role SET DEFAULT 'User';
+ALTER TABLE public.users ALTER COLUMN role SET NOT NULL;
 
--- Sync authenticated Supabase users into public.users as Admin
+-- Backfill email accounts as User while preserving any role already assigned by an owner.
 INSERT INTO public.users (id, email, role)
-SELECT id, email, 'Admin'
+SELECT id, email, 'User'
 FROM auth.users
-ON CONFLICT (id) DO UPDATE SET role = 'Admin';
+WHERE email IS NOT NULL
+ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
 
--- Allow public read on users so demo queries work cleanly
+-- Profiles are private; each authenticated user may read their own row only.
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow demo read access on users" ON public.users;
-CREATE POLICY "Allow demo read access on users" ON public.users FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.users;
+CREATE POLICY "Users can view their own profile"
+ON public.users FOR SELECT TO authenticated
+USING ((SELECT auth.uid()) = id);
+REVOKE ALL ON TABLE public.users FROM anon, authenticated;
+GRANT SELECT ON TABLE public.users TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.chapterone_handle_new_auth_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.email IS NOT NULL THEN
+        INSERT INTO public.users (id, email, role)
+        VALUES (NEW.id, NEW.email, 'User')
+        ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.chapterone_handle_new_auth_user() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS chapterone_on_auth_user_created ON auth.users;
+CREATE TRIGGER chapterone_on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.chapterone_handle_new_auth_user();
 
 
 -- STEP 4: Trigger to auto-update updated_at on users

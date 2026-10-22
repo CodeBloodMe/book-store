@@ -7,9 +7,10 @@ import { logout } from '@/app/login/actions';
 
 interface ProfileSidebarProps {
   isAuthenticated: boolean;
+  isAdmin: boolean;
 }
 
-export default function ProfileSidebar({ isAuthenticated }: ProfileSidebarProps) {
+export default function ProfileSidebar({ isAuthenticated, isAdmin }: ProfileSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -60,6 +61,16 @@ export default function ProfileSidebar({ isAuthenticated }: ProfileSidebarProps)
                 <Bookmark size={18} strokeWidth={2.5} />
                 Saved Books
               </Link>
+
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f5e642] border-2 border-transparent hover:border-[#0a0a0a] transition-all text-[#0a0a0a] font-bold"
+                >
+                  Admin Dashboard
+                </Link>
+              )}
               
               <div className="mt-auto pt-6 border-t-2 border-[#0a0a0a]/10">
                 <form action={logout}>

@@ -97,8 +97,10 @@ export default function BlindDateClient() {
   const [step, setStep] = useState<'intro' | 'quiz' | 'loading' | 'mystery' | 'revealed'>('intro');
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswers>({});
-  const [sessionId] = useState(() => Math.random().toString(36).substring(2, 15));
-  
+  // The API and database use UUID session keys; randomUUID provides enough
+  // entropy to prevent another visitor from guessing a session identifier.
+  const [sessionId] = useState(() => globalThis.crypto.randomUUID());
+
   const [mysteryMatch, setMysteryMatch] = useState<MysteryBook | null>(null);
   const [revealedBook, setRevealedBook] = useState<RevealedBook | null>(null);
   const [stats, setStats] = useState({ acceptedDates: 0, datesThisWeek: 0 });
@@ -136,10 +138,10 @@ export default function BlindDateClient() {
         body: JSON.stringify({ sessionId, ...finalAnswers }),
       });
       const data = await res.json();
-      
+
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to match');
       if (!data.found) throw new Error(data.message || 'No match found');
-      
+
       setMysteryMatch(data.mystery);
       // Fake a dramatic 3s loading time
       setTimeout(() => setStep('mystery'), 3000);
@@ -151,10 +153,10 @@ export default function BlindDateClient() {
 
   const handleAccept = async () => {
     if (!mysteryMatch) return;
-    
+
     // Optimistically go to reveal step (shows unblurring)
     setStep('revealed');
-    
+
     try {
       const res = await fetch('/api/blind-date/reveal', {
         method: 'POST',
@@ -198,7 +200,7 @@ export default function BlindDateClient() {
       }} />
 
       <div className="w-full max-w-xl relative z-10">
-        
+
         {error && (
           <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200 text-center text-sm font-medium">
             {error}
@@ -206,7 +208,7 @@ export default function BlindDateClient() {
         )}
 
         <AnimatePresence mode="wait">
-          
+
           {/* --- STEP 1: INTRO --- */}
           {step === 'intro' && (
             <motion.div
@@ -253,7 +255,7 @@ export default function BlindDateClient() {
                   ))}
                 </div>
               </div>
-              
+
               <h2 className="text-4xl font-black text-[#0a0a0a] mb-8 text-center" style={{ fontFamily: 'var(--font-bebas)' }}>
                 {QUIZ_QUESTIONS[currentQuestionIdx].question}
               </h2>
@@ -286,8 +288,8 @@ export default function BlindDateClient() {
               className="flex flex-col items-center py-20 text-center"
             >
               <div className="relative mb-8">
-                <motion.div 
-                  animate={{ rotate: 360 }} 
+                <motion.div
+                  animate={{ rotate: 360 }}
                   transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
                   className="w-24 h-24 border-[4px] border-dashed border-[#0a0a0a] rounded-full"
                 />

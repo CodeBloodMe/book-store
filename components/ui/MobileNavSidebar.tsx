@@ -9,9 +9,10 @@ import SearchBar from './SearchBar';
 
 interface MobileNavSidebarProps {
   groups: { name: string; genres: Genre[] }[];
+  isAdmin: boolean;
 }
 
-export default function MobileNavSidebar({ groups }: MobileNavSidebarProps) {
+export default function MobileNavSidebar({ groups, isAdmin }: MobileNavSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -65,6 +66,12 @@ export default function MobileNavSidebar({ groups }: MobileNavSidebarProps) {
           <Link href="/recommend" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f5e642] hover:border-[#0a0a0a] border-2 border-transparent transition-all text-[#0a0a0a] font-bold">
             <Sparkles size={18} strokeWidth={2} /> AI Finder
           </Link>
+
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setIsOpen(false)} className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#f5e642] hover:border-[#0a0a0a] border-2 border-transparent transition-all text-[#0a0a0a] font-bold">
+              Admin Dashboard
+            </Link>
+          )}
 
           <div className="mt-2 space-y-1">
             <h3 className="font-bold text-gray-400 uppercase text-[10px] tracking-widest px-3 py-2">Genres</h3>
