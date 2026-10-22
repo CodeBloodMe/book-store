@@ -1,12 +1,16 @@
 -- Blind Date matching v2
--- Apply after create_blind_date_tables.sql, create_match_mystery_book.sql,
--- and (when present) zzz_dbms_hardening.sql.
+-- Apply after create_blind_date_tables.sql and create_match_mystery_book.sql.
+-- This migration adds the profile column it reads/writes, so it can also be
+-- applied safely when zzz_dbms_hardening.sql has not yet been applied.
 --
 -- The score is a transparent 0..100 fit estimate, not a guarantee. Explicit
 -- reader preferences dominate; missing metadata is neutral; feedback is a
 -- small Bayesian prior so popularity cannot overwhelm fit. The profile row is
 -- locked and the selected book is saved in this transaction to prevent two
 -- concurrent requests from issuing the same active match for one session.
+
+ALTER TABLE public.user_reader_profiles
+    ADD COLUMN IF NOT EXISTS last_matched_book_id UUID;
 
 CREATE OR REPLACE FUNCTION public.match_mystery_book(
     p_session_id TEXT,
