@@ -44,9 +44,16 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 GROQ_API_KEY=your_groq_key
 GEMINI_API_KEY=your_gemini_key
 OPENAI_API_KEY=your_openai_key
+
+# Optional OmniRoute gateway (takes priority when configured; existing providers remain fallbacks)
+OMNIROUTE_BASE_URL=http://localhost:20128/v1
+OMNIROUTE_API_KEY=your_omniroute_client_api_key
+OMNIROUTE_MODEL=auto
 ```
 
-`DATABASE_URL`, `SUPABASE_SECRET_KEY` (or legacy service-role key), `CRON_SECRET`, and AI provider keys must remain server-side. Do not commit `.env.local`, database dumps, or backup archives. Copy `.env.example` for the variable names only; never replace it with actual credentials. The Prisma endpoint is `GET /api/dbms-demo?page=1&limit=10&q=...&sort=title`; it demonstrates search, filtering, joins, pagination, counts and a consistent transaction. `GET /api/dbms-demo/reviews` and its POST/PATCH/DELETE methods demonstrate authenticated, owner-scoped review CRUD.
+`DATABASE_URL`, `SUPABASE_SECRET_KEY` (or legacy service-role key), `CRON_SECRET`, AI provider keys, and `OMNIROUTE_API_KEY` must remain server-side. Do not commit `.env.local`, database dumps, or backup archives. Copy `.env.example` for the variable names only; never replace it with actual credentials. OmniRoute is a separate service: start it separately, configure/test provider connections in its dashboard, then set `OMNIROUTE_BASE_URL` to its `/v1` API base and set an API key if API-key authentication is enabled. The app sends text-generation requests to OmniRoute first when `OMNIROUTE_BASE_URL` is set; direct Groq, Gemini, and OpenAI calls remain fallbacks. `OMNIROUTE_MODEL` defaults to `auto`. A local URL such as `http://localhost:20128/v1` is for local development; a Vercel deployment needs a secure HTTPS OmniRoute URL reachable by the deployed server. Never expose the OmniRoute API key with a `NEXT_PUBLIC_` prefix.
+
+The Prisma endpoint is `GET /api/dbms-demo?page=1&limit=10&q=...&sort=title`; it demonstrates search, filtering, joins, pagination, counts and a consistent transaction. `GET /api/dbms-demo/reviews` and its POST/PATCH/DELETE methods demonstrate authenticated, owner-scoped review CRUD.
 
 The Admin dashboard and catalog maintenance endpoints require a signed-in account whose `public.users.role` is `Admin`. Ordinary users cannot assign their own role. `supabase/migrations/zzz_dbms_hardening.sql` is a prepared migration that has not been applied to the hosted database. Back up first, review `supabase/tests/dbms_preflight.sql`, resolve its findings, then apply and run `supabase/tests/dbms_acceptance_checks.sql` in a controlled target. Do not represent source files as live database evidence.
 

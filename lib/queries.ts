@@ -206,6 +206,44 @@ export async function getFictionBooks(filters: FictionFilters): Promise<Book[]> 
 
 // Full-Text Search
 
+const createCachedSearchEmbedding = unstable_cache(
+  async (text: string): Promise<number[]> => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured.');
+
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          taskType: 'RETRIEVAL_QUERY',
+          content: { parts: [{ text }] },
+          outputDimensionality: 768,
+        }),
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Embedding provider returned status ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    const values = payload.embedding?.values;
+    if (!Array.isArray(values) || values.length !== 768 ||
+        !values.every((value: unknown) => typeof value === 'number' && Number.isFinite(value))) {
+      throw new Error('Embedding provider returned an invalid 768-value vector.');
+    }
+    return values;
+  },
+  ['chapterone-search-query-embedding-gemini-001-v1'],
+  { revalidate: 86400 }
+);
+
 export async function searchBooks(query: string): Promise<Book[]> {
   if (!query.trim()) return [];
 
@@ -245,7 +283,58 @@ export async function searchBooks(query: string): Promise<Book[]> {
     }
   }
 
-  // Strategy 1: ilike search on title and author (fast, works for partial matches)
+  // Strategy 1: semantic + full-text hybrid search. This keeps ordinary
+  // catalog search aligned with the AI Finder while retaining a lexical-only
+  // path when the embedding provider is not configured or unavailable.
+  if (localBooks.length === 0) {
+    try {
+      const searchText = query.trim().slice(0, 500);
+      const tokens = [...new Set(searchText.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])].slice(0, 24);
+      const lexicalQuery = [
+        `"${searchText.replace(/"/g, ' ').slice(0, 180)}"`,
+        ...tokens.map((token) => `"${token}"`),
+      ].join(' OR ');
+
+      let queryEmbedding: number[] | null = null;
+      if (searchText.length >= 3) {
+        try {
+          queryEmbedding = await createCachedSearchEmbedding(searchText);
+        } catch (error) {
+          console.warn('[Search] Embedding unavailable; using lexical retrieval:', error);
+        }
+      }
+
+      const { data: ranked, error: searchError } = await supabase.rpc('match_books_hybrid', {
+        query_embedding: queryEmbedding,
+        query_text: lexicalQuery,
+        match_threshold: 0.0,
+        match_count: 80,
+      });
+
+      if (searchError) {
+        console.warn('[Search] Hybrid RPC unavailable; using keyword fallback:', searchError.message);
+      } else if (ranked?.length) {
+        const orderedIds: string[] = ranked.map((row: { id: string }) => row.id);
+        const { data, error } = await supabase
+          .from('books')
+          .select('*, genres(id, name, slug, icon, color)')
+          .in('id', orderedIds);
+
+        if (error) {
+          console.error('[Search] Could not load hybrid result details:', error.message);
+        } else {
+          const booksById = new Map((data as Book[]).map((book) => [book.id, book]));
+          localBooks = orderedIds
+            .map((id) => booksById.get(id))
+            .filter((book): book is Book => Boolean(book));
+        }
+      }
+    } catch (error) {
+      console.error('[Search] Hybrid retrieval failed; using keyword fallback:', error);
+    }
+  }
+
+  // Strategy 2: ilike search on title and author (fast, works for partial matches)
   if (localBooks.length === 0) {
     try {
       const { data, error } = await supabase
@@ -265,7 +354,7 @@ export async function searchBooks(query: string): Promise<Book[]> {
     }
   }
 
-  // Strategy 2: If ilike found nothing, try splitting into individual words
+  // Strategy 3: If ilike found nothing, try splitting into individual words
   // Ranks results by how many words they match
   if (localBooks.length === 0 && sanitized.includes(' ')) {
     try {
@@ -322,39 +411,65 @@ export async function searchBooks(query: string): Promise<Book[]> {
     }
   }
 
-  // Strategy 3: External API search for books not in our database
-  const { searchGoogleBooks, searchOpenLibrary } = await import('./external-books');
+  // Strategy 4: External API search for new books not in our database
+  const { searchGoogleBooks, searchAppleBooks, searchOpenLibrary } = await import('./external-books');
   
-  const [googleBooks, openLibraryBooks] = await Promise.all([
+  const [googleBooks, appleBooks, openLibraryBooks] = await Promise.all([
     searchGoogleBooks(query),
+    searchAppleBooks(query),
     searchOpenLibrary(query)
   ]);
 
-  const allBooksToReturn: Book[] = [...dedupedLocal];
+  // Combine external candidates (Apple books gives pristine covers; Google gives rich descriptions)
+  const externalCandidates = [...appleBooks, ...googleBooks, ...openLibraryBooks];
 
-  const addExternalBooks = (externalBooks: Partial<Book>[]) => {
-    for (const externalBook of externalBooks) {
-      const key = getDedupKey(externalBook.title || '', externalBook.author || '');
-      
-      if (!seenKeys.has(key) && allBooksToReturn.length < 30) {
-        seenKeys.add(key);
-        
-        allBooksToReturn.push({
-          ...externalBook,
-          author: externalBook.author || 'Unknown',
-          description: externalBook.description || 'No description available.',
-          expert_rating: 0,
-          community_rating: externalBook.community_rating || 0,
-          is_editors_pick: false,
-          is_featured: false,
-          external_id: externalBook.external_id || null,
-        } as unknown as Book);
-      }
+  const cleanedQuery = query.toLowerCase().trim();
+  const topExternalMatches: Book[] = [];
+  const secondaryExternalMatches: Book[] = [];
+
+  for (const externalBook of externalCandidates) {
+    if (!externalBook.title) continue;
+    const key = getDedupKey(externalBook.title, externalBook.author || '');
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+
+    const bookObj = {
+      ...externalBook,
+      author: externalBook.author || 'Unknown',
+      description: externalBook.description || 'No description available.',
+      expert_rating: 0,
+      community_rating: externalBook.community_rating || 0,
+      is_editors_pick: false,
+      is_featured: false,
+      external_id: externalBook.external_id || null,
+    } as unknown as Book;
+
+    // Check if this new external book is an exact or strong title match for what was searched
+    const extTitle = externalBook.title.toLowerCase();
+    const isStrongMatch = extTitle === cleanedQuery || 
+                          extTitle.startsWith(cleanedQuery) || 
+                          cleanedQuery.includes(extTitle);
+
+    if (isStrongMatch) {
+      topExternalMatches.push(bookObj);
+    } else {
+      secondaryExternalMatches.push(bookObj);
     }
-  };
+  }
 
-  addExternalBooks(googleBooks);
-  addExternalBooks(openLibraryBooks);
+  // Check if we have an exact title match in local database
+  const hasExactLocalMatch = dedupedLocal.some(b => {
+    const t = b.title.toLowerCase();
+    return t === cleanedQuery || t.startsWith(cleanedQuery);
+  });
+
+  // If local DB didn't have an exact match, put the new external book right at the top!
+  let allBooksToReturn: Book[] = [];
+  if (!hasExactLocalMatch && topExternalMatches.length > 0) {
+    allBooksToReturn = [...topExternalMatches, ...dedupedLocal, ...secondaryExternalMatches].slice(0, 30);
+  } else {
+    allBooksToReturn = [...dedupedLocal, ...topExternalMatches, ...secondaryExternalMatches].slice(0, 30);
+  }
 
   return allBooksToReturn;
 }

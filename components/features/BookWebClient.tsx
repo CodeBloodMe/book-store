@@ -22,6 +22,7 @@ interface PathEdge {
   to: string;
   relationship: string;
   weight: number;
+  similarityScore: number | null;
   evidence: string | null;
 }
 
@@ -33,9 +34,12 @@ interface SearchResult {
 }
 
 const RELATIONSHIP_LABELS: Record<string, { label: string; emoji: string }> = {
+  same_series: { label: 'Same Series', emoji: '📖' },
   same_author: { label: 'Same Author', emoji: '✍️' },
   same_genre: { label: 'Same Genre', emoji: '📚' },
   shared_tags: { label: 'Shared Themes', emoji: '🏷️' },
+  shared_themes: { label: 'Shared Topics', emoji: '🧭' },
+  semantic_similarity: { label: 'Semantic Match', emoji: '✨' },
   same_era: { label: 'Same Era', emoji: '📅' },
   same_difficulty: { label: 'Same Level', emoji: '📊' },
   connected: { label: 'Connected', emoji: '🔗' },
@@ -216,7 +220,7 @@ function PathVisualizer({
         </span>
         <span className="text-xs text-[#0a0a0a]">•</span>
         <span className="text-xs font-black uppercase tracking-widest text-[#0a0a0a] whitespace-nowrap">
-          Path Strength: {totalWeight.toFixed(2)}
+          Route cost (lower is stronger): {totalWeight.toFixed(2)}
         </span>
       </div>
 
@@ -286,9 +290,14 @@ function PathVisualizer({
                     <span className="text-base leading-none">
                       {RELATIONSHIP_LABELS[edges[idx].relationship]?.emoji || '🔗'}
                     </span>
-                    <span className="text-[9px] font-semibold text-gray-500 mt-0.5 whitespace-nowrap">
+                    <span className="max-w-36 text-center text-[9px] font-semibold leading-tight text-gray-500 mt-0.5">
                       {edges[idx].evidence || RELATIONSHIP_LABELS[edges[idx].relationship]?.label || 'Connected'}
                     </span>
+                    {typeof edges[idx].similarityScore === 'number' && (
+                      <span className="mt-1 whitespace-nowrap text-[9px] font-bold text-gray-700">
+                        Similarity {Math.round(edges[idx].similarityScore * 100)}%
+                      </span>
+                    )}
                   </div>
                   <div className="w-6 h-0.5 bg-gray-300" />
                 </div>
@@ -363,15 +372,18 @@ export default function BookWebClient() {
           >
             <div className="inline-flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full mb-6 bg-white text-[#0a0a0a] border-2 border-[#0a0a0a] shadow-[3px_3px_0_#0a0a0a]">
               <Network className="w-3.5 h-3.5" />
-              POWERED BY GRAPH TRAVERSAL
+              POWERED BY A WEIGHTED HYBRID GRAPH
             </div>
 
             <h1 className="font-black leading-none mb-4 text-[#0a0a0a]" style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(40px, 8vw, 90px)', letterSpacing: '-0.02em' }}>
               BookWeb
             </h1>
             <p className="text-base font-bold text-[#555] max-w-2xl mx-auto leading-relaxed">
-              Find the <span className="text-[#0a0a0a]">shortest reading path</span> between
-              any two books. Like Google Maps, but for your reading journey.
+              Find the <span className="text-[#0a0a0a]">best-supported reading path</span> between
+              two books using series, authors, topic overlap, and available vector similarity.
+            </p>
+            <p className="mt-3 max-w-xl text-xs leading-5 text-gray-500">
+              Each connection shows the catalog evidence behind it. Similarity is a ranking score, not a guarantee; missing book metadata can limit the graph.
             </p>
           </motion.div>
         </div>

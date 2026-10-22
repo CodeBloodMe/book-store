@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'server-only';
 import { Book } from '@/types/database';
@@ -28,7 +29,9 @@ function decodeHTMLEntities(text: string): string {
 // ── 1. Google Books API Integration ──
 export async function searchGoogleBooks(query: string): Promise<Partial<Book>[]> {
   try {
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10`;
+    const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+    const keyParam = apiKey ? `&key=${apiKey}` : '';
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=10${keyParam}`;
     const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return [];
     
@@ -117,7 +120,9 @@ export async function fetchExternalBookDetails(externalId: string): Promise<Part
 
   if (source === 'google') {
     try {
-      const url = `https://www.googleapis.com/books/v1/volumes/${id}`;
+      const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+      const keyParam = apiKey ? `?key=${apiKey}` : '';
+      const url = `https://www.googleapis.com/books/v1/volumes/${id}${keyParam}`;
       const res = await fetch(url);
       if (!res.ok) return null;
       const data = await res.json();
@@ -202,7 +207,6 @@ export async function fetchExternalBookDetails(externalId: string): Promise<Part
 }
 
 // ── 4. On-Demand Lazy Import Engine ──
-import { supabase } from './supabase';
 
 async function downloadAndUploadEpubToSupabase(downloadUrl: string, bookTitle: string): Promise<string | null> {
   try {
@@ -333,27 +337,60 @@ export async function fetchAndImportExternalBook(extId: string): Promise<string 
   }
 
   // 4. Insert into database
-  const { data: newBook, error } = await supabaseAdmin
-    .from('books')
-    .insert({
-      title: bookDetails.title,
-      author: bookDetails.author,
-      description: bookDetails.description,
-      cover_image_url: bookDetails.cover_image_url,
-      community_rating: bookDetails.community_rating,
-      expert_rating: 0, // No expert rating yet
-      genre_id: finalGenreId,
-      external_id: externalIdString,
-      free_reading_url: finalReadingUrl,
-      is_bestseller: false,
-      is_editors_pick: false,
-      is_featured: false,
-    })
-    .select('id')
-    .single();
+  let newBook: { id: string } | null = null;
+  let insertError: any = null;
 
-  if (error || !newBook) {
-    console.error('Failed to import external book:', error);
+  try {
+    const res = await supabaseAdmin
+      .from('books')
+      .insert({
+        title: bookDetails.title,
+        author: bookDetails.author,
+        description: bookDetails.description,
+        cover_image_url: bookDetails.cover_image_url,
+        community_rating: bookDetails.community_rating,
+        expert_rating: 0,
+        genre_id: finalGenreId,
+        external_id: externalIdString,
+        free_reading_url: finalReadingUrl,
+        is_bestseller: false,
+        is_editors_pick: false,
+        is_featured: false,
+      })
+      .select('id')
+      .single();
+    newBook = res.data;
+    insertError = res.error;
+  } catch (err) {
+    insertError = err;
+  }
+
+  // Graceful fallback to standard server client if admin client had key issues
+  if (!newBook) {
+    const res = await supabase
+      .from('books')
+      .insert({
+        title: bookDetails.title,
+        author: bookDetails.author,
+        description: bookDetails.description,
+        cover_image_url: bookDetails.cover_image_url,
+        community_rating: bookDetails.community_rating,
+        expert_rating: 0,
+        genre_id: finalGenreId,
+        external_id: externalIdString,
+        free_reading_url: finalReadingUrl,
+        is_bestseller: false,
+        is_editors_pick: false,
+        is_featured: false,
+      })
+      .select('id')
+      .single();
+    newBook = res.data;
+    if (res.error) console.error('[Import Fallback] Insert error:', res.error);
+  }
+
+  if (insertError || !newBook) {
+    console.error('Failed to import external book:', insertError);
     return null;
   }
 

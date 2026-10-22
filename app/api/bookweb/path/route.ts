@@ -1,95 +1,145 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+interface PathResult {
+  path: string[];
+  total_weight: number;
+  depth: number;
+}
+
+interface BookEdgeRow {
+  book_a_id: string;
+  book_b_id: string;
+  relationship_type: string;
+  weight: number;
+  evidence: unknown;
+  similarity_score: number | null;
+}
+
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}:${b}` : `${b}:${a}`;
+}
+
+function evidenceSummary(value: unknown): string | null {
+  if (typeof value === 'string') return value.slice(0, 240);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+  const evidence = value as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof evidence.series === 'string') parts.push(`Series: ${evidence.series}`);
+  if (typeof evidence.sharedGenre === 'string') parts.push(`Genre: ${evidence.sharedGenre}`);
+  if (Array.isArray(evidence.sharedAuthors) && evidence.sharedAuthors.length) {
+    parts.push(`Author: ${evidence.sharedAuthors.filter((item): item is string => typeof item === 'string').join(', ')}`);
+  }
+  if (Array.isArray(evidence.sharedTags) && evidence.sharedTags.length) {
+    parts.push(`Shared tags: ${evidence.sharedTags.filter((item): item is string => typeof item === 'string').join(', ')}`);
+  }
+  if (Array.isArray(evidence.sharedTerms) && evidence.sharedTerms.length) {
+    parts.push(`Shared topics: ${evidence.sharedTerms.filter((item): item is string => typeof item === 'string').join(', ')}`);
+  }
+  if (!parts.length && typeof evidence.semanticSimilarity === 'number') {
+    parts.push(`Semantic similarity: ${Math.round(evidence.semanticSimilarity * 100)}%`);
+  }
+  return parts.length ? parts.join(' · ').slice(0, 240) : null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fromId = searchParams.get('from');
   const toId = searchParams.get('to');
 
-  if (!fromId || !toId) {
-    return NextResponse.json({ error: 'Missing from and to parameters' }, { status: 400 });
+  if (!fromId || !toId || !UUID_PATTERN.test(fromId) || !UUID_PATTERN.test(toId)) {
+    return NextResponse.json({ error: 'Provide valid start and destination book IDs.' }, { status: 400 });
   }
-
   if (fromId === toId) {
-    return NextResponse.json({ error: 'Start and end books must be different' }, { status: 400 });
+    return NextResponse.json({ error: 'Start and destination must be different books.' }, { status: 400 });
   }
 
   try {
-    // 1. Try strict graph traversal first
     const { data: pathResult, error: pathError } = await supabase.rpc('find_reading_path', {
       start_id: fromId,
       end_id: toId,
       max_depth: 6,
     });
 
-    if (!pathError && pathResult && pathResult.length > 0 && pathResult[0].path.length > 0) {
-      const result = pathResult[0];
-      const bookIds: string[] = result.path;
-
-      const { data: books } = await supabase
-        .from('books')
-        .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
-        .in('id', bookIds);
-
-      if (books && books.length > 0) {
-        const bookMap = new Map(books.map(b => [b.id, b]));
-        const orderedBooks = bookIds.map(id => bookMap.get(id)).filter(Boolean);
-
-        const edges: Array<{ from: string; to: string; relationship: string; weight: number; evidence: string | null }> = [];
-        for (let i = 0; i < bookIds.length - 1; i++) {
-          const [a, b] = [bookIds[i], bookIds[i + 1]];
-          const { data: edgeData } = await supabase
-            .from('book_edges')
-            .select('relationship_type, weight, evidence, similarity_score')
-            .or(`and(book_a_id.eq.${a},book_b_id.eq.${b}),and(book_a_id.eq.${b},book_b_id.eq.${a})`)
-            .limit(1)
-            .single();
-
-          let evidenceText = null;
-          if (edgeData?.evidence) {
-            try {
-              const ev = edgeData.evidence;
-              if (ev.sharedGenres) {
-                evidenceText = `Shared genre: ${ev.sharedGenres.join(', ')}`;
-              } else if (ev.sharedSubjects) {
-                evidenceText = `Shared subject: ${ev.sharedSubjects.join(', ')}`;
-              } else if (ev.series) {
-                evidenceText = `Same series: ${ev.series}`;
-              } else if (ev.author) {
-                evidenceText = `Same author`;
-              }
-            } catch (e) {
-              // ignore json parse errors
-            }
-          }
-
-          edges.push({
-            from: a,
-            to: b,
-            relationship: edgeData?.relationship_type || 'connected',
-            weight: edgeData?.weight || 1.0,
-            evidence: evidenceText,
-          });
-        }
-
-        return NextResponse.json({
-          found: true,
-          path: orderedBooks,
-          edges,
-          totalWeight: result.total_weight,
-          depth: result.depth,
-        });
-      }
+    if (pathError) {
+      console.error('[BookWeb API] Weighted path RPC failed:', pathError.message);
+      return NextResponse.json(
+        { error: 'The BookWeb path engine is unavailable. Apply the BookWeb hybrid graph migration and try again.' },
+        { status: 503 },
+      );
     }
 
-    // Graph disconnected, no valid reading path exists
-    return NextResponse.json({ 
-      found: false, 
-      message: 'No strong reading path found.' 
-    }, { status: 404 });
+    const result = (pathResult as PathResult[] | null)?.[0];
+    if (!result || !Array.isArray(result.path) || result.path.length < 2) {
+      return NextResponse.json({ found: false, message: 'No supported relationship path was found.' }, { status: 404 });
+    }
 
-  } catch (err) {
-    console.error('[BookWeb API] Unexpected error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const bookIds = result.path;
+    const { data: books, error: booksError } = await supabase
+      .from('books')
+      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, genres(id, name, slug, icon, color)')
+      .in('id', bookIds);
+
+    if (booksError || !books || books.length !== bookIds.length) {
+      console.error('[BookWeb API] Failed to load all path books:', booksError?.message);
+      return NextResponse.json({ error: 'Could not load every book in the selected path.' }, { status: 502 });
+    }
+
+    const bookMap = new Map(books.map((book) => [book.id, book]));
+    const orderedBooks = bookIds.map((id) => bookMap.get(id));
+    if (orderedBooks.some((book) => !book)) {
+      return NextResponse.json({ error: 'The path contains a book that is no longer in the catalog.' }, { status: 502 });
+    }
+
+    // Fetch every edge between the (maximum seven) path books in one query,
+    // instead of issuing one round trip per hop.
+    const { data: pathEdges, error: edgesError } = await supabase
+      .from('book_edges')
+      .select('book_a_id, book_b_id, relationship_type, weight, evidence, similarity_score')
+      .in('book_a_id', bookIds)
+      .in('book_b_id', bookIds);
+
+    if (edgesError || !pathEdges) {
+      console.error('[BookWeb API] Failed to load path evidence:', edgesError?.message);
+      return NextResponse.json({ error: 'Could not load relationship evidence for this path.' }, { status: 502 });
+    }
+
+    const edgeMap = new Map<string, BookEdgeRow>();
+    for (const edge of pathEdges as BookEdgeRow[]) {
+      edgeMap.set(pairKey(edge.book_a_id, edge.book_b_id), edge);
+    }
+
+    const edges = [];
+    for (let index = 0; index < bookIds.length - 1; index++) {
+      const from = bookIds[index];
+      const to = bookIds[index + 1];
+      const edge = edgeMap.get(pairKey(from, to));
+      if (!edge) {
+        console.error('[BookWeb API] The path RPC returned a hop with no matching edge.');
+        return NextResponse.json({ error: 'The relationship graph changed while the path was being loaded. Please try again.' }, { status: 409 });
+      }
+      edges.push({
+        from,
+        to,
+        relationship: edge.relationship_type,
+        weight: edge.weight,
+        similarityScore: edge.similarity_score,
+        evidence: evidenceSummary(edge.evidence),
+      });
+    }
+
+    return NextResponse.json({
+      found: true,
+      path: orderedBooks,
+      edges,
+      totalWeight: result.total_weight,
+      depth: result.depth,
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) {
+    console.error('[BookWeb API] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }

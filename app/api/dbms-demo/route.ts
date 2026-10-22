@@ -8,6 +8,7 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,22 +62,23 @@ async function getAssessmentBooks_24BCE0846_Krish(request: NextRequest) {
     return NextResponse.json({ error: 'sort must be title, rating, or reviews.' }, { status: 400 });
   }
 
-  const where: Prisma.BookWhereInput = {};
-  if (query) {
-    where.OR = [
-      { title: { contains: query, mode: 'insensitive' } },
-      { author: { contains: query, mode: 'insensitive' } },
-    ];
-  }
-  if (genreId) where.genre_id = genreId;
-
-  const orderBy: Prisma.BookOrderByWithRelationInput[] = sort === 'rating'
-    ? [{ expert_rating: 'desc' }, { title: 'asc' }, { id: 'asc' }]
-    : sort === 'reviews'
-      ? [{ user_review_count: 'desc' }, { title: 'asc' }, { id: 'asc' }]
-      : [{ title: 'asc' }, { id: 'asc' }];
-
+  // 1. Primary path: Attempt Prisma ORM transaction
   try {
+    const where: Prisma.BookWhereInput = {};
+    if (query) {
+      where.OR = [
+        { title: { contains: query, mode: 'insensitive' } },
+        { author: { contains: query, mode: 'insensitive' } },
+      ];
+    }
+    if (genreId) where.genre_id = genreId;
+
+    const orderBy: Prisma.BookOrderByWithRelationInput[] = sort === 'rating'
+      ? [{ expert_rating: 'desc' }, { title: 'asc' }, { id: 'asc' }]
+      : sort === 'reviews'
+        ? [{ user_review_count: 'desc' }, { title: 'asc' }, { id: 'asc' }]
+        : [{ title: 'asc' }, { id: 'asc' }];
+
     const [books, totalBooks] = await prisma.$transaction([
       prisma.book.findMany({
         where,
@@ -108,12 +110,64 @@ async function getAssessmentBooks_24BCE0846_Krish(request: NextRequest) {
 
     return NextResponse.json({
       evaluation: AssessmentIdentity_24BCE0846_24BCE0870_Krish_Parv.values,
+      source: 'Prisma ORM (PostgreSQL)',
       data: responseBooks,
       meta: { total: totalBooks, page, limit, totalPages: Math.ceil(totalBooks / limit), query: query || null, genreId: genreId || null, sort },
     }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    console.error('[DBMS_DEMO_API] Database query failed:', error);
-    return NextResponse.json({ error: 'Database query failed.' }, { status: 500 });
+  } catch (prismaError) {
+    console.warn('[DBMS_DEMO_API] Prisma query failed, activating resilient HTTPS Supabase fallback:', prismaError);
+
+    // 2. Resilient fallback path: High-availability HTTPS query
+    try {
+      let sbQuery = supabase
+        .from('books')
+        .select('id, title, author, page_count, expert_rating, community_rating, total_reviews, genres ( id, name )', { count: 'exact' });
+
+      if (query) {
+        sbQuery = sbQuery.or(`title.ilike.%${query}%,author.ilike.%${query}%`);
+      }
+      if (genreId) {
+        sbQuery = sbQuery.eq('genre_id', genreId);
+      }
+
+      if (sort === 'rating') {
+        sbQuery = sbQuery.order('expert_rating', { ascending: false, nullsFirst: false }).order('title', { ascending: true });
+      } else if (sort === 'reviews') {
+        sbQuery = sbQuery.order('total_reviews', { ascending: false, nullsFirst: false }).order('title', { ascending: true });
+      } else {
+        sbQuery = sbQuery.order('title', { ascending: true });
+      }
+
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+      const { data: rawBooks, count, error } = await sbQuery.range(from, to);
+
+      if (error) throw error;
+
+      const totalBooks = count ?? 0;
+      const responseBooks = (rawBooks || []).map((b: any) => ({
+        id: b.id,
+        title: b.title,
+        author: b.author,
+        page_count: b.page_count,
+        expert_rating: b.expert_rating === null ? null : Number(b.expert_rating),
+        community_rating: b.community_rating === null ? null : Number(b.community_rating),
+        user_review_average: Number(b.community_rating || 0),
+        user_review_count: b.total_reviews || 0,
+        genre: b.genres ? { id: b.genres.id, name: b.genres.name } : null,
+        _count: { reviews: b.total_reviews || 0, shelves: 0 }
+      }));
+
+      return NextResponse.json({
+        evaluation: AssessmentIdentity_24BCE0846_24BCE0870_Krish_Parv.values,
+        source: 'Supabase REST Fallback (High-Availability HTTPS)',
+        data: responseBooks,
+        meta: { total: totalBooks, page, limit, totalPages: Math.ceil(totalBooks / limit), query: query || null, genreId: genreId || null, sort },
+      }, { headers: { 'Cache-Control': 'no-store' } });
+    } catch (fallbackError) {
+      console.error('[DBMS_DEMO_API] Fallback also failed:', fallbackError);
+      return NextResponse.json({ error: 'Database query failed.' }, { status: 500 });
+    }
   }
 }
 

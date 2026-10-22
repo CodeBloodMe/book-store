@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { requireRole } from '@/lib/require-role';
 
@@ -77,6 +78,8 @@ export async function POST(request: Request) {
       .upsert(records, { onConflict: 'external_id', ignoreDuplicates: true })
       .select('id');
     if (error) throw error;
+
+    revalidatePath(`/genres/${slug}`);
 
     return NextResponse.json({ success: true, inserted: data?.length ?? 0 }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

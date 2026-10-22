@@ -9,7 +9,7 @@ function getAdminClient(): SupabaseClient {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   // Prefer current Supabase secret keys; retain legacy service_role compatibility.
-  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
       'Missing server configuration: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (or legacy SUPABASE_SERVICE_ROLE_KEY) is required for protected server-side database operations.'
