@@ -17,8 +17,8 @@ export async function GET(request: Request) {
   try {
     const { data: books, error } = await supabaseAdmin
       .from('books')
-      .select('id, title, author, description, genres(name)')
-      .is('embedding', null)
+      .select('id, title, author, description, genres(name), embedding_model')
+      .or('embedding.is.null,embedding_model.is.null,embedding_model.neq.gemini-embedding-001')
       .order('created_at', { ascending: true })
       .limit(10);
     if (error) throw error;
@@ -55,9 +55,8 @@ export async function GET(request: Request) {
 
         const { error: updateError } = await supabaseAdmin
           .from('books')
-          .update({ embedding: vector })
-          .eq('id', book.id)
-          .is('embedding', null);
+          .update({ embedding: vector, embedding_model: 'gemini-embedding-001' })
+          .eq('id', book.id);
         if (updateError) throw updateError;
         processed++;
       } catch (error) {

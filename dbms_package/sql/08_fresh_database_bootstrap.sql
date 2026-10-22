@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS public.books (
     fiction_genres text[] DEFAULT '{}',
     free_reading_url varchar,
     embedding vector(768),
+    embedding_model text,
     author_image_url text,
     author_bio text
 );
