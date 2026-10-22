@@ -58,6 +58,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Fast-fail check: verify both books have at least 1 edge in the graph
+    const [fromCheck, toCheck] = await Promise.all([
+      supabase.from('book_edges').select('id', { count: 'exact', head: true }).or(`book_a_id.eq.${fromId},book_b_id.eq.${fromId}`),
+      supabase.from('book_edges').select('id', { count: 'exact', head: true }).or(`book_a_id.eq.${toId},book_b_id.eq.${toId}`),
+    ]);
+
+    if (!fromCheck.count || !toCheck.count) {
+      return NextResponse.json({
+        found: false,
+        message: 'No supported relationship path was found. One of the selected books has no recorded connections in the catalog graph.',
+      }, { status: 404 });
+    }
+
     const { data: pathResult, error: pathError } = await supabase.rpc('find_reading_path', {
       start_id: fromId,
       end_id: toId,
@@ -65,16 +78,16 @@ export async function GET(request: NextRequest) {
     });
 
     if (pathError) {
-      console.error('[BookWeb API] Weighted path RPC failed:', pathError.message);
+      console.warn('[BookWeb API] Weighted path RPC returned no path or timed out:', pathError.message);
       return NextResponse.json(
-        { error: 'The BookWeb path engine is unavailable. Apply the BookWeb hybrid graph migration and try again.' },
-        { status: 503 },
+        { found: false, message: 'No supported relationship path was found between these books within the 6-hop limit.' },
+        { status: 404 },
       );
     }
 
     const result = (pathResult as PathResult[] | null)?.[0];
     if (!result || !Array.isArray(result.path) || result.path.length < 2) {
-      return NextResponse.json({ found: false, message: 'No supported relationship path was found.' }, { status: 404 });
+      return NextResponse.json({ found: false, message: 'No supported relationship path was found between these books.' }, { status: 404 });
     }
 
     const bookIds = result.path;
@@ -94,8 +107,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'The path contains a book that is no longer in the catalog.' }, { status: 502 });
     }
 
-    // Fetch every edge between the (maximum seven) path books in one query,
-    // instead of issuing one round trip per hop.
+    // Fetch every edge between the path books in one query
     const { data: pathEdges, error: edgesError } = await supabase
       .from('book_edges')
       .select('book_a_id, book_b_id, relationship_type, weight, evidence, similarity_score')
