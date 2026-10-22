@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await supabaseAdmin
       .from('user_reader_profiles')
       .upsert(
-        { session_id: sessionId, mood, pace_preference: pace, complexity_preference: complexity, era_preference: era, length_preference: length, last_matched_book_id: null },
+        { session_id: sessionId, mood, pace_preference: pace, complexity_preference: complexity, era_preference: era, length_preference: length },
         { onConflict: 'session_id' }
       );
     if (profileError) {
@@ -64,15 +64,6 @@ export async function POST(request: NextRequest) {
     }
 
     const match = matchResult[0];
-
-    const { error: activeMatchError } = await supabaseAdmin
-      .from('user_reader_profiles')
-      .update({ last_matched_book_id: match.book_id })
-      .eq('session_id', sessionId);
-    if (activeMatchError) {
-      console.error('[Blind Date] Could not persist active match:', activeMatchError.message);
-      return NextResponse.json({ error: 'Could not save the selected match.' }, { status: 500 });
-    }
 
     // 4. Generate AI Teaser (Groq/Llama3)
     let aiTeaser = match.description ? match.description.substring(0, 150) + '...' : 'A thrilling mystery awaits...';

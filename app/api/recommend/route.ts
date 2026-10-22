@@ -27,6 +27,18 @@ interface AIBook {
   community_consensus: string;
 }
 
+function buildLexicalQuery(values: Array<string | undefined>): string {
+  const tokens = [...new Set(
+    values
+      .filter((value): value is string => typeof value === 'string')
+      .flatMap((value) => value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])
+  )].slice(0, 24);
+
+  // The SQL RPC uses websearch_to_tsquery. OR avoids requiring every word in
+  // a long natural-language prompt to occur in the same book description.
+  return tokens.map((token) => `"${token}"`).join(' OR ');
+}
+
 
 // External Book Data Helpers
 
@@ -309,28 +321,51 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
        }).catch(() => []);
     }
 
-    // ── Step 1: Embed the User's Query ──
-    const resEmbed = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key=${process.env.GEMINI_API_KEY}`, {
+    // Query vectors must share the model and dimensions used for stored book
+    // vectors. Book embeddings use gemini-embedding-001 / RETRIEVAL_DOCUMENT.
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'Semantic search is not configured.' }, { status: 503 });
+    }
+
+    const embeddingResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
+      },
       body: JSON.stringify({
-        model: 'models/gemini-embedding-2',
+        taskType: 'RETRIEVAL_QUERY',
         content: { parts: [{ text: userIntent }] },
         outputDimensionality: 768
       })
     });
-    
-    const embedData = await resEmbed.json();
-    if (!embedData.embedding?.values) throw new Error("No embedding returned from AI model");
-    
-    // Slice to 768 dimensions to match our database schema
-    const query_embedding = embedData.embedding.values.slice(0, 768);
 
-    // ── Step 2: Search the Database using pgvector ──
-    // Threshold raised from 0.05 → 0.20 to filter out noise and irrelevant matches.
-    // Count lowered from 300 → 80 since the higher threshold already filters.
-    const { data: matchedBooks, error } = await supabase.rpc('match_books', {
+    const embedData = await embeddingResponse.json();
+    if (!embeddingResponse.ok) {
+      console.error('[Recommend API] Embedding provider error:', embeddingResponse.status);
+      throw new Error('Could not create a search embedding.');
+    }
+
+    const query_embedding = embedData.embedding?.values;
+    if (!Array.isArray(query_embedding) || query_embedding.length !== 768 ||
+        query_embedding.some((value: unknown) => typeof value !== 'number' || !Number.isFinite(value))) {
+      throw new Error('Search embedding must contain exactly 768 finite values.');
+    }
+
+    const lexicalQuery = buildLexicalQuery([
+      query,
+      goal,
+      style,
+      area,
+      hardGenreFilter,
+      ...explicitGenres,
+      extractedVibe,
+    ]);
+
+    // ── Step 2: Hybrid pgvector + PostgreSQL full-text retrieval ──
+    const { data: matchedBooks, error } = await supabase.rpc('match_books_hybrid', {
       query_embedding,
+      query_text: lexicalQuery,
       match_threshold: 0.20, 
       match_count: 80
     });
@@ -366,9 +401,9 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
              genreBooks.forEach(gb => {
                const existing = candidateBooks.find((m: any) => m.id === gb.id);
                if (!existing) {
-                  candidateBooks.push({ id: gb.id, similarity: 0.8 });
-               } else {
-                  existing.similarity += 0.5; 
+                  // This is a genre fallback, not a vector match. Keep it
+                  // available without assigning it a fabricated similarity.
+                  candidateBooks.push({ id: gb.id, similarity: 0 });
                }
              });
           }
@@ -388,7 +423,7 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
 
     filteredBooks = filteredBooks.map(fb => {
       const match = candidateBooks.find((mb: any) => mb.id === fb.id);
-      return { ...fb, similarity: match?.similarity || 0 };
+      return { ...fb, similarity: typeof match?.similarity === 'number' ? match.similarity : 0 };
     });
 
     // ── Hard Filtering (Two-Tier Vector Simulation) ──
@@ -453,7 +488,6 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
              return bTitle.includes(cleanTitle) || cleanTitle.includes(bTitle);
            });
            if (existingIdx !== -1) {
-              finalTop6[existingIdx].similarity += 0.2;
               continue;
            }
 
@@ -465,7 +499,7 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
              .limit(1);
           
           if (existingInDb && existingInDb.length > 0) {
-             finalTop6.push({ ...existingInDb[0], similarity: 0.95 });
+             finalTop6.push({ ...existingInDb[0], similarity: 0 });
           } else {
              // ── ANTI-HALLUCINATION: Verify the book exists before JIT insertion ──
              console.log(`[Recommend API] 🔍 Verifying "${fbook.title}" by ${fbook.author}...`);
@@ -538,7 +572,9 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
              
              if (inserted && !insertError) {
                 console.log(`[Recommend API] 🚀 Successfully expanded database with verified "${inserted.title}"`);
-                finalTop6.push({ ...inserted, similarity: 0.95, _source: 'ai_verified' });
+                // Newly verified books have not been embedded yet, so they
+                // must remain behind results with real vector relevance.
+                finalTop6.push({ ...inserted, similarity: 0, _source: 'ai_verified' });
                 
                 // Trigger a secured embedding pass only when the server has both values.
                 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;

@@ -217,30 +217,59 @@ export async function searchBooks(query: string): Promise<Book[]> {
   
   if (!sanitized) return [];
 
-  // Strategy 1: ilike search on title and author (fast, works for partial matches)
   let localBooks: Book[] = [];
-  try {
-    const { data, error } = await supabase
-      .from('books')
-      .select(`*, genres(id, name, slug, icon, color)`)
-      .or(`title.ilike."%${sanitized}%",author.ilike."%${sanitized}%"`)
-      .order('expert_rating', { ascending: false })
-      .limit(20);
 
-    if (error) {
-      console.error('[Search] Supabase ilike error:', error.message);
-    } else {
-      localBooks = (data || []) as Book[];
+  // Strategy 0: "Title by Author" Pattern Matching (e.g. "Database Management Systems by Raghu Ramakrishnan")
+  const byMatch = query.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (byMatch) {
+    try {
+      const titlePart = byMatch[1].replace(/[,()"]/g, '').replace(/[%_\\]/g, '\\$&').trim();
+      const rawAuthor = byMatch[2].split(/\s+and\s+|,/i)[0].trim();
+      const authorPart = rawAuthor.replace(/[,()"]/g, '').replace(/[%_\\]/g, '\\$&').trim();
+
+      if (titlePart && authorPart) {
+        const { data, error } = await supabase
+          .from('books')
+          .select(`*, genres(id, name, slug, icon, color)`)
+          .ilike('title', `%${titlePart}%`)
+          .ilike('author', `%${authorPart}%`)
+          .order('expert_rating', { ascending: false })
+          .limit(10);
+
+        if (!error && data && data.length > 0) {
+          localBooks = data as Book[];
+        }
+      }
+    } catch (err) {
+      console.error('[Search] Title-by-author strategy error:', err);
     }
-  } catch (err) {
-    console.error('[Search] ilike query crashed:', err);
+  }
+
+  // Strategy 1: ilike search on title and author (fast, works for partial matches)
+  if (localBooks.length === 0) {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select(`*, genres(id, name, slug, icon, color)`)
+        .or(`title.ilike."%${sanitized}%",author.ilike."%${sanitized}%"`)
+        .order('expert_rating', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('[Search] Supabase ilike error:', error.message);
+      } else if (data && data.length > 0) {
+        localBooks = data as Book[];
+      }
+    } catch (err) {
+      console.error('[Search] ilike query crashed:', err);
+    }
   }
 
   // Strategy 2: If ilike found nothing, try splitting into individual words
-  // This helps with "intelligent investor" matching books with both words in different positions
+  // Ranks results by how many words they match
   if (localBooks.length === 0 && sanitized.includes(' ')) {
     try {
-      const stopWords = new Set(['the', 'and', 'for', 'with']);
+      const stopWords = new Set(['the', 'and', 'for', 'with', 'from', 'into']);
       const words = sanitized.split(/\s+/).filter(w => w.length >= 3 && !stopWords.has(w.toLowerCase()));
       if (words.length > 0) {
         // Build an OR filter matching any word in title or author
@@ -276,6 +305,23 @@ export async function searchBooks(query: string): Promise<Book[]> {
     }
   }
 
+  // Deduplicate localBooks before returning or merging
+  const getDedupKey = (title: string, author: string) => {
+    const t = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const a = (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10);
+    return `${t}-${a}`;
+  };
+
+  const seenKeys = new Set<string>();
+  const dedupedLocal: Book[] = [];
+  for (const b of localBooks) {
+    const key = getDedupKey(b.title, b.author || '');
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      dedupedLocal.push(b);
+    }
+  }
+
   // Strategy 3: External API search for books not in our database
   const { searchGoogleBooks, searchOpenLibrary } = await import('./external-books');
   
@@ -284,15 +330,7 @@ export async function searchBooks(query: string): Promise<Book[]> {
     searchOpenLibrary(query)
   ]);
 
-  const allBooksToReturn: Book[] = [...localBooks];
-  
-  const getDedupKey = (title: string, author: string) => {
-    const t = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const a = (author || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 10);
-    return `${t}-${a}`;
-  };
-
-  const seenKeys = new Set(localBooks.map(b => getDedupKey(b.title, b.author || '')));
+  const allBooksToReturn: Book[] = [...dedupedLocal];
 
   const addExternalBooks = (externalBooks: Partial<Book>[]) => {
     for (const externalBook of externalBooks) {

@@ -179,15 +179,17 @@ export default function BlindDateClient() {
     if (!mysteryMatch) return;
     setStep('loading');
     try {
-      await fetch('/api/blind-date/reveal', {
+      const response = await fetch('/api/blind-date/reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, bookId: mysteryMatch.bookId, accepted: false }),
       });
+      if (!response.ok) throw new Error('Could not record this pass.');
       // Just fetch another match immediately
       submitQuiz(answers);
     } catch {
       setStep('mystery');
+      setError('Could not record your pass. Please try again.');
     }
   };
 
