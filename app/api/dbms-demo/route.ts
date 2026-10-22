@@ -11,10 +11,16 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-class AssessmentIdentity_24BCE0846_Krish {
+class AssessmentIdentity_24BCE0846_24BCE0870_Krish_Parv {
   static readonly values = {
     student_name: 'Krish',
     register_number: '24BCE0846',
+    team_partner_name: 'Parv Bhardwaj',
+    team_partner_register_number: '24BCE0870',
+    team_members: [
+      { name: 'Krish', register_number: '24BCE0846', role: 'Database Architecture & Backend' },
+      { name: 'Parv Bhardwaj', register_number: '24BCE0870', role: 'Relational Design & Frontend' }
+    ],
     slot: 'L25+L26',
     course_code: 'BCSE302P',
     course_title: 'Database Systems Lab',
@@ -101,7 +107,7 @@ async function getAssessmentBooks_24BCE0846_Krish(request: NextRequest) {
     }));
 
     return NextResponse.json({
-      evaluation: AssessmentIdentity_24BCE0846_Krish.values,
+      evaluation: AssessmentIdentity_24BCE0846_24BCE0870_Krish_Parv.values,
       data: responseBooks,
       meta: { total: totalBooks, page, limit, totalPages: Math.ceil(totalBooks / limit), query: query || null, genreId: genreId || null, sort },
     }, { headers: { 'Cache-Control': 'no-store' } });
