@@ -624,9 +624,15 @@ GRANT EXECUTE ON PROCEDURE public.refresh_user_review_summaries() TO service_rol
 
 -- -----------------------------------------------------------------------------
 -- 7. Keep graph edges mathematically valid and add workload-aligned indexes.
--- NOT VALID makes the constraint enforce new writes immediately; pre-existing
--- rows are audited in the accompanying acceptance-check script before validation.
+-- NOT VALID enforces new writes immediately. The companion dbms_preflight.sql
+-- must be clean before this migration validates the existing rows; acceptance
+-- checks verify the resulting schema and behavior afterwards.
 -- -----------------------------------------------------------------------------
+
+-- Prisma models this as an optional score. Add it for deployments whose existing
+-- book_edges table predates the field; existing rows retain NULL.
+ALTER TABLE public.book_edges
+    ADD COLUMN IF NOT EXISTS similarity_score DOUBLE PRECISION;
 
 DO $$
 BEGIN

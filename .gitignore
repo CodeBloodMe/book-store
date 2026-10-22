@@ -101,3 +101,5 @@ scratch/
 # IDE
 .vscode/
 .idea/
+
+dbms_package/backups/*.sql

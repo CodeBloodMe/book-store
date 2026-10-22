@@ -87,8 +87,16 @@ WHERE (page_count IS NOT NULL AND page_count <= 0)
    OR (total_reviews IS NOT NULL AND total_reviews < 0);
 
 -- 8. Graph constraints to be enforced by the migration.
-SELECT id, book_a_id, book_b_id, weight, similarity_score
-FROM public.book_edges
-WHERE weight < 0
-   OR (similarity_score IS NOT NULL AND similarity_score NOT BETWEEN 0 AND 1)
-   OR char_length(btrim(relationship_type)) NOT BETWEEN 1 AND 50;
+-- similarity_score is optional and may not exist before the migration. Read it
+-- through the row JSON so this preflight works before or after the column is
+-- introduced, while still reporting invalid legacy values when it exists.
+SELECT e.id, e.book_a_id, e.book_b_id, e.weight,
+       to_jsonb(e) ->> 'similarity_score' AS similarity_score,
+       e.relationship_type
+FROM public.book_edges AS e
+WHERE e.weight < 0
+   OR COALESCE(
+        (to_jsonb(e) ->> 'similarity_score')::DOUBLE PRECISION NOT BETWEEN 0 AND 1,
+        FALSE
+      )
+   OR char_length(btrim(e.relationship_type)) NOT BETWEEN 1 AND 50;

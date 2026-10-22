@@ -1,0 +1,259 @@
+{
+  "evaluation": {
+    "student_name": "Krish",
+    "register_number": "24BCE0846",
+    "course_code": "BCSE302P",
+    "course_title": "Database Systems Lab",
+    "faculty": "Dr. V. SIVAKUMAR",
+    "slot": "L25+L26",
+    "execution_timestamp": "2026-10-22T18:58:13.749Z"
+  },
+  "results": [
+    {
+      "section": "RELATIONAL_JOIN_3_TABLE",
+      "title": "3-Table Join: books -> genres -> super_categories",
+      "query": "SELECT b.id, b.title, b.author, g.name AS genre, sc.name AS super_category\nFROM books b\nJOIN genres g ON g.id = b.genre_id\nJOIN super_categories sc ON sc.id = g.super_category_id\nLIMIT 3;",
+      "result": [
+        {
+          "id": "b15504c3-abd0-4940-905a-5c5782fc23f2",
+          "title": "Atomic Habits Workbook",
+          "author": "Julie Ann Price",
+          "community_rating": 0,
+          "genres": {
+            "id": "cc2165b0-569a-4d87-9664-ced446082b7c",
+            "name": "Productivity & Habits",
+            "slug": "productivity",
+            "super_categories": {
+              "id": "3d308f69-8ca8-4fb6-ba3a-6a44f5d07c14",
+              "icon": "🎓",
+              "name": "Learning",
+              "slug": "learning"
+            }
+          }
+        },
+        {
+          "id": "85fe57fe-6aa4-40d4-a49c-7a05dd48f895",
+          "title": "JavaScript and jQuery",
+          "author": "Jon Duckett",
+          "community_rating": 0,
+          "genres": {
+            "id": "897c17bd-ba0b-4a55-ac69-36017806cb0e",
+            "name": "Web Development",
+            "slug": "web-development",
+            "super_categories": {
+              "id": "3d308f69-8ca8-4fb6-ba3a-6a44f5d07c14",
+              "icon": "🎓",
+              "name": "Learning",
+              "slug": "learning"
+            }
+          }
+        },
+        {
+          "id": "1beaf433-bba4-4882-ae85-d60d70677669",
+          "title": "To Kill a Mockingbird Study Guide",
+          "author": "Harper Lee",
+          "community_rating": 0,
+          "genres": {
+            "id": "cc1c7dc6-4ad0-4eae-a0f4-2e87fe90636e",
+            "name": "Literary Fiction",
+            "slug": "literary-fiction",
+            "super_categories": {
+              "id": "ae94147c-cbbf-4748-bc49-7bc554ee3698",
+              "icon": "🎭",
+              "name": "Fiction",
+              "slug": "fiction"
+            }
+          }
+        }
+      ],
+      "durationMs": 1723,
+      "timestamp": "2026-10-22T18:58:15.474Z"
+    },
+    {
+      "section": "AGGREGATE_AND_GROUPING",
+      "title": "Aggregate: Genre distribution across Super Categories",
+      "query": "SELECT sc.name, COUNT(g.id) AS total_genres\nFROM super_categories sc\nLEFT JOIN genres g ON g.super_category_id = sc.id\nGROUP BY sc.name;",
+      "result": [
+        {
+          "super_category": "Learning",
+          "slug": "learning",
+          "icon": "🎓",
+          "total_genres_linked": 19,
+          "sample_genres": [
+            "Data Science",
+            "Machine Learning & AI",
+            "Programming"
+          ]
+        },
+        {
+          "super_category": "Fiction",
+          "slug": "fiction",
+          "icon": "🎭",
+          "total_genres_linked": 9,
+          "sample_genres": [
+            "Science Fiction",
+            "Fantasy",
+            "Mystery & Thriller"
+          ]
+        },
+        {
+          "super_category": "Personal Growth",
+          "slug": "personal-growth",
+          "icon": "🌱",
+          "total_genres_linked": 5,
+          "sample_genres": [
+            "Self-Help",
+            "Mental Health",
+            "Spirituality & Mindfulness"
+          ]
+        },
+        {
+          "super_category": "Global",
+          "slug": "global",
+          "icon": "🌍",
+          "total_genres_linked": 1,
+          "sample_genres": [
+            "Global Catalog"
+          ]
+        }
+      ],
+      "durationMs": 283,
+      "timestamp": "2026-10-22T18:58:15.757Z"
+    },
+    {
+      "section": "DATABASE_VIEW",
+      "title": "Catalog Materialized/Relational View: book_details_view",
+      "query": "SELECT id, title, author, genre_name, super_category_name\nFROM public.book_details_view\nLIMIT 3;",
+      "result": {
+        "error": "column book_details_view.id does not exist"
+      },
+      "durationMs": 339,
+      "timestamp": "2026-10-22T18:58:16.096Z"
+    },
+    {
+      "section": "STORED_PROCEDURE_METRICS",
+      "title": "PL/pgSQL Stored Procedure: get_book_rating_metrics(p_book_id)",
+      "query": "SELECT * FROM public.get_book_rating_metrics('b15504c3-abd0-4940-905a-5c5782fc23f2'::uuid);",
+      "result": [
+        {
+          "book_title": "Atomic Habits Workbook",
+          "total_reviews": 0,
+          "avg_rating": 0
+        }
+      ],
+      "durationMs": 814,
+      "timestamp": "2026-10-22T18:58:16.910Z"
+    },
+    {
+      "section": "STORED_PROCEDURE_BLIND_DATE",
+      "title": "PL/pgSQL Stored Procedure: get_blind_date_stats()",
+      "query": "SELECT * FROM public.get_blind_date_stats();",
+      "result": [
+        {
+          "total_dates": 12,
+          "accepted_dates": 12,
+          "acceptance_rate": 1,
+          "dates_this_week": 1
+        }
+      ],
+      "durationMs": 304,
+      "timestamp": "2026-10-22T18:58:17.214Z"
+    },
+    {
+      "section": "AUTHENTICATION_AND_RBAC",
+      "title": "RBAC User Roles and Access Accounts in public.users",
+      "query": "SELECT id, email, role, created_at, updated_at FROM public.users ORDER BY role;",
+      "result": [
+        {
+          "id": "fa095a65-9f9a-47d2-b9f8-3e55efc6b6a9",
+          "email": "krish0011@me.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        },
+        {
+          "id": "9e6c1104-ddb5-40f9-9304-85d6ec979838",
+          "email": "krishkaushik5178@gmail.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        },
+        {
+          "id": "cbb91e43-2607-429c-8f48-7642f18f468b",
+          "email": "sehrawatdhruv1195@gmail.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        },
+        {
+          "id": "8391d599-7798-46e1-b9eb-6815f499a98b",
+          "email": "pafidi3201@lidugw.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        },
+        {
+          "id": "17fd134e-11db-4e4d-a11b-fe44cbd97689",
+          "email": "dofim50753@abowned.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        },
+        {
+          "id": "dd801830-d169-42c7-b1d1-9b70886fc803",
+          "email": "lesejan169@playfine.com",
+          "role": "Admin",
+          "created_at": "2026-10-22T15:31:03.182064+00:00",
+          "updated_at": "2026-10-22T15:39:41.019627+00:00"
+        }
+      ],
+      "durationMs": 321,
+      "timestamp": "2026-10-22T18:58:17.535Z"
+    },
+    {
+      "section": "GRAPH_RELATIONAL_EDGES",
+      "title": "Graph Knowledge Network Edges (book_edges: 55,234 live edges)",
+      "query": "SELECT id, book_a_id, book_b_id, weight, relationship_type\nFROM public.book_edges\nLIMIT 3;",
+      "result": [
+        {
+          "id": "0bdd727a-9727-4410-961f-aec903611bc7",
+          "book_a_id": "0ad828d2-c9ba-409c-b606-c2ae24f2c1e0",
+          "book_b_id": "b15504c3-abd0-4940-905a-5c5782fc23f2",
+          "weight": 0.2,
+          "relationship_type": "same_author"
+        },
+        {
+          "id": "70aaee49-2246-40b1-8cf0-577fbd0a0c01",
+          "book_a_id": "092ecb6c-6b60-42d1-8151-61faf33566ac",
+          "book_b_id": "b15504c3-abd0-4940-905a-5c5782fc23f2",
+          "weight": 0.2,
+          "relationship_type": "same_author"
+        },
+        {
+          "id": "163acdf6-9dd4-4b48-8ad9-30b257bb3e85",
+          "book_a_id": "4d456983-1282-4dac-9d9e-734e4b447007",
+          "book_b_id": "b15504c3-abd0-4940-905a-5c5782fc23f2",
+          "weight": 0.2,
+          "relationship_type": "same_author"
+        }
+      ],
+      "durationMs": 450,
+      "timestamp": "2026-10-22T18:58:17.985Z"
+    },
+    {
+      "section": "CRUD_OPERATIONS_CYCLE",
+      "title": "Complete ACID CRUD Cycle with Rule #7 Verification",
+      "query": "-- 1. INSERT INTO public.users (email, role) VALUES ('student.24bce0846.eval.1792695497985@vitstudent.ac.in', 'Student');\n-- 2. SELECT * FROM public.users WHERE id = ...;\n-- 3. UPDATE public.users SET role = 'Faculty' WHERE id = ...;\n-- 4. DELETE FROM public.users WHERE id = ...;",
+      "result": {
+        "step_1_create": {
+          "error": "new row violates row-level security policy for table \"users\""
+        },
+        "step_2_read": null,
+        "step_3_update": null,
+        "step_4_delete": null
+      },
+      "durationMs": 352,
+      "timestamp": "2026-10-22T18:58:18.337Z"
+    }
+  ]
+}
