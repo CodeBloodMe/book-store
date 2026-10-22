@@ -9,6 +9,8 @@ import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 class AssessmentIdentity_24BCE0846_Krish {
   static readonly values = {
     student_name: 'Krish',

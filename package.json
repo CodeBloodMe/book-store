@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:security": "node scripts/negative_security_tests.js",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@google/genai": "^2.8.0",
