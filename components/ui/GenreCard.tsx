@@ -92,12 +92,17 @@ export default function GenreCard({ genre }: GenreCardProps) {
           GENRE
         </div>
         <h3 
-          className="truncate text-xl sm:text-[2.4rem] text-[#0a0a0a] mb-2 sm:mb-[10px]"
+          className="text-base sm:text-[1.85rem] text-[#0a0a0a] mb-2 sm:mb-[10px] leading-tight"
           style={{
-            fontFamily: 'var(--font-bebas)',
-            lineHeight: '0.88',
+            fontFamily: 'var(--font-bebas), "Arial Narrow Bold", sans-serif',
             letterSpacing: '-0.01em',
+            minHeight: '2.5rem',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
           }}
+          title={genre.name}
         >
           {genre.name}
         </h3>

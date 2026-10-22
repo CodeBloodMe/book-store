@@ -27,16 +27,20 @@ interface AIBook {
   community_consensus: string;
 }
 
-function buildLexicalQuery(values: Array<string | undefined>): string {
+function buildLexicalQuery(values: Array<string | undefined>, exactPhrase?: string): string {
   const tokens = [...new Set(
     values
       .filter((value): value is string => typeof value === 'string')
       .flatMap((value) => value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])
   )].slice(0, 24);
 
-  // The SQL RPC uses websearch_to_tsquery. OR avoids requiring every word in
-  // a long natural-language prompt to occur in the same book description.
-  return tokens.map((token) => `"${token}"`).join(' OR ');
+  // Prefer exact title/phrase hits while OR-ing individual terms to avoid
+  // requiring a long natural-language prompt to occur verbatim in a description.
+  const phrase = exactPhrase?.trim().replace(/"/g, ' ').slice(0, 180);
+  return [
+    ...(phrase ? [`"${phrase}"`] : []),
+    ...tokens.map((token) => `"${token}"`),
+  ].join(' OR ');
 }
 
 
@@ -249,7 +253,7 @@ You are the central orchestration brain of an Agentic RAG Book Recommendation En
 # ARCHITECTURE CONSTRAINTS & BEHAVIOR
 1. DO NOT rely on the user's literal vocabulary. Translate emotional imagery into physical plot elements, genres, and specific tropes.
 2. REVERSE NEGATIVE CONSTRAINTS: If a user states "no gore" or "not by Stephen King", you must extract these parameters into the \`excluded_keywords\` or \`excluded_authors\` fields. Do not pass negative terms into the \`cleaned_vector_search_string\`.
-3. STRICT GENRE LOCKING: Identify the single best primary publishing genre. If abstract elements describe eerie, haunting, or spooky feelings, lock the genre to "Horror" or "Thriller" to bypass generic fiction matches.
+3. GENRE FILTERING: Set hard_genre_filter only when the user explicitly names a genre or clearly asks to restrict results to one. Do not infer a mandatory genre from mood, setting, or tropes; leave it empty and use those as relevance hints.
 
 
 
@@ -359,8 +363,9 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
       area,
       hardGenreFilter,
       ...explicitGenres,
+      ...threatTags,
       extractedVibe,
-    ]);
+    ], query);
 
     // ── Step 2: Hybrid pgvector + PostgreSQL full-text retrieval ──
     const { data: matchedBooks, error } = await supabase.rpc('match_books_hybrid', {
@@ -428,8 +433,8 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
       return { ...fb, similarity: typeof match?.similarity === 'number' ? match.similarity : 0 };
     });
 
-    // ── Hard Filtering (Two-Tier Vector Simulation) ──
-    // Step 1 (Hard Filter): Instantly isolate candidate books where genre matches
+    // ── Apply only explicit user constraints ──
+    // An explicitly requested area/genre remains a hard filter.
     if (validFilterAreas.length > 0) {
       filteredBooks = filteredBooks.filter(book => {
         const genreName = Array.isArray(book.genres) ? book.genres[0]?.name : (book.genres as any)?.name;
@@ -437,15 +442,8 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
       });
     }
 
-    // Step 2: Ensure it matches threat_tags if any exist
-    if (threatTags.length > 0) {
-      filteredBooks = filteredBooks.filter(book => {
-        return threatTags.some(threat => 
-           (book.description && book.description.toLowerCase().includes(threat.toLowerCase())) ||
-           (book.title && book.title.toLowerCase().includes(threat.toLowerCase()))
-        );
-      });
-    }
+    // Threat tags from normalization are ranking hints, not literal filters:
+    // descriptions often omit a trope even when the book is a strong match.
 
     // Excluded Keywords Post-Filter
     if (excludedKeywords.length > 0) {
