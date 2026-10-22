@@ -1,7 +1,7 @@
 # ChapterOne: Live DBMS Execution & Evaluation Evidence
 **Course:** BCSE302P — Database Systems Lab  
 **Faculty Evaluator:** Dr. V. SIVAKUMAR | **Slot:** L25+L26  
-**Student Name:** Krish | **Register Number:** 24BCE0846  
+**Team Members:** Krish (24BCE0846) & Parv Bhardwaj (24BCE0870)  
 **Evaluation Timestamp:** `2026-10-22T19:00:22.515Z`  
 **Database Host:** `https://xpmpzpdjsdzhiloykmfi.supabase.co`  
 
@@ -399,4 +399,4 @@ RETURNING *;
 **Verification Status:** ✅ VERIFIED LIVE (Lifecycle completed with full ACID durability).
 
 ---
-*Report auto-generated from live Supabase PostgreSQL execution on 2026-10-22T19:00:22.515Z for student Krish (24BCE0846).*
+*Report auto-generated from live Supabase PostgreSQL execution on 2026-10-22T19:00:22.515Z for team Krish (24BCE0846) & Parv Bhardwaj (24BCE0870).*
