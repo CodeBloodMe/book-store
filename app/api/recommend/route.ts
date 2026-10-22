@@ -366,7 +366,9 @@ Return ONLY a raw JSON array of objects with 'title', 'author', and 'genre_guess
     const { data: matchedBooks, error } = await supabase.rpc('match_books_hybrid', {
       query_embedding,
       query_text: lexicalQuery,
-      match_threshold: 0.20, 
+      // Rank the nearest candidates first; applying a cosine cutoff here can
+      // hide useful matches before semantic/lexical rank fusion runs.
+      match_threshold: 0.0,
       match_count: 80
     });
 

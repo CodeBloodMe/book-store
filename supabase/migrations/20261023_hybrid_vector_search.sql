@@ -9,6 +9,29 @@
 ALTER TABLE public.books
     ADD COLUMN IF NOT EXISTS embedding_model TEXT;
 
+-- Keep embeddings aligned with the content from which they were generated.
+CREATE OR REPLACE FUNCTION public.invalidate_book_embedding_on_content_change()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+SET search_path = ''
+AS $$
+BEGIN
+    IF ROW(NEW.title, NEW.author, NEW.description, NEW.genre_id, NEW.tags)
+       IS DISTINCT FROM
+       ROW(OLD.title, OLD.author, OLD.description, OLD.genre_id, OLD.tags) THEN
+        NEW.embedding := NULL;
+        NEW.embedding_model := NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS books_invalidate_embedding_on_content_update ON public.books;
+CREATE TRIGGER books_invalidate_embedding_on_content_update
+BEFORE UPDATE OF title, author, description, genre_id, tags ON public.books
+FOR EACH ROW
+EXECUTE FUNCTION public.invalidate_book_embedding_on_content_change();
+
 CREATE OR REPLACE FUNCTION public.match_books_hybrid(
     query_embedding VECTOR(768),
     query_text TEXT,
@@ -37,7 +60,8 @@ AS $$
     vector_candidates AS MATERIALIZED (
         SELECT
             b.id,
-            (1.0 - (b.embedding <=> query_embedding))::DOUBLE PRECISION AS vector_similarity
+            (1.0 - (b.embedding <=> query_embedding))::DOUBLE PRECISION AS vector_similarity,
+            ROW_NUMBER() OVER (ORDER BY b.embedding <=> query_embedding, b.id) AS vector_position
         FROM public.books AS b
         WHERE query_embedding IS NOT NULL
           AND b.embedding IS NOT NULL
@@ -48,45 +72,52 @@ AS $$
     ),
     lexical_candidates AS MATERIALIZED (
         SELECT
-            b.id,
-            ts_rank_cd(
-                COALESCE(
-                    b.search_vector,
-                    setweight(to_tsvector('english', COALESCE(b.title, '')), 'A') ||
-                    setweight(to_tsvector('english', COALESCE(b.author, '')), 'B') ||
-                    setweight(to_tsvector('english', COALESCE(b.description, '')), 'C') ||
-                    setweight(to_tsvector('english', COALESCE(array_to_string(b.tags, ' '), '')), 'B')
-                ) || setweight(to_tsvector('english', COALESCE(g.name, '')), 'A'),
-                sq.parsed_query
-            )::DOUBLE PRECISION AS lexical_rank
-        FROM public.books AS b
-        LEFT JOIN public.genres AS g ON g.id = b.genre_id
-        CROSS JOIN search_query AS sq
-        WHERE sq.raw_text IS NOT NULL
-          AND numnode(sq.parsed_query) > 0
-          AND (
-              COALESCE(
-                  b.search_vector,
-                  setweight(to_tsvector('english', COALESCE(b.title, '')), 'A') ||
-                  setweight(to_tsvector('english', COALESCE(b.author, '')), 'B') ||
-                  setweight(to_tsvector('english', COALESCE(b.description, '')), 'C') ||
-                  setweight(to_tsvector('english', COALESCE(array_to_string(b.tags, ' '), '')), 'B')
-              ) @@ sq.parsed_query
-              OR to_tsvector('english', COALESCE(g.name, '')) @@ sq.parsed_query
-          )
-        ORDER BY lexical_rank DESC, b.id
+            scored.id,
+            scored.lexical_rank,
+            ROW_NUMBER() OVER (ORDER BY scored.lexical_rank DESC, scored.id) AS lexical_position
+        FROM (
+            SELECT
+                b.id,
+                ts_rank_cd(
+                    COALESCE(
+                        b.search_vector,
+                        setweight(to_tsvector('english', COALESCE(b.title, '')), 'A') ||
+                        setweight(to_tsvector('english', COALESCE(b.author, '')), 'B') ||
+                        setweight(to_tsvector('english', COALESCE(b.description, '')), 'C') ||
+                        setweight(to_tsvector('english', COALESCE(array_to_string(b.tags, ' '), '')), 'B')
+                    ) || setweight(to_tsvector('english', COALESCE(g.name, '')), 'A'),
+                    sq.parsed_query
+                )::DOUBLE PRECISION AS lexical_rank
+            FROM public.books AS b
+            LEFT JOIN public.genres AS g ON g.id = b.genre_id
+            CROSS JOIN search_query AS sq
+            WHERE sq.raw_text IS NOT NULL
+              AND numnode(sq.parsed_query) > 0
+              AND (
+                  COALESCE(
+                      b.search_vector,
+                      setweight(to_tsvector('english', COALESCE(b.title, '')), 'A') ||
+                      setweight(to_tsvector('english', COALESCE(b.author, '')), 'B') ||
+                      setweight(to_tsvector('english', COALESCE(b.description, '')), 'C') ||
+                      setweight(to_tsvector('english', COALESCE(array_to_string(b.tags, ' '), '')), 'B')
+                  ) @@ sq.parsed_query
+                  OR to_tsvector('english', COALESCE(g.name, '')) @@ sq.parsed_query
+              )
+        ) AS scored
+        ORDER BY scored.lexical_rank DESC, scored.id
         LIMIT LEAST(GREATEST(COALESCE(match_count, 20), 1) * 4, 400)
     ),
     candidate_scores AS (
         SELECT
             candidates.id,
             MAX(candidates.vector_similarity) AS vector_similarity,
-            MAX(candidates.lexical_rank) AS lexical_rank
+            MIN(candidates.vector_position) AS vector_position,
+            MIN(candidates.lexical_position) AS lexical_position
         FROM (
-            SELECT vc.id, vc.vector_similarity, NULL::DOUBLE PRECISION AS lexical_rank
+            SELECT vc.id, vc.vector_similarity, vc.vector_position, NULL::BIGINT AS lexical_position
             FROM vector_candidates AS vc
             UNION ALL
-            SELECT lc.id, NULL::DOUBLE PRECISION, lc.lexical_rank
+            SELECT lc.id, NULL::DOUBLE PRECISION, NULL::BIGINT, lc.lexical_position
             FROM lexical_candidates AS lc
         ) AS candidates
         GROUP BY candidates.id
@@ -100,15 +131,14 @@ AS $$
             b.description::TEXT AS description,
             b.expert_rating::NUMERIC AS expert_rating,
             b.community_rating::NUMERIC AS community_rating,
-            CASE
-                WHEN cs.vector_similarity IS NOT NULL AND cs.lexical_rank IS NOT NULL THEN
-                    0.82 * LEAST(1.0, GREATEST(0.0, cs.vector_similarity)) +
-                    0.18 * (cs.lexical_rank / (1.0 + cs.lexical_rank))
-                WHEN cs.vector_similarity IS NOT NULL THEN
-                    LEAST(1.0, GREATEST(0.0, cs.vector_similarity))
-                ELSE
-                    0.75 * (cs.lexical_rank / (1.0 + cs.lexical_rank))
-            END::FLOAT AS similarity
+            -- Reciprocal-rank fusion avoids comparing unrelated cosine and
+            -- ts_rank scales. Semantic rank leads; lexical rank improves exact
+            -- title, author, genre, and topic matches. This is an ordering score,
+            -- not a probability or a user-facing confidence percentage.
+            (
+                COALESCE(0.65 / (60.0 + cs.vector_position), 0.0) +
+                COALESCE(0.35 / (60.0 + cs.lexical_position), 0.0)
+            ) / (1.0 / 61.0)::FLOAT AS similarity
         FROM candidate_scores AS cs
         JOIN public.books AS b ON b.id = cs.id
     )
