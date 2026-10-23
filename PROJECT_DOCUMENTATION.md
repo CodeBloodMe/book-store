@@ -1,47 +1,43 @@
 <div align="center">
 
-# School of Computer Science and Engineering (SCOPE)
-## Lab Internal Assessment Test - 8, 9 & 10 Project Report
-### Fall Semester 2026-27 | Course: Database Systems Lab (BCSE302P)
+# VELLORE INSTITUTE OF TECHNOLOGY
+### School of Computer Science and Engineering (SCOPE)
+#### Academic Semester: Fall 2026-27 | Lab Continuous Assessment Project
 
-**Student Name:** Krish (Reg No: **24BCE0846**) | **Team Partner:** Parv Bhardwaj (Reg No: **24BCE0870**)  
-**Faculty Evaluator:** Dr. V. SIVAKUMAR | **Class Nbr:** VL2026270104025 | **Slot:** L25+L26  
-**GitHub Repository:** https://github.com/CodeBloodMe/book-store  
-**Live Production Website:** https://book-store-eight-zeta.vercel.app  
-**Live DBMS Assessment API:** https://book-store-eight-zeta.vercel.app/api/dbms-demo?page=1&limit=10  
+---
+
+# CHAPTERONE
+## High-Performance Graph-Theoretic & Vector-Augmented Relational Database Engine for Adaptive Book Discovery and Trajectory Analytics
+
+*A Laboratory Project Report Submitted for Internal Assessment Tests 8, 9 & 10 in*  
+**BCSE302P — DATABASE SYSTEMS LAB**
+
+**Faculty Evaluator:** Dr. V. SIVAKUMAR | **Class Nbr:** VL2026270104025 | **Slot:** L25+L26
+
+---
 
 </div>
 
----
-
-| **Academic & Technical Parameter** | **System Specification & Implementation Details** |
+| Project Author 1 (Team Lead) | Project Author 2 (Team Member) |
 |:---|:---|
-| **Course Code & Title** | **BCSE302P — Database Systems Lab** (Class Nbr: VL2026270104025) |
-| **Faculty Evaluator** | **Dr. V. SIVAKUMAR** |
-| **Slot & Academic Term** | **L25+L26** \| Fall Semester 2026-27 |
-| **Primary Student (Lead)** | **Krish** (Register Number: **24BCE0846**) |
-| **Team Partner** | **Parv Bhardwaj** (Register Number: **24BCE0870**) |
-| **Project Title** | **CHAPTERONE: High-Performance Graph-Theoretic & Vector-Augmented Relational Database Engine for Adaptive Book Discovery and Trajectory Analytics** |
-| **GitHub Repository** | **https://github.com/CodeBloodMe/book-store** |
-| **Live Production Website** | **https://book-store-eight-zeta.vercel.app** |
-| **Live Assessment API Demo**| **https://book-store-eight-zeta.vercel.app/api/dbms-demo?page=1&limit=10** |
-| **Database System & Host** | **PostgreSQL 16.3** on Supabase Cloud Infrastructure (AWS eu-central-1) |
-| **Connection & Pooling** | **PgBouncer Connection Pooler** (Port 6543, Transaction Pooling Mode, 15 Max Concurrency) |
-| **Active Production Dataset** | **11,329 Books**, **55,234 Directed Knowledge-Graph Edges**, **34 Genres**, **4 Super Categories** |
-| **Vector Engine & Index** | **pgvector 0.7.0** (768-dim embeddings, **HNSW Index** `vector_cosine_ops`, m=16, ef_construction=64) |
-| **Graph Traversal Engine** | In-Database Recursive Dijkstra CTE: `find_reading_path(start_id, target_id, max_depth)` |
-| **Exploration Algorithm** | In-Database **Upper Confidence Bound (UCB1) Multi-Armed Bandit** in PL/pgSQL (`match_mystery_book`) |
-| **Object-Relational Mapping** | **Prisma ORM 5.20.0** with Type-Safe Schema Generation & Parameterized `$transaction` |
-| **Application Architecture** | **Next.js 16.2.9** (App Router, Server Components) + **React 19.2.4** + **TypeScript 5.0 (Strict)** |
-| **Security & Authorization** | **Single `public.users` table with `role` column** (`Admin`, `Faculty`, `Student`, `User`), Bcrypt (Cost 12), Row-Level Security (RLS) |
-| **DevOps & Containerization** | **Docker** Multi-Stage Build (<150MB), **GitHub Actions** CI/CD Pipeline, **Vercel** Edge CDN |
+| **Krish** | **Parv Bhardwaj** |
+| **Register Number:** **24BCE0846** | **Register Number:** **24BCE0870** |
+| **Branch:** B.Tech. Computer Science & Engineering | **Branch:** B.Tech. Computer Science & Engineering |
+| **Responsibilities:** Database Architecture, 3NF Normalization, Stored Procedures, Triggers, Prisma ORM, Vector Engine, RBAC, CI/CD | **Responsibilities:** Frontend Engineering, Next.js 16 UI, BookWeb Graph Canvas, Blind Date Interface, Form Validation, Testing |
+| **Project Contribution:** **55%** | **Project Contribution:** **45%** |
 
----
+| Project Resource / Deliverable | Production Deployment URL / Endpoint |
+|:---|:---|
+| **GitHub Source Code Repository** | **https://github.com/CodeBloodMe/book-store** |
+| **Live Production Web Application** | **https://book-store-eight-zeta.vercel.app** |
+| **Live DBMS Assessment Verification API** | **https://book-store-eight-zeta.vercel.app/api/dbms-demo?page=1&limit=10** |
+
+\newpage
 
 <div align="center">
 
 ### TABLE OF CONTENTS
-**1. Problem Formulation & Project Planning** | **2. Database Design & Relational Architecture**  
+**1. Problem Formulation & Architectural Scope** | **2. Database Design & Relational Architecture**  
 **3. Database Implementation & Query Optimization** | **4. Full-Stack Application Development & Interfaces**  
 **5. Authentication, RBAC & Enterprise Security** | **6. Database Backup, Recovery & Disaster Preparedness**  
 **7. Version Control & Collaborative Workflow** | **8. Cloud Infrastructure & Production Deployment**  
@@ -51,33 +47,50 @@
 
 ---
 
-# SECTION 1: PROBLEM FORMULATION & PROJECT PLANNING
+### Executive System Architectural Summary
 
-## 1.1 Project Title, Live Links & Technical Overview
+| Subsystem Component | Technical Specification & Implementation Architecture |
+|:---|:---|
+| **Database Engine & Cloud Host** | **PostgreSQL 16.3** on Supabase Cloud Infrastructure (AWS eu-central-1) |
+| **Connection & Pooling Layer** | **PgBouncer Connection Pooler** (Port 6543, Transaction Pooling Mode, 15 Max Concurrency) |
+| **Active Production Dataset** | **11,329 Books**, **55,234 Directed Knowledge-Graph Edges**, **34 Genres**, **4 Super Categories** |
+| **Vector Engine & Indexing** | **pgvector 0.7.0** (768-dim embeddings, **HNSW Index** `vector_cosine_ops`, m=16, ef_construction=64) |
+| **Knowledge Graph Traversal Engine** | In-Database Recursive Dijkstra CTE: `find_reading_path(start_id, target_id, max_depth)` |
+| **Adaptive Exploration Algorithm** | In-Database **Upper Confidence Bound (UCB1) Multi-Armed Bandit** in PL/pgSQL (`match_mystery_book`) |
+| **Object-Relational Mapping (ORM)** | **Prisma ORM 5.20.0** with Type-Safe Schema Generation & Parameterized `$transaction` |
+| **Full-Stack Application Stack** | **Next.js 16.2.9** (App Router, Server Components) + **React 19.2.4** + **TypeScript 5.0 (Strict)** |
+| **Security & Access Control** | **Single `public.users` table with `role` column** (`Admin`, `Faculty`, `Student`, `User`), Bcrypt (Cost 12), Row-Level Security |
+| **DevOps & Containerization** | **Docker** Multi-Stage Build (<150MB), **GitHub Actions** Automated CI/CD, **Vercel** Edge Network |
 
-- **Project Title:** CHAPTERONE: High-Performance Graph-Theoretic & Vector-Augmented Relational Database Engine for Adaptive Book Discovery and Trajectory Analytics
-- **GitHub Repository URL:** https://github.com/CodeBloodMe/book-store
-- **Live Production URL:** https://book-store-eight-zeta.vercel.app
-- **Live DBMS Assessment API:** https://book-store-eight-zeta.vercel.app/api/dbms-demo?page=1&limit=10
+\newpage
 
-**Technical Architecture Overview:**  
-ChapterOne is an enterprise-grade, relational database management platform engineered to resolve the structural deficiencies in modern literary discovery systems. Built on **PostgreSQL 16.3**, **Supabase Cloud Infrastructure**, and **Prisma ORM 5.20**, the system actively manages **11,329 book records**, **55,234 directed relational knowledge-graph edges**, **34 genres**, **4 super-categories**, and active reader profiles. Unlike conventional flat catalogs, ChapterOne couples classical relational algebra (enforcing Strict Third Normal Form (3NF), complex multi-table joins, aggregate views, stored procedures, and ACID triggers) with high-dimensional vector similarity retrieval (768-dim `pgvector` with HNSW indexing) and in-database recursive graph traversal algorithms (Dijkstra shortest-path CTEs). The full-stack application is deployed live with single-table role-based access control, cryptographic authentication, and automated CI/CD.
+# SECTION 1: PROBLEM FORMULATION & ARCHITECTURAL SCOPE
+
+## 1.1 Project Overview & Engineering Scope
+
+ChapterOne is an enterprise-grade, relational database management platform engineered to resolve the structural deficiencies in modern literary discovery systems. Built on **PostgreSQL 16.3**, **Supabase Cloud Infrastructure**, and **Prisma ORM 5.20**, the system actively manages **11,329 book records**, **55,234 directed relational knowledge-graph edges**, **34 genres**, **4 super-categories**, and active reader profiles.
+
+Unlike conventional flat catalogs, ChapterOne couples classical relational algebra (enforcing Strict Third Normal Form (3NF), complex multi-table joins, aggregate views, stored procedures, and ACID triggers) with high-dimensional vector similarity retrieval (768-dim `pgvector` with HNSW indexing) and in-database recursive graph traversal algorithms (Dijkstra shortest-path CTEs). The full-stack application is deployed live with single-table role-based access control, cryptographic authentication, and automated continuous integration.
 
 ---
 
-## 1.2 The Critical Research Gap: Why ChapterOne is NOT Google Books
+## 1.2 System Innovation & Discovery Architecture
 
-A superficial evaluation may raise the objection: *"Google Books already exists; why do we need another book database?"* This objection conflates a flat keyword-indexed OCR document archive with an in-database Knowledge Graph Trajectory Engine and Multi-Armed Bandit Discovery System.
+Conventional book catalogs operate primarily on isolated keyword matching and sales-volume popularity ranking. This architectural design creates two severe systemic limitations:
+1. **Lack of Trajectory Navigation:** Static catalogs cannot compute conceptual reading progressions between foundational and advanced texts.
+2. **Popularity & Marketing Bias:** Commercial bestsellers capture over 95% of recommendation impressions, leaving thousands of high-quality long-tail books undiscovered.
 
-### Technical Comparison Matrix: Google Books vs. ChapterOne
+ChapterOne resolves these structural deficiencies through two primary in-database algorithmic innovations: an in-database Graph-Theoretic Pathfinding Engine (BookWeb) and an Anti-Bias Multi-Armed Bandit Exploration Engine (Blind Date with a Book).
 
-| Evaluation Dimension | Google Books / Amazon Books | ChapterOne Relational Engine | Technical & Academic Novelty |
+### Comparative Analysis: Conventional Catalogs vs. ChapterOne Relational Engine
+
+| Evaluation Dimension | Conventional Search Platforms | ChapterOne Relational Engine | Architectural Advantage |
 |:---|:---|:---|:---|
 | **Underlying Data Topology** | **Flat Document Store:** Books exist as isolated records indexed only by keyword metadata strings. No relational edges connect books. | **Relational Knowledge Graph:** 55,234 directed, weighted relational edges in `book_edges` linking 11,329 books with computed thematic distance. | Implements relational graph modeling inside an RDBMS, allowing graph-theoretic queries directly in SQL. |
 | **Search Paradigm** | **Lexical / Exact Matching:** Matches character tokens. Fails on abstract queries like *"melancholic introspective sci-fi"*. | **Semantic Vector Search:** 768-dimensional neural embeddings indexed via **HNSW** graphs using cosine distance (<=>). | Resolves abstract conceptual, emotional, and atmospheric queries that keyword engines cannot answer. |
 | **Trajectory Analytics** | **Completely Absent:** Cannot compute a transition between books (e.g., beginner to advanced topics). | **In-Database Pathfinding (BookWeb):** Recursive PostgreSQL CTEs executing Dijkstra shortest-path algorithms across `book_edges`. | Computes optimal 3-to-5 step reading trajectories between disparate books directly in SQL (`find_reading_path`). |
-| **Discovery Bias** | **Popularity & Marketing Bias:** 0.1% of commercial bestsellers monopolize 95% of impressions. Long-tail books stay hidden. | **Multi-Armed Bandit (Blind Date):** Implements in-database **Upper Confidence Bound (UCB1)** algorithm (`match_mystery_book`). | Strips away cover and marketing bias, surfacing hidden high-quality books via exploration-exploitation balance. |
-| **Reader Modeling** | **Passive Ad-Tracking Cookies.** | **Relational Reader Profiles:** Explicit relational entities in `user_reader_profiles` tracking pace, complexity, era, and mood. | Direct relational joins between reader preference vectors and catalog metadata. |
+| **Discovery Bias** | **Popularity Bias:** Top commercial bestsellers monopolize discovery impressions. Long-tail titles stay hidden. | **Multi-Armed Bandit (Blind Date):** Implements in-database **Upper Confidence Bound (UCB1)** algorithm (`match_mystery_book`). | Strips away cover and marketing bias, surfacing hidden high-quality books via exploration-exploitation balance. |
+| **Reader Modeling** | **Passive Tracking:** Cookies and unverified browsing history. | **Relational Reader Profiles:** Explicit relational entities in `user_reader_profiles` tracking pace, complexity, era, and mood. | Direct relational joins between reader preference vectors and catalog metadata. |
 | **Architecture & RBAC**| **Proprietary Black Box:** Closed, inaccessible schema with opaque ranking algorithms. | **Transparent Relational RDBMS:** Complete open schema in **Strict 3NF**, ACID transactions, stored procedures, triggers, and single-table RBAC. | Complete academic transparency, verifiable functional dependencies, and provable data integrity. |
 
 ### Mathematical Formulation of Novelty Innovations
@@ -88,17 +101,17 @@ The catalog is modeled as a directed weighted graph G = (V, E, W), where |V| = 1
 where e_u, e_v are 768-dim embeddings, T_u, T_v are genre/tag token sets, and α=0.5, β=0.3, γ=0.2 (composite balance).  
 When a user requests a reading transition from book S to book T, ChapterOne executes a recursive PostgreSQL Common Table Expression (CTE) `find_reading_path(start_id, target_id, max_depth)` to find the optimal path P* minimizing total transition impedance:  
 `P* = argmin Σ W(v_i, v_{i+1})  subject to path length k ≤ 5`  
-Google Books has zero capability to execute this graph computation.
+This allows ChapterOne to determine mathematically optimal reading transitions in real time directly within SQL.
 
 #### Innovation 2: Anti-Bias Exploration via Multi-Armed Bandit (Blind Date with a Book)
-To solve the Matthew Effect ("rich get richer") in commercial book search, ChapterOne executes the **Upper Confidence Bound 1 (UCB1)** decision rule inside the PostgreSQL procedure `match_mystery_book`:  
+To solve the Matthew Effect in commercial book search, ChapterOne executes the **Upper Confidence Bound 1 (UCB1)** decision rule inside the PostgreSQL procedure `match_mystery_book`:  
 `Score_i = μ_i + c · √( (2 · ln N) / n_i )`  
 where:  
 - `μ_i = (AcceptedInteractions_i) / n_i` is the empirical acceptance rate from `blind_date_interactions`.  
 - `n_i` is the total presentation count of book i to readers.  
 - `N = Σ n_j` is the total impressions across all books.  
 - `c = √2 ≈ 1.414` is the theoretical exploration coefficient.  
-When `n_i` is small, the exploration bonus `√( (2 · ln N) / n_i )` dominates, ensuring that obscure high-quality books are surfaced to readers. This mathematical mechanism is completely absent in Google Books.
+When `n_i` is small, the exploration bonus `√( (2 · ln N) / n_i )` dominates, ensuring that obscure high-quality books are surfaced to readers alongside proven favorites.
 
 ---
 
@@ -114,7 +127,7 @@ When `n_i` is small, the exploration bonus `√( (2 · ln N) / n_i )` dominates,
 
 ---
 
-## 1.4 Team Responsibilities, Tech Stack & Project Timeline
+## 1.4 Team Responsibilities & Technology Stack
 
 | Student Name | Register No | Responsibilities | Contribution % |
 |:---|:---|:---|:---:|
@@ -126,14 +139,6 @@ When `n_i` is small, the exploration bonus `√( (2 · ln N) / n_i )` dominates,
 - **ORM & Data Access:** Prisma Client 5.20.0 with connection pooling and typed `$transaction`.
 - **Authentication & Security:** Supabase Auth (OAuth 2.0 Google / GitHub and JWT sessions), Bcrypt work factor 12, PostgreSQL RLS.
 - **Testing & DevOps:** Vitest 4.1.8, Playwright 1.60.0, Docker multi-stage builds, GitHub Actions, Vercel Edge Network.
-
-### Project Execution Timeline (Gantt Chart)
-- **Weeks 1–2 (Aug 2026):** Problem Analysis, Google Books Gap Identification, ER Modeling.
-- **Weeks 3–4 (Aug 2026):** Schema Normalization to 3NF, Supabase PostgreSQL DDL, Constraint Definition.
-- **Weeks 5–6 (Sep 2026):** Bulk Ingestion (11,329 books, 55,234 edges), Stored Procedures & Triggers.
-- **Weeks 7–8 (Sep 2026):** Prisma ORM Integration, $transaction Route Handlers, pgvector HNSW Setup.
-- **Weeks 9–10 (Oct 2026):** Next.js 16 App Development, Single-Table RBAC, Row-Level Security.
-- **Weeks 11–12 (Oct 2026):** Docker Containerization, CI/CD GitHub Actions, Vercel Production Deployment, DBMS Defense.
 
 ---
 
@@ -609,7 +614,7 @@ pg_restore --dbname="${RESTORE_DATABASE_URL}" --no-owner --single-transaction ".
    - HNSW index on 768-dimensional embeddings reducing vector search latency from 84ms to 2.8ms.
    - Vitest unit tests and Playwright E2E browser tests ensuring continuous regression prevention.
 
----
+\newpage
 
 # SECTION 10: SYSTEM SUMMARY, QUANTITATIVE RESULTS & ACADEMIC DECLARATION
 
@@ -630,7 +635,15 @@ pg_restore --dbname="${RESTORE_DATABASE_URL}" --no-owner --single-transaction ".
 ---
 
 ### Student Declaration
+
 We hereby declare that this project report entitled **"CHAPTERONE: High-Performance Graph-Theoretic & Vector-Augmented Relational Database Engine for Adaptive Book Discovery and Trajectory Analytics"** submitted for the Lab Internal Assessment Test 8, 9 & 10 in **BCSE302P Database Systems Lab** under the guidance of **Dr. V. SIVAKUMAR**, represents our original work. All database schemas, stored procedures, triggers, ORM route handlers, and application components have been engineered, deployed, and verified in accordance with the prescribed academic guidelines.
 
-**Student Name:** Krish | **Register Number:** 24BCE0846 | **Slot:** L25+L26 | **Date:** 23-10-2026  
-**GitHub:** https://github.com/CodeBloodMe/book-store | **Website:** https://book-store-eight-zeta.vercel.app
+| Project Member 1 (Lead Author) | Project Member 2 (Contributing Author) |
+|:---|:---|
+| **Name:** Krish | **Name:** Parv Bhardwaj |
+| **Register Number:** **24BCE0846** | **Register Number:** **24BCE0870** |
+| **Degree & Branch:** B.Tech. CSE | **Degree & Branch:** B.Tech. CSE |
+| **Course Code & Slot:** BCSE302P (L25+L26) | **Course Code & Slot:** BCSE302P (L25+L26) |
+| **Signature:** *Krish (24BCE0846)* | **Signature:** *Parv Bhardwaj (24BCE0870)* |
+
+**Submission Date:** 23-10-2026 | **Vellore Institute of Technology, Vellore** | **Project Links:** https://github.com/CodeBloodMe/book-store • https://book-store-eight-zeta.vercel.app

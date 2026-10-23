@@ -68,7 +68,7 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         header = section.header
         hp = header.paragraphs[0]
         hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        hrun = hp.add_run("BCSE302P DBMS Lab Assessment Report | 24BCE0846 Krish")
+        hrun = hp.add_run("BCSE302P DBMS Lab Project | Krish (24BCE0846) & Parv Bhardwaj (24BCE0870)")
         hrun.font.name = "Calibri"
         hrun.font.size = Pt(8)
         hrun.font.color.rgb = MID_GRAY
@@ -223,7 +223,7 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
                     clean_h = re.sub(r'\*\*(.*?)\*\*', r'\1', heading)
                     hdr_cells[col_idx].text = clean_h
                     set_cell_background(hdr_cells[col_idx], "000000")
-                    set_cell_margins(hdr_cells[col_idx], top=70, bottom=70, left=90, right=90)
+                    set_cell_margins(hdr_cells[col_idx], top=45, bottom=45, left=75, right=75)
                     p = hdr_cells[col_idx].paragraphs[0]
                     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
                     for run in p.runs:
@@ -241,17 +241,13 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
                         clean_val = clean_val.replace('<br>', '\n')
                         row_cells[col_idx].text = clean_val
                         set_cell_background(row_cells[col_idx], bg_col)
-                        set_cell_margins(row_cells[col_idx], top=45, bottom=45, left=75, right=75)
+                        set_cell_margins(row_cells[col_idx], top=24, bottom=24, left=60, right=60)
                         p = row_cells[col_idx].paragraphs[0]
                         for run in p.runs:
                             run.font.name = "Calibri"
                             run.font.size = Pt(8)
                             run.font.color.rgb = DARK_GRAY
-                            
-                sp = doc.add_paragraph()
-                sp.paragraph_format.space_before = Pt(1)
-                sp.paragraph_format.space_after = Pt(2)
-            continue
+                continue
 
         # Page breaks
         if line == '\\newpage':
@@ -262,8 +258,8 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         # Horizontal rules
         if line in ['---', '***', '___']:
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(2)
-            p.paragraph_format.space_after = Pt(4)
+            p.paragraph_format.space_before = Pt(1)
+            p.paragraph_format.space_after = Pt(2)
             if in_center_div:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run("―" * 70)
@@ -274,9 +270,11 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
 
         # Check for University Centered Header Elements
         is_uni_header = in_center_div or (
+            "VELLORE INSTITUTE OF TECHNOLOGY" in line or
             "School of Computer Science and Engineering" in line or
             "Lab Internal Assessment Test" in line or
-            "Course: Database Systems Lab (BCSE302P)" in line or
+            "Course: Database Systems Lab" in line or
+            "CHAPTERONE" in line or
             "TABLE OF CONTENTS" in line
         )
 
@@ -284,14 +282,14 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         if line.startswith('# '):
             text = line[2:].strip()
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(10)
-            p.paragraph_format.space_after = Pt(3)
+            p.paragraph_format.space_before = Pt(7)
+            p.paragraph_format.space_after = Pt(2)
             p.paragraph_format.keep_with_next = True
             if is_uni_header:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run(text)
             run.font.name = "Calibri"
-            run.font.size = Pt(15 if not is_uni_header else 16)
+            run.font.size = Pt(14 if not is_uni_header else 15)
             run.font.bold = True
             run.font.color.rgb = BLACK
             i += 1
@@ -300,14 +298,14 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         if line.startswith('## '):
             text = line[3:].strip()
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(8)
-            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.space_before = Pt(6)
+            p.paragraph_format.space_after = Pt(1.5)
             p.paragraph_format.keep_with_next = True
             if is_uni_header:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run(text)
             run.font.name = "Calibri"
-            run.font.size = Pt(12 if not is_uni_header else 13)
+            run.font.size = Pt(11.5 if not is_uni_header else 12)
             run.font.bold = True
             run.font.color.rgb = BLACK
             i += 1
@@ -316,14 +314,14 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         if line.startswith('### '):
             text = line[4:].strip()
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(6)
-            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(1.5)
             p.paragraph_format.keep_with_next = True
             if is_uni_header:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = p.add_run(text)
             run.font.name = "Calibri"
-            run.font.size = Pt(10.5 if not is_uni_header else 11)
+            run.font.size = Pt(10 if not is_uni_header else 10.5)
             run.font.bold = True
             run.font.color.rgb = BLACK
             i += 1
@@ -426,8 +424,8 @@ def build_bw_compact_docx(markdown_path, output_docx_path):
         # Regular text
         if line:
             p = doc.add_paragraph()
-            p.paragraph_format.space_before = Pt(1.5)
-            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.space_before = Pt(1)
+            p.paragraph_format.space_after = Pt(1.5)
             if in_center_div:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 
