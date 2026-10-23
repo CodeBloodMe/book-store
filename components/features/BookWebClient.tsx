@@ -31,6 +31,7 @@ interface SearchResult {
   title: string;
   author: string;
   cover_image_url: string | null;
+  isConnected?: boolean;
 }
 
 const RELATIONSHIP_LABELS: Record<string, { label: string; emoji: string }> = {
@@ -181,8 +182,15 @@ function BookSearchInput({
                 ) : (
                   <div className="w-8 h-12 bg-gray-100 rounded flex-shrink-0" />
                 )}
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{book.title}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{book.title}</p>
+                    {book.isConnected && (
+                      <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        In Graph
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 truncate">{book.author}</p>
                 </div>
               </button>
@@ -310,6 +318,33 @@ function PathVisualizer({
   );
 }
 
+const FEATURED_PAIRS: {
+  label: string;
+  bookA: SearchResult;
+  bookB: SearchResult;
+}[] = [
+  {
+    label: '⚡ Harry Potter ➔ The Hobbit',
+    bookA: { id: '97b86d41-d26e-4262-a694-9c852e10899f', title: "Harry Potter and the Philosopher's Stone", author: 'J.K. Rowling', cover_image_url: null, isConnected: true },
+    bookB: { id: '7fbe7155-def1-4bc3-8803-8041dd0306a4', title: 'The Hobbit', author: 'J.R.R. Tolkien', cover_image_url: null, isConnected: true },
+  },
+  {
+    label: '🚀 Dune ➔ Foundation',
+    bookA: { id: '39231089-9824-457e-a611-c4084331dd82', title: 'Dune', author: 'Frank Herbert', cover_image_url: null, isConnected: true },
+    bookB: { id: '5698386a-cb1e-4287-84d1-eae9b82f556a', title: 'Foundation', author: 'Isaac Asimov', cover_image_url: null, isConnected: true },
+  },
+  {
+    label: '👁️ 1984 ➔ Brave New World',
+    bookA: { id: '983b765e-e275-4a7e-82ee-491153a5b42d', title: '1984', author: 'George Orwell', cover_image_url: null, isConnected: true },
+    bookB: { id: '52f40fb0-1954-49a6-ac81-c0f9c0504f17', title: 'Brave New World', author: 'Aldous Huxley', cover_image_url: null, isConnected: true },
+  },
+  {
+    label: '🧠 Thinking Fast ➔ Sapiens',
+    bookA: { id: '8dee7b8b-2b7c-45db-abd3-a8377a97c48c', title: 'Thinking, Fast and Slow', author: 'Daniel Kahneman', cover_image_url: null, isConnected: true },
+    bookB: { id: '1925c77b-a5d3-479f-8d1c-569d0e9b79ad', title: 'Sapiens', author: 'Yuval Noah Harari', cover_image_url: null, isConnected: true },
+  },
+];
+
 export default function BookWebClient() {
   const [bookA, setBookA] = useState<SearchResult | null>(null);
   const [bookB, setBookB] = useState<SearchResult | null>(null);
@@ -320,18 +355,14 @@ export default function BookWebClient() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  const findPath = async () => {
-    if (!bookA || !bookB) return;
-
+  const findPathForBooks = useCallback(async (start: SearchResult, end: SearchResult) => {
     setIsLoading(true);
     setError(null);
     setNotFound(false);
     setPath(null);
 
     try {
-      const res = await fetch(
-        `/api/bookweb/path?from=${bookA.id}&to=${bookB.id}`
-      );
+      const res = await fetch(`/api/bookweb/path?from=${start.id}&to=${end.id}`);
       const data = await res.json();
 
       if (res.status === 404) {
@@ -357,6 +388,17 @@ export default function BookWebClient() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const findPath = async () => {
+    if (!bookA || !bookB) return;
+    await findPathForBooks(bookA, bookB);
+  };
+
+  const handleSelectFeatured = (pair: (typeof FEATURED_PAIRS)[0]) => {
+    setBookA(pair.bookA);
+    setBookB(pair.bookB);
+    findPathForBooks(pair.bookA, pair.bookB);
   };
 
   return (
@@ -416,8 +458,25 @@ export default function BookWebClient() {
               label="Destination Book"
               value={bookB}
               onChange={setBookB}
-              placeholder="e.g. Thinking Fast & Slow"
+              placeholder="e.g. The Hobbit"
             />
+          </div>
+
+          {/* Quick Example Paths */}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider mr-1">
+              Popular Paths:
+            </span>
+            {FEATURED_PAIRS.map((pair) => (
+              <button
+                key={pair.label}
+                type="button"
+                onClick={() => handleSelectFeatured(pair)}
+                className="px-2.5 py-1 text-xs font-bold bg-[#f5f5f0] text-[#0a0a0a] border border-[#0a0a0a] rounded-full hover:bg-[#f5e642] hover:shadow-[2px_2px_0_#0a0a0a] transition-all"
+              >
+                {pair.label}
+              </button>
+            ))}
           </div>
 
           <motion.button
@@ -425,7 +484,7 @@ export default function BookWebClient() {
             disabled={!bookA || !bookB || isLoading}
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="mt-8 w-full py-4 bg-[#f5e642] text-[#0a0a0a] border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] rounded-xl font-black text-sm uppercase tracking-widest
+            className="mt-6 w-full py-4 bg-[#f5e642] text-[#0a0a0a] border-[3px] border-[#0a0a0a] shadow-[4px_4px_0_#0a0a0a] rounded-xl font-black text-sm uppercase tracking-widest
               flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed
               hover:bg-[#e5d632] transition-colors"
           >

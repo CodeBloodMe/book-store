@@ -97,6 +97,16 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Ensure session profile tracks the active matched book
+    try {
+      await supabaseAdmin
+        .from('user_reader_profiles')
+        .update({ last_matched_book_id: match.book_id })
+        .eq('session_id', sessionId);
+    } catch (saveMatchErr: any) {
+      console.warn('[Blind Date] Profile active match update warning:', saveMatchErr?.message);
+    }
+
     // 3. Generate AI Teaser (Groq/Llama3)
     let aiTeaser = match.description ? match.description.substring(0, 150) + '...' : 'A thrilling mystery awaits...';
     if (process.env.GROQ_API_KEY) {

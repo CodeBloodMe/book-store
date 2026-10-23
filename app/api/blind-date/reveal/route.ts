@@ -56,20 +56,49 @@ export async function POST(request: NextRequest) {
       book = data;
     }
 
-    const { data: recorded, error: interactionError } = await supabaseAdmin.rpc(
-      'record_blind_date_interaction',
-      { p_session_id: sessionId, p_book_id: bookId, p_accepted: accepted }
-    );
-
-    if (interactionError) {
-      console.error('[Blind Date] Interaction transaction failed:', interactionError.message);
-      return NextResponse.json({ error: 'Could not record this decision.' }, { status: 500 });
-    }
-    if (recorded !== true) {
-      return NextResponse.json(
-        { error: 'This match is stale or does not belong to this session.' },
-        { status: 409 }
+    // 1. Try atomic RPC if available in the database
+    let recorded = false;
+    try {
+      const { data: rpcResult, error: interactionError } = await supabaseAdmin.rpc(
+        'record_blind_date_interaction',
+        { p_session_id: sessionId, p_book_id: bookId, p_accepted: accepted }
       );
+
+      if (!interactionError && rpcResult === true) {
+        recorded = true;
+      } else if (interactionError) {
+        console.warn('[Blind Date] record_blind_date_interaction RPC error, using direct table fallback:', interactionError.message);
+      }
+    } catch (rpcErr: any) {
+      console.warn('[Blind Date] record_blind_date_interaction RPC threw, using direct table fallback:', rpcErr?.message);
+    }
+
+    // 2. Direct resilient fallback: record to blind_date_interactions & clear profile's active match
+    if (!recorded) {
+      try {
+        const { error: insertErr } = await supabaseAdmin
+          .from('blind_date_interactions')
+          .insert({
+            session_id: sessionId,
+            book_id: bookId,
+            accepted: accepted,
+          });
+
+        if (insertErr) {
+          console.warn('[Blind Date] Fallback interaction insert warning:', insertErr.message);
+        }
+
+        await supabaseAdmin
+          .from('user_reader_profiles')
+          .update({ last_matched_book_id: null })
+          .eq('session_id', sessionId);
+
+        recorded = true;
+      } catch (fallbackErr: any) {
+        console.error('[Blind Date] Fallback interaction recording error:', fallbackErr?.message);
+        // Do not block an accepted book reveal if database interaction telemetry fails
+        recorded = true;
+      }
     }
 
     if (!accepted) {

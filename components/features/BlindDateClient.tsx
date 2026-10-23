@@ -156,6 +156,7 @@ export default function BlindDateClient() {
 
     // Optimistically go to reveal step (shows unblurring)
     setStep('revealed');
+    setError(null);
 
     try {
       const res = await fetch('/api/blind-date/reveal', {
@@ -164,32 +165,34 @@ export default function BlindDateClient() {
         body: JSON.stringify({ sessionId, bookId: mysteryMatch.bookId, accepted: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(data.error || 'Failed to reveal book. Try again.');
       setRevealedBook(data.book);
       // Update stats
       setStats(s => ({ ...s, acceptedDates: s.acceptedDates + 1 }));
-    } catch {
+    } catch (err: unknown) {
       // Revert if failed
       setStep('mystery');
-      setError('Failed to reveal book. Try again.');
+      setError(err instanceof Error ? err.message : 'Failed to reveal book. Try again.');
     }
   };
 
   const handleReject = async () => {
     if (!mysteryMatch) return;
     setStep('loading');
+    setError(null);
     try {
       const response = await fetch('/api/blind-date/reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, bookId: mysteryMatch.bookId, accepted: false }),
       });
-      if (!response.ok) throw new Error('Could not record this pass.');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Could not record this pass.');
       // Just fetch another match immediately
       submitQuiz(answers);
-    } catch {
+    } catch (err: unknown) {
       setStep('mystery');
-      setError('Could not record your pass. Please try again.');
+      setError(err instanceof Error ? err.message : 'Could not record your pass. Please try again.');
     }
   };
 

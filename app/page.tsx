@@ -35,7 +35,7 @@ export default async function HomePage() {
   for (const genre of allGenres) {
     // Determine its parent category.
     let categoryName = genre.super_categories?.name;
-    
+
     // Fallback if RLS or missing relationship hides super_categories
     if (!categoryName) {
       if (genre.is_fiction) {

@@ -50,7 +50,9 @@ RETURNS TABLE (
 )
 LANGUAGE SQL
 STABLE
-SET search_path = ''
+-- pgvector may be installed in either public or extensions on Supabase.
+-- Keep both schemas available so the cosine-distance operator can resolve.
+SET search_path = public, extensions, pg_temp
 AS $$
     WITH search_query AS (
         SELECT

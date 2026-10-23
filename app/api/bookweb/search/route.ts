@@ -34,6 +34,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Book search is temporarily unavailable.' }, { status: 503 });
     }
 
+    const candidateIds = (data ?? []).map((book) => book.id);
+    const connectedSet = new Set<string>();
+
+    if (candidateIds.length > 0) {
+      try {
+        const { data: edges } = await supabase
+          .from('book_edges')
+          .select('book_a_id, book_b_id')
+          .or(`book_a_id.in.(${candidateIds.join(',')}),book_b_id.in.(${candidateIds.join(',')})`);
+
+        if (edges) {
+          for (const edge of edges) {
+            connectedSet.add(edge.book_a_id);
+            connectedSet.add(edge.book_b_id);
+          }
+        }
+      } catch {
+        // Fall back gracefully to catalog relevance if edge query fails
+      }
+    }
+
     const normalizedQuery = normalize(query);
     const terms = [...new Set(normalizedQuery.split(/\s+/).filter((term) => term.length >= 2))];
     const ranked = ((data ?? []) as BookPickerRow[])
@@ -42,6 +63,7 @@ export async function GET(request: NextRequest) {
         const author = normalize(book.author ?? '');
         const titleHits = terms.filter((term) => title.includes(term)).length;
         const authorHits = terms.filter((term) => author.includes(term)).length;
+        const isConnected = connectedSet.has(book.id);
         const score =
           (title === normalizedQuery ? 1000 : 0) +
           (title.startsWith(normalizedQuery) ? 700 : 0) +
@@ -49,17 +71,19 @@ export async function GET(request: NextRequest) {
           (author.startsWith(normalizedQuery) ? 450 : 0) +
           (title.includes(normalizedQuery) ? 300 : 0) +
           (author.includes(normalizedQuery) ? 180 : 0) +
+          (isConnected ? 250 : 0) +
           titleHits * 40 + authorHits * 20 + Math.max(0, Number(book.expert_rating) || 0) * 0.1;
-        return { book, score, titleHits, authorHits };
+        return { book, score, titleHits, authorHits, isConnected };
       })
       .filter((result) => result.titleHits > 0 || result.authorHits > 0)
       .sort((a, b) => b.score - a.score || a.book.title.localeCompare(b.book.title))
       .slice(0, 8)
-      .map(({ book }) => ({
+      .map(({ book, isConnected }) => ({
         id: book.id,
         title: book.title,
         author: book.author ?? 'Unknown Author',
         cover_image_url: book.cover_image_url,
+        isConnected,
       }));
 
     return NextResponse.json({ books: ranked }, {

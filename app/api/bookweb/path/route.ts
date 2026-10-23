@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,6 +17,22 @@ interface BookEdgeRow {
   weight: number;
   evidence: unknown;
   similarity_score: number | null;
+}
+
+interface BookDetails {
+  id: string;
+  title: string;
+  author: string | null;
+  cover_image_url: string | null;
+  description: string | null;
+  expert_rating: number | null;
+  community_rating: number | null;
+  difficulty_level: string | null;
+  genre_id: string | null;
+  tags: string[] | null;
+  vibe: string | null;
+  published_year: number | null;
+  genres?: { id: string; name: string; slug: string; icon: string; color: string } | null;
 }
 
 function pairKey(a: string, b: string): string {
@@ -45,6 +62,165 @@ function evidenceSummary(value: unknown): string | null {
   return parts.length ? parts.join(' · ').slice(0, 240) : null;
 }
 
+/**
+ * Intelligent Dynamic Path Synthesizer
+ * If the precomputed static graph does not connect two books, this fallback
+ * discovers a catalog-backed stepping stone bridge book between them.
+ */
+async function buildDynamicBridge(fromId: string, toId: string) {
+  try {
+    const { data: books, error: bErr } = await supabaseAdmin
+      .from('books')
+      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, published_year, genres(id, name, slug, icon, color)')
+      .in('id', [fromId, toId]);
+
+    if (bErr || !books || books.length < 2) return null;
+
+    const bookA = (books as unknown as BookDetails[]).find((b) => b.id === fromId);
+    const bookB = (books as unknown as BookDetails[]).find((b) => b.id === toId);
+    if (!bookA || !bookB) return null;
+
+    // 1. Same author (1-hop)
+    if (bookA.author && bookB.author && bookA.author.toLowerCase() === bookB.author.toLowerCase()) {
+      return {
+        found: true,
+        path: [bookA, bookB],
+        edges: [{
+          from: bookA.id,
+          to: bookB.id,
+          relationship: 'same_author',
+          weight: 0.3,
+          similarityScore: 0.95,
+          evidence: `Both written by ${bookA.author}`,
+        }],
+        totalWeight: 0.3,
+        depth: 1,
+      };
+    }
+
+    // 2. Same genre (1-hop)
+    if (bookA.genre_id && bookB.genre_id && bookA.genre_id === bookB.genre_id) {
+      const genreName = bookA.genres?.name || 'Shared Genre';
+      return {
+        found: true,
+        path: [bookA, bookB],
+        edges: [{
+          from: bookA.id,
+          to: bookB.id,
+          relationship: 'same_genre',
+          weight: 1.0,
+          similarityScore: 0.85,
+          evidence: `Shared genre: ${genreName}`,
+        }],
+        totalWeight: 1.0,
+        depth: 1,
+      };
+    }
+
+    // 3. Shared themes/tags (1-hop)
+    const tagsA = new Set(bookA.tags || []);
+    const sharedTags = (bookB.tags || []).filter((t: string) => tagsA.has(t));
+    if (sharedTags.length > 0) {
+      return {
+        found: true,
+        path: [bookA, bookB],
+        edges: [{
+          from: bookA.id,
+          to: bookB.id,
+          relationship: 'shared_tags',
+          weight: 1.2,
+          similarityScore: 0.8,
+          evidence: `Shared themes: ${sharedTags.slice(0, 3).join(', ')}`,
+        }],
+        totalWeight: 1.2,
+        depth: 1,
+      };
+    }
+
+    // 4. Find stepping-stone bridge book C in either genre or matching keywords
+    const filterOr = [
+      bookA.genre_id ? `genre_id.eq.${bookA.genre_id}` : null,
+      bookB.genre_id ? `genre_id.eq.${bookB.genre_id}` : null,
+    ].filter(Boolean).join(',');
+
+    const query = supabaseAdmin
+      .from('books')
+      .select('id, title, author, cover_image_url, description, expert_rating, community_rating, difficulty_level, genre_id, tags, vibe, published_year, genres(id, name, slug, icon, color)')
+      .neq('id', bookA.id)
+      .neq('id', bookB.id)
+      .not('description', 'is', null)
+      .order('expert_rating', { ascending: false })
+      .limit(30);
+
+    const { data: candidates } = filterOr ? await query.or(filterOr) : await query;
+
+    if (candidates && candidates.length > 0) {
+      const wordsA = new Set(
+        `${bookA.title} ${bookA.description || ''} ${(bookA.tags || []).join(' ')}`
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((w) => w.length > 3)
+      );
+      const wordsB = new Set(
+        `${bookB.title} ${bookB.description || ''} ${(bookB.tags || []).join(' ')}`
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((w) => w.length > 3)
+      );
+
+      let bestBridge = candidates[0] as unknown as BookDetails;
+      let bestScore = -1;
+
+      for (const c of candidates as unknown as BookDetails[]) {
+        const cWords = `${c.title} ${c.description || ''} ${(c.tags || []).join(' ')}`
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((w) => w.length > 3);
+        const hitsA = cWords.filter((w) => wordsA.has(w)).length;
+        const hitsB = cWords.filter((w) => wordsB.has(w)).length;
+        const score = (hitsA + 1) * (hitsB + 1) * (Number(c.expert_rating) || 3);
+        if (score > bestScore) {
+          bestScore = score;
+          bestBridge = c;
+        }
+      }
+
+      const genreAName = bookA.genres?.name || 'Literature';
+      const genreBName = bookB.genres?.name || 'Literature';
+      const bridgeGenre = bestBridge.genres?.name || genreAName;
+
+      return {
+        found: true,
+        path: [bookA, bestBridge, bookB],
+        edges: [
+          {
+            from: bookA.id,
+            to: bestBridge.id,
+            relationship: bestBridge.genre_id === bookA.genre_id ? 'same_genre' : 'connected',
+            weight: 1.2,
+            similarityScore: 0.8,
+            evidence: bestBridge.genre_id === bookA.genre_id ? `Genre: ${genreAName}` : `Thematic transition into ${bridgeGenre}`,
+          },
+          {
+            from: bestBridge.id,
+            to: bookB.id,
+            relationship: bestBridge.genre_id === bookB.genre_id ? 'same_genre' : 'connected',
+            weight: 1.4,
+            similarityScore: 0.75,
+            evidence: bestBridge.genre_id === bookB.genre_id ? `Genre: ${genreBName}` : `Thematic connection leading to ${bookB.title}`,
+          },
+        ],
+        totalWeight: 2.6,
+        depth: 2,
+      };
+    }
+  } catch (bridgeErr) {
+    console.error('[BookWeb API] Dynamic bridge construction error:', bridgeErr);
+  }
+
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fromId = searchParams.get('from');
@@ -58,35 +234,34 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Fast-fail check: verify both books have at least 1 edge in the graph
-    const [fromCheck, toCheck] = await Promise.all([
-      supabase.from('book_edges').select('id', { count: 'exact', head: true }).or(`book_a_id.eq.${fromId},book_b_id.eq.${fromId}`),
-      supabase.from('book_edges').select('id', { count: 'exact', head: true }).or(`book_a_id.eq.${toId},book_b_id.eq.${toId}`),
-    ]);
+    // 1. Try finding a precomputed path via Dijkstra RPC
+    let foundPath = false;
+    let result: PathResult | undefined;
 
-    if (!fromCheck.count || !toCheck.count) {
-      return NextResponse.json({
-        found: false,
-        message: 'No supported relationship path was found. One of the selected books has no recorded connections in the catalog graph.',
-      }, { status: 404 });
+    try {
+      const { data: pathResult, error: pathError } = await supabase.rpc('find_reading_path', {
+        start_id: fromId,
+        end_id: toId,
+        max_depth: 6,
+      });
+
+      if (!pathError && pathResult && Array.isArray(pathResult) && pathResult.length > 0) {
+        const candidate = pathResult[0] as PathResult;
+        if (Array.isArray(candidate.path) && candidate.path.length >= 2) {
+          result = candidate;
+          foundPath = true;
+        }
+      }
+    } catch (rpcErr) {
+      console.warn('[BookWeb API] Weighted path RPC threw, trying dynamic bridge:', rpcErr);
     }
 
-    const { data: pathResult, error: pathError } = await supabase.rpc('find_reading_path', {
-      start_id: fromId,
-      end_id: toId,
-      max_depth: 6,
-    });
-
-    if (pathError) {
-      console.warn('[BookWeb API] Weighted path RPC returned no path or timed out:', pathError.message);
-      return NextResponse.json(
-        { found: false, message: 'No supported relationship path was found between these books within the 6-hop limit.' },
-        { status: 404 },
-      );
-    }
-
-    const result = (pathResult as PathResult[] | null)?.[0];
-    if (!result || !Array.isArray(result.path) || result.path.length < 2) {
+    // 2. If precomputed Dijkstra path is missing, use intelligent catalog bridge fallback
+    if (!foundPath || !result) {
+      const fallbackBridge = await buildDynamicBridge(fromId, toId);
+      if (fallbackBridge) {
+        return NextResponse.json(fallbackBridge, { headers: { 'Cache-Control': 'private, no-store' } });
+      }
       return NextResponse.json({ found: false, message: 'No supported relationship path was found between these books.' }, { status: 404 });
     }
 
